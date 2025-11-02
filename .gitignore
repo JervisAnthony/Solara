@@ -205,3 +205,30 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# --- Solara project additions ---
+
+# Jupyter / Colab notebooks
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+colab/.ipynb_checkpoints/
+
+# Local data, logs, and temp outputs
+data/
+logs/
+tmp/
+.cache/
+
+# Local secrets and environment files
+.env
+.env.*
+*.env
+
+# IDE and editor folders
+.vscode/
+.idea/
+
+# Docker and container files
+docker/.env
+docker-compose.override.yml
