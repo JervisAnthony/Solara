@@ -1,0 +1,12 @@
+langchain
+langgraph
+langchain-openai
+langchain-community
+pydantic>=2
+meteostat
+pandas
+python-dateutil
+pytrends
+googlemaps
+langchain-together
+mistralai
