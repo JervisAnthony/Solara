@@ -1,9 +1,0 @@
-import os
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "")
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
-
-GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
-FOURSQUARE_API_KEY = os.getenv("FOURSQUARE_API_KEY", "")
-SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY", "")
