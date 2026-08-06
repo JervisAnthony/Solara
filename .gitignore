@@ -232,3 +232,6 @@ tmp/
 # Docker and container files
 docker/.env
 docker-compose.override.yml
+
+# Keep the public environment template tracked
+!.env.example
