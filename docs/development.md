@@ -1,0 +1,958 @@
+# Solara Development Guide
+
+## Purpose
+
+This document defines the development workflow and engineering standards for
+Solara.
+
+Solara is being rebuilt incrementally from an earlier prototype. The goal is to
+develop each capability through small, focused, testable changes rather than
+recreate the prototype through a large rewrite.
+
+Useful ideas from the original implementation may be reintroduced, but existing
+code should not be copied merely because it already exists.
+
+Each new component should earn its place through a clear product or
+architectural requirement.
+
+## Development philosophy
+
+Solara development should prioritize:
+
+- correctness over speed;
+- clarity over cleverness;
+- tested behaviour over implicit assumptions;
+- small commits over broad rewrites;
+- explicit architecture over framework-driven design;
+- deterministic logic where deterministic answers are possible;
+- provider independence;
+- explainability;
+- maintainability;
+- incremental delivery.
+
+A new feature should leave the repository easier to understand than it was
+before the change.
+
+## Supported Python versions
+
+Solara supports:
+
+- Python 3.11
+- Python 3.12
+- Python 3.13
+
+Local development currently uses Python 3.13.
+
+CI should continue validating every supported Python version unless a documented
+compatibility decision changes the support policy.
+
+## Local environment setup
+
+From the repository root on Windows PowerShell:
+
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+The local `.venv` directory must never be committed.
+
+If PowerShell prevents virtual-environment activation for the current session,
+use:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+Do not change machine-wide execution policy merely to activate Solara's local
+environment.
+
+## Dependency management
+
+`pyproject.toml` is the authoritative source for package metadata and
+dependencies.
+
+Do not maintain a second independent dependency list.
+
+Runtime dependencies belong in:
+
+```toml
+[project]
+dependencies = []
+```
+
+Development-only dependencies belong in:
+
+```toml
+[project.optional-dependencies]
+dev = []
+```
+
+A dependency should be introduced only when there is a current requirement for
+it.
+
+Before adding a library, consider:
+
+- whether the Python standard library is sufficient;
+- whether the dependency belongs in core logic or only infrastructure;
+- whether it supports all supported Python versions;
+- whether it introduces significant transitive complexity;
+- whether it is actively maintained;
+- whether the functionality is genuinely required now;
+- whether the dependency would unnecessarily couple Solara to a framework.
+
+Do not add a library merely because the original prototype used it.
+
+## Source layout
+
+Solara uses a `src` package layout.
+
+The Python import package is:
+
+```text
+solara_travel
+```
+
+Application code belongs under:
+
+```text
+src/solara_travel/
+```
+
+Tests belong under:
+
+```text
+tests/
+```
+
+Do not manipulate `sys.path` inside tests to make imports work.
+
+The installed package should resolve correctly through normal packaging.
+
+## Branch workflow
+
+Development follows a feature-branch and pull-request workflow.
+
+Before beginning any new change:
+
+```powershell
+git switch main
+git fetch origin
+git pull --ff-only origin main
+git status --short --branch
+```
+
+Confirm that:
+
+- `main` is current with `origin/main`;
+- the working tree is clean;
+- no unrelated local changes are present.
+
+Create one fresh branch for one coherent change:
+
+```powershell
+git switch -c feature/<descriptive-name>
+```
+
+Examples:
+
+```text
+feature/core-domain-models
+feature/traveller-preferences
+feature/provider-contracts
+feature/weather-intelligence
+feature/recommendation-service
+```
+
+Do not reuse old feature branches for unrelated work.
+
+Do not begin a new feature directly on `main`.
+
+## Commit scope
+
+Each commit should represent one understandable development step.
+
+A good commit should be:
+
+- coherent;
+- independently reviewable;
+- focused on one responsibility;
+- accompanied by relevant tests;
+- free of unrelated cleanup;
+- small enough that its architectural intent is clear.
+
+Avoid mixing unrelated:
+
+- documentation changes;
+- dependency upgrades;
+- refactors;
+- formatting-only changes;
+- feature implementation;
+- infrastructure changes.
+
+Related work may remain in the same commit when it is genuinely required to
+deliver one coherent change.
+
+A small number of related files is preferable to a large cross-project rewrite
+when the work can reasonably be separated.
+
+## Test-first development
+
+Behaviour should generally be introduced using a test-first workflow.
+
+The preferred sequence is:
+
+1. define the expected behaviour;
+2. identify important valid and invalid cases;
+3. add focused tests;
+4. run the tests and confirm the new behaviour is not already implemented;
+5. implement the smallest clear solution;
+6. rerun the focused tests;
+7. run the complete test suite;
+8. run static analysis;
+9. review the diff;
+10. commit only after the change is understood and validated.
+
+Tests should describe behaviour rather than merely mirror implementation
+details.
+
+## Testing principles
+
+Tests should be:
+
+- deterministic;
+- isolated;
+- readable;
+- fast;
+- explicit about intent;
+- independent of external credentials by default.
+
+The normal unit test suite must not require:
+
+- Google API credentials;
+- OpenAI credentials;
+- weather-provider credentials;
+- internet access;
+- external databases;
+- third-party services.
+
+External dependencies should be represented through fakes, fixtures, or
+deterministic test adapters where appropriate.
+
+## Test organization
+
+As the project grows, tests should generally reflect architectural boundaries.
+
+Potential structure:
+
+```text
+tests/
+├── domain/
+├── analytics/
+├── application/
+├── infrastructure/
+└── presentation/
+```
+
+Directories should be introduced only when there are tests that belong in them.
+
+Do not create empty test hierarchies merely for visual symmetry.
+
+## Domain tests
+
+Domain tests should verify:
+
+- valid construction;
+- invalid construction;
+- invariants;
+- value semantics;
+- boundary conditions;
+- domain-specific validation;
+- behaviour that belongs to travel concepts themselves.
+
+Domain tests must not depend on infrastructure.
+
+## Analytics tests
+
+Analytics tests should verify deterministic behaviour such as:
+
+- normalization;
+- score boundaries;
+- weighting;
+- ranking;
+- ordering;
+- edge cases;
+- preference matching;
+- climate suitability;
+- explainable score components.
+
+Analytics tests must remain independent of network access.
+
+## Application tests
+
+Application tests should verify orchestration.
+
+Use fake implementations of ports to test:
+
+- provider collaboration;
+- recommendation workflows;
+- result assembly;
+- partial failures;
+- optional integrations;
+- no-result behaviour;
+- application policy.
+
+Application tests should not require real external providers.
+
+## Infrastructure tests
+
+Infrastructure tests should verify adapter-specific behaviour such as:
+
+- provider response mapping;
+- normalization;
+- error translation;
+- malformed responses;
+- unit conversions;
+- provider-specific pagination;
+- authentication configuration boundaries.
+
+Live integration tests may eventually exist, but they should remain separate
+from the normal unit suite.
+
+## Presentation tests
+
+Presentation tests should verify:
+
+- request translation;
+- response translation;
+- validation behaviour;
+- HTTP or CLI boundaries;
+- presentation-specific error behaviour.
+
+They should not duplicate the entire domain or analytics test suite.
+
+## Running tests
+
+Run the complete test suite with:
+
+```powershell
+python -m pytest
+```
+
+Run tests with coverage:
+
+```powershell
+python -m pytest --cov=solara_travel --cov-report=term-missing
+```
+
+Coverage is a diagnostic tool rather than a quality target by itself.
+
+A high percentage does not replace meaningful behavioural tests.
+
+When coverage is reported, focus particularly on:
+
+- domain rules;
+- analytics calculations;
+- application orchestration;
+- failure paths;
+- meaningful edge cases.
+
+## Static analysis
+
+Solara uses Ruff for static analysis.
+
+Run:
+
+```powershell
+python -m ruff check .
+```
+
+The current rule categories include:
+
+- pycodestyle errors;
+- Pyflakes;
+- import sorting;
+- common bugbear rules.
+
+Do not disable lint rules globally merely to make a local issue disappear.
+
+If a rule genuinely conflicts with a documented design decision, prefer the
+smallest possible scoped exception and explain why it exists.
+
+## Formatting
+
+Code should remain readable and consistent.
+
+Avoid cosmetic rewrites of unrelated files while implementing a feature.
+
+Formatting changes should be limited to the files being meaningfully modified
+unless a dedicated formatting change has been intentionally planned.
+
+## Type annotations
+
+Public APIs and important internal boundaries should use clear type annotations.
+
+Types should communicate domain intent.
+
+Prefer:
+
+```python
+def score_destination(
+    destination: Destination,
+    preferences: TravellerPreferences,
+) -> RecommendationScore:
+    ...
+```
+
+over vague structures such as:
+
+```python
+def score_destination(data: dict, prefs: dict) -> dict:
+    ...
+```
+
+Avoid:
+
+- `Any` where a meaningful type can be expressed;
+- provider dictionaries propagating into core logic;
+- generic mappings used as substitutes for domain models;
+- SDK response objects becoming application contracts.
+
+Provider-specific data should be normalized at infrastructure boundaries.
+
+## Domain modelling
+
+Domain models should represent meaningful travel concepts.
+
+A model should exist because Solara needs the concept, not because an API
+returns a similarly shaped object.
+
+Domain models should:
+
+- enforce meaningful invariants;
+- use clear names;
+- avoid provider coupling;
+- expose intentional behaviour;
+- remain testable without infrastructure.
+
+Do not create large universal models containing every field that every provider
+might someday return.
+
+## Error handling
+
+Errors should be explicit and meaningful.
+
+Avoid broad patterns such as:
+
+```python
+try:
+    ...
+except Exception:
+    return None
+```
+
+unless there is an exceptional and well-documented boundary reason.
+
+When translating failures:
+
+- preserve useful causes;
+- distinguish user-input failures from provider failures;
+- avoid hiding programming errors;
+- avoid leaking arbitrary provider exceptions through application boundaries.
+
+Where appropriate, use exception chaining:
+
+```python
+raise ProviderUnavailableError(...) from exc
+```
+
+## Deterministic logic
+
+Deterministic behaviour should remain normal program logic.
+
+Examples include:
+
+- validation;
+- date calculations;
+- normalization;
+- scoring;
+- weighting;
+- filtering;
+- sorting;
+- climate comparison;
+- preference matching;
+- ranking.
+
+Do not use an LLM for deterministic calculations merely because an LLM is
+available.
+
+Deterministic logic should be directly testable.
+
+## AI-assisted behaviour
+
+AI models should be treated as optional infrastructure.
+
+Possible uses include:
+
+- recommendation explanation;
+- summary generation;
+- traveller-friendly narratives;
+- itinerary prose;
+- conversational experiences.
+
+AI models should consume grounded application results.
+
+They should not silently become the source of truth for:
+
+- recommendation scores;
+- destination eligibility;
+- deterministic ranking;
+- numeric calculations;
+- known provider facts.
+
+Useful recommendation results should remain available when the AI integration
+is unavailable.
+
+## External providers
+
+External capabilities should be accessed through Solara-owned ports.
+
+Application code should depend on interfaces such as:
+
+```text
+PlacesProvider
+WeatherProvider
+NarrationProvider
+```
+
+rather than importing vendor clients directly.
+
+Infrastructure adapters should translate provider-specific data into
+Solara-owned representations before returning it to application services.
+
+## Configuration
+
+Configuration should be introduced when external services require it.
+
+Configuration must:
+
+- keep secrets out of source code;
+- provide explicit environment-driven settings;
+- avoid import-time provider initialization;
+- avoid preventing domain modules from being imported when credentials are
+  missing;
+- distinguish required settings from optional integrations.
+
+A missing optional AI credential should not prevent deterministic analytics from
+being used.
+
+## Secrets
+
+Real credentials must never be committed.
+
+The repository may eventually contain:
+
+```text
+.env.example
+```
+
+with empty placeholders for required configuration names.
+
+It must never contain usable secrets.
+
+If a secret is accidentally exposed:
+
+1. revoke or rotate it;
+2. remove it from active code;
+3. investigate whether Git history or logs contain it;
+4. do not assume deleting the latest file is sufficient remediation.
+
+Private signing keys and their passphrases must also never be committed or
+shared.
+
+## Generated files
+
+Normal local build and tooling artifacts should not be committed.
+
+Examples include:
+
+```text
+.venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+```
+
+Generated artifacts should only become tracked files when there is a deliberate
+and documented reason.
+
+## Package builds
+
+For packaging-related changes, verify that the package builds successfully:
+
+```powershell
+python -m build
+```
+
+This should produce:
+
+- a source distribution;
+- a wheel.
+
+Build artifacts belong under `dist/` and should remain untracked.
+
+## Local validation
+
+Before a pull request is opened, run:
+
+```powershell
+python -m ruff check .
+python -m pytest
+python -m pytest --cov=solara_travel --cov-report=term-missing
+git diff --check
+```
+
+For changes involving packaging or distribution metadata, also run:
+
+```powershell
+python -m build
+```
+
+Do not state that a command passed unless it was actually executed
+successfully.
+
+## Continuous integration
+
+GitHub Actions validates supported Python versions.
+
+CI should remain representative of normal local development commands.
+
+The workflow should verify:
+
+- package installation;
+- Ruff;
+- tests;
+- package builds where appropriate.
+
+A locally passing change does not justify ignoring a failing CI run.
+
+CI failures should be investigated rather than bypassed.
+
+## Reviewing changes before staging
+
+Before staging files, inspect:
+
+```powershell
+git status --short
+git diff --check
+git diff
+```
+
+Review:
+
+- unexpected files;
+- accidental deletions;
+- generated artifacts;
+- unrelated changes;
+- secrets;
+- stale debug code;
+- unintended formatting.
+
+Deletions deserve the same level of review as additions.
+
+## Staging
+
+Stage only intended files.
+
+Then inspect:
+
+```powershell
+git status --short
+git diff --staged --stat
+git diff --staged
+```
+
+Do not assume that because a file was intentionally edited, every line in its
+diff is intentional.
+
+## Commit messages
+
+Use concise conventional-style commit messages.
+
+Examples:
+
+```text
+chore: rebuild project foundation
+docs: define product architecture
+docs: add development workflow
+feat: add destination domain model
+feat: add traveller preferences
+feat: define weather provider contract
+test: cover destination validation
+fix: reject invalid travel periods
+```
+
+The commit subject should describe what the change accomplishes.
+
+Avoid vague messages such as:
+
+```text
+updates
+changes
+fix stuff
+work
+```
+
+## Signed commits
+
+Solara's protected `main` branch requires verified commits.
+
+Local Git is configured to use SSH commit signing.
+
+Automatic commit signing should remain enabled through:
+
+```text
+commit.gpgsign=true
+```
+
+Before pushing rewritten commit history, a signature may be checked with:
+
+```powershell
+git cat-file -p HEAD | Select-String "gpgsig"
+```
+
+Never expose:
+
+- the private signing key;
+- the signing-key passphrase.
+
+Only the public signing key should be registered with GitHub.
+
+## Pull requests
+
+Every meaningful feature should be delivered through a pull request.
+
+A pull request description should include:
+
+- what changed;
+- why the change was needed;
+- important architectural decisions;
+- tests performed;
+- known limitations;
+- intentionally deferred work.
+
+The actual diff must be reviewed even when all automated checks pass.
+
+Automation supplements review; it does not replace review.
+
+## Pull request approval
+
+Protected branches require review before merge.
+
+When a commit is rewritten or force-pushed, stale approvals may be dismissed.
+
+The latest review should always apply to the exact commit being merged.
+
+Do not weaken branch rules merely to avoid repeating review when the underlying
+commit changed.
+
+## Merge strategy
+
+Feature pull requests should normally use:
+
+```text
+Squash and merge
+```
+
+This keeps `main` linear while allowing iterative work on a feature branch.
+
+Do not bypass repository protections merely because a merge is blocked.
+
+When GitHub blocks a merge:
+
+1. identify the exact unmet rule;
+2. determine whether the rule represents an intentional policy;
+3. correct the commit, review, check, or repository configuration as
+   appropriate;
+4. merge normally once the requirements are satisfied.
+
+Bypass should remain exceptional.
+
+## Force pushes
+
+Force pushes to protected branches should remain blocked.
+
+A feature branch may occasionally require rewritten history, such as when
+amending a commit signature.
+
+In that situation use:
+
+```powershell
+git push --force-with-lease
+```
+
+rather than:
+
+```powershell
+git push --force
+```
+
+`--force-with-lease` provides protection against accidentally overwriting remote
+changes that are not represented in the local remote-tracking state.
+
+## Documentation
+
+Documentation should describe current truth.
+
+When discussing future architecture or features, clearly label them as:
+
+- planned;
+- intended;
+- proposed;
+- future;
+- potential.
+
+Do not describe unimplemented functionality as though it already exists.
+
+Documentation should be updated when a change materially affects:
+
+- product behaviour;
+- architecture;
+- development workflow;
+- configuration;
+- external integrations;
+- user-facing setup.
+
+## Comments
+
+Comments should explain:
+
+- decisions;
+- invariants;
+- constraints;
+- trade-offs;
+- non-obvious reasoning.
+
+Avoid comments that simply translate code into English.
+
+For example, avoid:
+
+```python
+# Increment count by one.
+count += 1
+```
+
+Prefer comments that explain why behaviour exists when that reason is not
+obvious from the implementation itself.
+
+## Architectural changes
+
+Significant architectural changes should answer:
+
+- What concrete problem does this solve?
+- Why is the existing architecture insufficient?
+- Which boundary changes?
+- Which dependency direction changes?
+- How will the new behaviour be tested?
+- What complexity is being introduced?
+- Is there a simpler solution?
+
+Do not introduce technologies such as:
+
+- vector databases;
+- RAG;
+- multi-agent systems;
+- message queues;
+- microservices;
+- Kubernetes;
+- distributed event systems;
+- complex databases;
+
+without a demonstrated product requirement.
+
+## Provider selection
+
+Provider selection should remain an infrastructure concern.
+
+Choosing a different:
+
+- weather provider;
+- places provider;
+- mapping provider;
+- AI provider;
+
+should not require rewriting core domain or analytics logic.
+
+If replacing a provider would require a large core rewrite, the architectural
+boundary should be reconsidered.
+
+## Performance
+
+Do not optimize prematurely.
+
+First establish:
+
+- correct behaviour;
+- meaningful tests;
+- understandable architecture.
+
+Performance optimization should follow measured evidence.
+
+Potential future metrics may include:
+
+- recommendation latency;
+- provider latency;
+- scoring time;
+- cache hit rate;
+- API throughput;
+- AI generation latency.
+
+## Security
+
+Treat all external input as untrusted.
+
+This includes:
+
+- user input;
+- API responses;
+- imported files;
+- generated content;
+- provider metadata.
+
+Validation and normalization should occur at appropriate boundaries.
+
+Security-sensitive functionality should be added deliberately rather than
+assumed to be handled automatically by frameworks.
+
+## Definition of done
+
+A development change is ready for review when:
+
+1. the intended behaviour is clearly implemented;
+2. relevant focused tests pass;
+3. the complete test suite passes;
+4. Ruff passes;
+5. `git diff --check` passes;
+6. packaging validation passes when relevant;
+7. the diff contains only intended changes;
+8. no secrets or local artifacts are included;
+9. documentation is updated where behaviour or architecture changed;
+10. the change is committed on a dedicated feature branch;
+11. the feature branch is pushed;
+12. the pull request clearly explains the change;
+13. the pull request is reviewed before merge.
+
+## Guiding principle
+
+Solara should become sophisticated only when the product requires
+sophistication.
+
+Every new abstraction, dependency, framework, service, and layer should make a
+real problem easier to solve, easier to test, or easier to maintain.
