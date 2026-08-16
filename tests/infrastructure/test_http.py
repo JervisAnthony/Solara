@@ -4,6 +4,7 @@ import json
 from dataclasses import FrozenInstanceError
 from io import BytesIO
 from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request
 
 import pytest
@@ -587,6 +588,207 @@ def test_post_json_propagates_timeout_error() -> None:
             url="https://example.com/search",
             headers={"Content-Type": "application/json"},
             payload={},
+            timeout_seconds=5.0,
+        )
+
+    assert exc_info.value is error
+
+
+def test_get_json_uses_get_method_and_encodes_query() -> None:
+    """GET transport should encode caller query values onto the request URL."""
+
+    opener = RecordingOpener()
+    transport = UrllibJsonHttpTransport(opener=opener)
+
+    transport.get_json(
+        url="https://example.com/archive",
+        headers={},
+        query={"city": "São Paulo", "filter": "rain & snow"},
+        timeout_seconds=5.0,
+    )
+
+    request = opener.requests[0]
+    assert request.get_method() == "GET"
+    assert parse_qs(urlsplit(request.full_url).query) == {
+        "city": ["São Paulo"],
+        "filter": ["rain & snow"],
+    }
+
+
+def test_get_json_preserves_existing_query_and_fragment() -> None:
+    """Existing URL components should combine deterministically with new query values."""
+
+    opener = RecordingOpener()
+    transport = UrllibJsonHttpTransport(opener=opener)
+
+    transport.get_json(
+        url="https://example.com/archive?existing=yes#results",
+        headers={},
+        query={"latitude": 35.0116},
+        timeout_seconds=5.0,
+    )
+
+    split_url = urlsplit(opener.requests[0].full_url)
+    assert split_url.query == "existing=yes&latitude=35.0116"
+    assert split_url.fragment == "results"
+
+
+def test_get_json_supports_empty_query() -> None:
+    """An empty query should leave a base URL unchanged."""
+
+    opener = RecordingOpener()
+    transport = UrllibJsonHttpTransport(opener=opener)
+
+    transport.get_json(
+        url="https://example.com/archive",
+        headers={},
+        query={},
+        timeout_seconds=5.0,
+    )
+
+    assert opener.requests[0].full_url == "https://example.com/archive"
+
+
+def test_get_json_preserves_headers_and_timeout() -> None:
+    """GET headers and timeout should reach the injected opener."""
+
+    opener = RecordingOpener()
+    transport = UrllibJsonHttpTransport(opener=opener)
+
+    transport.get_json(
+        url="https://example.com/archive",
+        headers={"Accept": "application/json"},
+        query={},
+        timeout_seconds=7.5,
+    )
+
+    assert opener.requests[0].get_header("Accept") == "application/json"
+    assert opener.timeouts == [7.5]
+
+
+def test_get_json_does_not_mutate_inputs() -> None:
+    """GET construction should leave caller-owned headers and query unchanged."""
+
+    opener = RecordingOpener()
+    transport = UrllibJsonHttpTransport(opener=opener)
+    headers = {"Accept": "application/json"}
+    query = {"daily": "temperature_2m_mean", "latitude": 35.0116}
+
+    transport.get_json(
+        url="https://example.com/archive",
+        headers=headers,
+        query=query,
+        timeout_seconds=5.0,
+    )
+
+    assert headers == {"Accept": "application/json"}
+    assert query == {"daily": "temperature_2m_mean", "latitude": 35.0116}
+
+
+@pytest.mark.parametrize(
+    ("body", "expected_payload"),
+    [
+        (b'{"daily": {"time": []}}', {"daily": {"time": []}}),
+        (b"[]", []),
+        (b'"historical"', "historical"),
+    ],
+)
+def test_get_json_decodes_valid_json_values(
+    body: bytes,
+    expected_payload: object,
+) -> None:
+    """GET responses should use the transport's generic JSON decoding."""
+
+    opener = RecordingOpener(
+        response=FakeUrlResponse(status_code=200, body=body),
+    )
+    transport = UrllibJsonHttpTransport(opener=opener)
+
+    response = transport.get_json(
+        url="https://example.com/archive",
+        headers={},
+        query={},
+        timeout_seconds=5.0,
+    )
+
+    assert response == JsonHttpResponse(200, expected_payload)
+
+
+@pytest.mark.parametrize("body", [b"not-json", b"\xff"])
+def test_get_json_rejects_invalid_json(body: bytes) -> None:
+    """Malformed or non-UTF-8 GET bodies should raise an explicit decode error."""
+
+    opener = RecordingOpener(
+        response=FakeUrlResponse(status_code=200, body=body),
+    )
+    transport = UrllibJsonHttpTransport(opener=opener)
+
+    with pytest.raises(JsonHttpDecodeError):
+        transport.get_json(
+            url="https://example.com/archive",
+            headers={},
+            query={},
+            timeout_seconds=5.0,
+        )
+
+
+def test_get_json_preserves_json_http_error() -> None:
+    """Valid JSON HTTP errors should remain available for provider translation."""
+
+    error = HTTPError(
+        url="https://example.com/archive",
+        code=429,
+        msg="rate limited",
+        hdrs=None,
+        fp=BytesIO(b'{"reason": "rate limited"}'),
+    )
+    transport = UrllibJsonHttpTransport(opener=RecordingOpener(error=error))
+
+    response = transport.get_json(
+        url="https://example.com/archive",
+        headers={},
+        query={},
+        timeout_seconds=5.0,
+    )
+
+    assert response == JsonHttpResponse(429, {"reason": "rate limited"})
+
+
+def test_get_json_rejects_malformed_http_error_body() -> None:
+    """Malformed JSON in an HTTP-error body should remain a decode failure."""
+
+    error = HTTPError(
+        url="https://example.com/archive",
+        code=500,
+        msg="unavailable",
+        hdrs=None,
+        fp=BytesIO(b"not-json"),
+    )
+    transport = UrllibJsonHttpTransport(opener=RecordingOpener(error=error))
+
+    with pytest.raises(JsonHttpDecodeError):
+        transport.get_json(
+            url="https://example.com/archive",
+            headers={},
+            query={},
+            timeout_seconds=5.0,
+        )
+
+
+@pytest.mark.parametrize(
+    "error",
+    [URLError("network unavailable"), TimeoutError("timed out")],
+)
+def test_get_json_propagates_transport_failure(error: Exception) -> None:
+    """Network and timeout errors should remain available to provider clients."""
+
+    transport = UrllibJsonHttpTransport(opener=RecordingOpener(error=error))
+
+    with pytest.raises(type(error)) as exc_info:
+        transport.get_json(
+            url="https://example.com/archive",
+            headers={},
+            query={},
             timeout_seconds=5.0,
         )
 

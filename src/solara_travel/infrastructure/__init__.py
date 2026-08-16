@@ -2,6 +2,7 @@
 
 from solara_travel.infrastructure.http import (
     JsonHttpDecodeError,
+    JsonHttpGetTransport,
     JsonHttpResponse,
     JsonHttpTransport,
     UrllibJsonHttpTransport,
@@ -9,6 +10,7 @@ from solara_travel.infrastructure.http import (
 
 __all__ = [
     "JsonHttpDecodeError",
+    "JsonHttpGetTransport",
     "JsonHttpResponse",
     "JsonHttpTransport",
     "UrllibJsonHttpTransport",
