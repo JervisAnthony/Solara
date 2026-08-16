@@ -12,10 +12,12 @@ from solara_travel.ports.places import (
     DestinationDiscoveryPort,
     PlacesProvider,
 )
+from solara_travel.ports.weather import HistoricalWeatherProvider
 
 __all__ = [
     "AttractionDiscoveryPort",
     "DestinationDiscoveryPort",
+    "HistoricalWeatherProvider",
     "PlacesProvider",
     "ProviderAuthenticationError",
     "ProviderError",
