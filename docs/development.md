@@ -345,12 +345,16 @@ python -m pytest
 Run tests with coverage:
 
 ```powershell
-python -m pytest --cov=solara_travel --cov-report=term-missing
+python -m pytest --cov=solara_travel --cov-branch --cov-report=term-missing
 ```
 
-Coverage is a diagnostic tool rather than a quality target by itself.
+Statement and branch coverage must remain at 100%. This is a regression gate,
+not proof that the tests are meaningful by itself.
 
 A high percentage does not replace meaningful behavioural tests.
+
+The normal test suite is offline and credential-free. Provider integrations
+must use deterministic test doubles rather than live services.
 
 When coverage is reported, focus particularly on:
 
@@ -385,6 +389,16 @@ smallest possible scoped exception and explain why it exists.
 ## Formatting
 
 Code should remain readable and consistent.
+
+Ruff's formatting check is:
+
+```powershell
+python -m ruff format --check .
+```
+
+The repository-wide formatting baseline must be normalized in a dedicated,
+reviewable commit before this command becomes an enforced CI gate. Until then,
+use it to identify drift in files you modify and avoid broad incidental changes.
 
 Avoid cosmetic rewrites of unrelated files while implementing a feature.
 
@@ -608,6 +622,10 @@ This should produce:
 
 Build artifacts belong under `dist/` and should remain untracked.
 
+CI also installs the built wheel into a clean temporary environment, runs
+`pip check`, and smoke-tests representative public imports. This prevents an
+editable source checkout from hiding wheel packaging or dependency problems.
+
 ## Local validation
 
 Before a pull request is opened, run:
@@ -615,14 +633,16 @@ Before a pull request is opened, run:
 ```powershell
 python -m ruff check .
 python -m pytest
-python -m pytest --cov=solara_travel --cov-report=term-missing
+python -m pytest --cov=solara_travel --cov-branch --cov-report=term-missing
+python -m build
 git diff --check
 ```
 
-For changes involving packaging or distribution metadata, also run:
+Also inspect formatting drift while the repository formatting baseline is being
+prepared:
 
 ```powershell
-python -m build
+python -m ruff format --check .
 ```
 
 Do not state that a command passed unless it was actually executed
@@ -630,16 +650,24 @@ successfully.
 
 ## Continuous integration
 
-GitHub Actions validates supported Python versions.
+GitHub Actions separates failures into focused repository CI and security gates:
 
-CI should remain representative of normal local development commands.
+- Ruff lint and dependency consistency;
+- tests on Python 3.11, 3.12, and 3.13 on Ubuntu;
+- a separate 100% statement and branch coverage regression gate;
+- the complete test suite on Windows with Python 3.13;
+- source-distribution and wheel builds followed by a clean-install smoke test;
+- pull-request dependency review that rejects newly introduced high or critical
+  vulnerabilities;
+- CodeQL `security-extended` analysis of Python source and GitHub Actions
+  workflows;
+- GitGuardian as an additional, independently operated repository security
+  check.
 
-The workflow should verify:
-
-- package installation;
-- Ruff;
-- tests;
-- package builds where appropriate.
+The Ruff format gate will join these checks after the existing formatting drift
+is normalized in its own commit. Branch and ruleset enforcement is configured
+separately in GitHub settings; these checks are not automatically required merely
+because their workflows exist.
 
 A locally passing change does not justify ignoring a failing CI run.
 

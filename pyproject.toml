@@ -75,5 +75,6 @@ branch = true
 source = ["solara_travel"]
 
 [tool.coverage.report]
+fail_under = 100
 show_missing = true
 skip_covered = false
