@@ -1018,10 +1018,12 @@ narration is unavailable. LangGraph is not required for this milestone.
 
 Expected scope may include:
 
-- application initialization;
-- health endpoint;
-- API configuration;
-- presentation-layer tests.
+- optional FastAPI web dependencies;
+- application factory and ASGI entrypoint;
+- typed process-health endpoint and standard API documentation;
+- presentation-layer tests without provider composition.
+
+Recommendation request and response HTTP behavior remains Commit 37 scope.
 
 ## Commit 37 - Recommendation HTTP API
 

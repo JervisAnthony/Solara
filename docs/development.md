@@ -54,7 +54,7 @@ From the repository root on Windows PowerShell:
 py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,web]"
 ```
 
 The local `.venv` directory must never be committed.
@@ -90,6 +90,9 @@ Development-only dependencies belong in:
 [project.optional-dependencies]
 dev = []
 ```
+
+Optional HTTP presentation dependencies belong in the separate `web` extra so
+core Solara installations remain dependency-light.
 
 A dependency should be introduced only when there is a current requirement for
 it.
@@ -623,6 +626,37 @@ Expected provider authentication, rate-limit, response, and availability
 failures produce no narration while preserving the exact recommendation result.
 Empty results skip the model call. Normal tests and CI use fake providers and
 transports, require no API key, and never make a live AI request.
+
+## FastAPI application foundation
+
+Install local development and HTTP presentation dependencies with:
+
+```powershell
+python -m pip install -e ".[dev,web]"
+```
+
+Run the ASGI application locally with reload enabled for development only:
+
+```powershell
+python -m uvicorn solara_travel.presentation.api.app:app --reload
+```
+
+The current HTTP surface is deliberately limited to:
+
+```text
+GET /health
+GET /openapi.json
+GET /docs
+GET /redoc
+```
+
+Interactive Swagger and ReDoc pages are enabled by default. Creating the app
+with `ApiSettings(docs_enabled=False)` disables `/docs` and `/redoc` while
+retaining `/openapi.json` and `/health`.
+
+Health indicates only that the ASGI process is serving requests; it does not
+check provider availability. No provider credentials are required, and no
+recommendation HTTP endpoint exists until Commit 37.
 
 ## Configuration
 
