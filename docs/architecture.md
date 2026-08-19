@@ -469,6 +469,35 @@ Presentation code should:
 
 Presentation code should not implement recommendation algorithms.
 
+### FastAPI application foundation
+
+FastAPI is an optional `web` dependency and belongs exclusively to the
+presentation layer. The ASGI boundary follows the existing inward dependency
+direction:
+
+```text
+HTTP Client
+    |
+    v
+FastAPI Presentation
+    |
+    v
+Application Services
+    |
+    v
+Domain / Ports / Analytics
+```
+
+`create_app()` is the composition entrypoint for this HTTP surface and returns a
+new application instance without reading environment configuration, composing
+providers, or making network calls. Application and domain modules do not
+depend on FastAPI.
+
+The initial `GET /health` route proves only that the ASGI process can serve and
+serialize an HTTP response. It does not check Google Places, Open-Meteo, OpenAI,
+or recommendation readiness. Recommendation HTTP behavior remains Commit 37
+scope.
+
 ## Configuration
 
 The `config` package will own typed application configuration when external
