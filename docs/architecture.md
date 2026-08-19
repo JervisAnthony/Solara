@@ -336,6 +336,38 @@ narration is applied.
 
 Solara should remain useful when the AI provider is unavailable.
 
+### Grounded narration boundary
+
+Grounded narration is application enrichment applied only after deterministic
+recommendation work is complete:
+
+```text
+RecommendationService
+        |
+        v
+RecommendationResult
+        |
+        v
+RecommendationNarrationService
+        |
+        v
+NarrationProvider
+        |
+        v
+OpenAIResponsesNarrationProvider
+```
+
+`RecommendationResult` remains authoritative. The narration service creates a
+deterministic, structured grounding payload from that result and asks a provider
+for traveller-friendly prose. Provider failures are recoverable: the exact
+result remains available with no narration. Generated prose never flows back
+into eligibility, evidence, scoring, or ranking.
+
+The application layer depends on the vendor-independent `NarrationProvider`
+port, not OpenAI. OpenAI infrastructure depends on that port and the shared JSON
+HTTP transport. Domain and analytics code have no dependency on narration
+infrastructure.
+
 ## Provider normalization
 
 External providers commonly return different:

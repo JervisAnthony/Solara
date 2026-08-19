@@ -784,6 +784,11 @@ context-aware travel assistance
 More complex AI architecture should only be introduced if simple grounded model
 calls become insufficient.
 
+Grounded narration is required for the intended hosted MVP1 experience, while
+deterministic recommendations must remain complete and usable when narration
+fails. LangGraph is not a prerequisite for grounded narration and should be
+introduced only if demonstrated orchestration complexity later justifies it.
+
 ## Agentic architecture
 
 Solara does not initially require a multi-agent architecture.
@@ -838,14 +843,25 @@ Commit 25 - provider contracts
 Commit 26 - deterministic popularity and suitability analytics
 Commit 27 - weather intelligence and climate comfort
 Commit 28 - places provider and normalization
-Commit 29 - seasonality intelligence
-Commit 30 - recommendation application service
-Commit 31 - offline recommendation workflow
-Commit 32 - LangGraph orchestration
-Commit 33 - AI-assisted recommendation explanation
-Commit 34 - CLI demonstration
-Commit 35 - FastAPI foundation
-Commit 36 - recommendation API
+Commit 29 - historical weather provider and normalization
+Commit 30 - seasonality intelligence
+Commit 31 - recommendation result and evidence models
+Commit 32 - recommendation application service
+Commit 33 - CI hardening and repository quality gates
+Commit 34 - offline providers and end-to-end recommendation workflow
+Commit 35 - grounded AI narration
+Commit 36 - FastAPI application foundation
+Commit 37 - recommendation HTTP API
+Commit 38 - web application shell
+Commit 39 - traveller recommendation form
+Commit 40 - recommendation results and explainability UI
+Commit 41 - validation, error, loading, and empty states
+Commit 42 - logging, request tracing, and tester feedback
+Commit 43 - public-alpha safeguards and rate and cost controls
+Commit 44 - deployment configuration
+Commit 45 - hosted MVP1 deployment
+Commit 46 - public-alpha integration, smoke, and browser testing
+Commit 47 - MVP1 release documentation
 ```
 
 This sequence is intentionally more granular than the original prototype.
@@ -949,47 +965,56 @@ Expected scope may include:
 - ranking;
 - recommendation result assembly.
 
-## Commit 31 - Offline recommendation workflow
+## Commit 31 - Recommendation result and evidence models
 
 Expected scope may include:
 
-- local fixture data;
-- fake providers;
-- end-to-end deterministic recommendation flow;
-- reproducible example scenarios.
+- immutable recommendation values;
+- deterministic result ordering;
+- retained score and provider evidence;
+- result invariant tests.
 
-## Commit 32 - LangGraph orchestration
+## Commit 32 - Recommendation application service
 
 Expected scope may include:
 
-- workflow state;
-- graph nodes;
-- application-service integration;
-- deterministic workflow tests.
+- candidate orchestration;
+- provider collaboration;
+- analytics invocation;
+- deterministic ranking and result assembly.
 
-LangGraph should orchestrate existing behaviour rather than introduce core
-recommendation logic.
+## Commit 33 - CI hardening and repository quality gates
 
-## Commit 33 - AI-assisted recommendation explanation
+Expected scope may include:
+
+- multi-version Python validation;
+- 100% statement and branch coverage gates;
+- package installation validation;
+- security and dependency review workflows.
+
+## Commit 34 - Offline providers and end-to-end recommendation workflow
+
+Expected scope may include:
+
+- explicit credential-free provider composition;
+- bundled synthetic fixture evidence;
+- end-to-end deterministic recommendation execution;
+- no silent fallback from live providers.
+
+## Commit 35 - Grounded AI narration
 
 Expected scope may include:
 
 - narration port;
-- prompt construction;
-- structured evidence input;
-- optional provider implementation;
-- graceful fallback without AI.
+- deterministic grounded prompt construction;
+- OpenAI Responses API infrastructure;
+- result-preserving provider failure fallback.
 
-## Commit 34 - CLI demonstration
+Narration is part of the intended MVP1 experience but remains enrichment: AI
+does not own recommendation logic, and deterministic results remain usable when
+narration is unavailable. LangGraph is not required for this milestone.
 
-Expected scope may include:
-
-- command-line entry point;
-- structured input;
-- readable ranked results;
-- optional narration display.
-
-## Commit 35 - FastAPI foundation
+## Commit 36 - FastAPI application foundation
 
 Expected scope may include:
 
@@ -998,7 +1023,7 @@ Expected scope may include:
 - API configuration;
 - presentation-layer tests.
 
-## Commit 36 - Recommendation API
+## Commit 37 - Recommendation HTTP API
 
 Expected scope may include:
 
@@ -1006,6 +1031,21 @@ Expected scope may include:
 - application service invocation;
 - structured recommendation response;
 - API error translation.
+
+## Commits 38-47 - MVP1 web experience and release
+
+The remaining MVP1 sequence is intentionally staged as:
+
+- web application shell;
+- traveller recommendation form;
+- recommendation results and explainability UI;
+- validation, error, loading, and empty states;
+- logging, request tracing, and tester feedback;
+- public-alpha safeguards and rate and cost controls;
+- deployment configuration;
+- hosted MVP1 deployment;
+- public-alpha integration, smoke, and browser testing;
+- MVP1 release documentation.
 
 ## Release milestones
 
