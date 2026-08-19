@@ -547,6 +547,52 @@ rather than importing vendor clients directly.
 Infrastructure adapters should translate provider-specific data into
 Solara-owned representations before returning it to application services.
 
+## Offline recommendation workflow
+
+Solara includes an explicit offline composition for deterministic development,
+documentation, and end-to-end testing without credentials or network access. It
+uses bundled normalized fixture values while retaining `RecommendationService`
+as the application orchestrator, so provider ports, domain values, seasonality
+analytics, scoring, evidence, ranking, and result assembly follow the same path
+used by live-provider composition.
+
+The bundled destinations, attractions, and historical weather are synthetic
+Fixtureland data. They must never be presented as live, current, or authoritative
+travel evidence. Offline providers are selected explicitly; they are not a
+fallback when a live provider fails.
+
+The default fixtures cover April 10 through April 12 across 2020 through 2024.
+Calendar coverage is intentionally limited. Requests for unsupported calendar
+windows may fail because the workflow does not fabricate missing evidence.
+
+```python
+from datetime import date
+
+from solara_travel.domain import (
+    RecommendationRequest,
+    TemperatureComfortRange,
+    TravelPeriod,
+)
+from solara_travel.workflows import build_offline_recommendation_service
+
+service = build_offline_recommendation_service(
+    comfort_range=TemperatureComfortRange(
+        minimum_celsius=18.0,
+        maximum_celsius=28.0,
+        tolerance_celsius=10.0,
+    )
+)
+
+result = service.recommend(
+    RecommendationRequest(
+        travel_period=TravelPeriod(
+            start_date=date(2026, 4, 10),
+            end_date=date(2026, 4, 12),
+        )
+    )
+)
+```
+
 ## Configuration
 
 Configuration should be introduced when external services require it.
