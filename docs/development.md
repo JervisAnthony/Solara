@@ -593,6 +593,37 @@ result = service.recommend(
 )
 ```
 
+## Grounded AI narration
+
+Narration runs after `RecommendationService` has produced its authoritative
+deterministic result. The model receives only structured Solara-owned grounding
+and cannot select destinations, change ranks or scores, or add evidence. All
+traveller and provider strings in that grounding are untrusted data; trusted
+instructions require the model to ignore instructions found there and prohibit
+presenting historical seasonal evidence as current weather or a forecast.
+
+The OpenAI adapter uses the Responses API with an explicitly selected model,
+`store=false`, a bounded output size, and no tools or conversation state. The
+following is manual caller code; `gpt-5.6` is an example compatible model, not an
+architectural constant:
+
+```python
+import os
+
+from solara_travel.workflows import build_openai_recommendation_narration_service
+
+narration_service = build_openai_recommendation_narration_service(
+    api_key=os.environ["OPENAI_API_KEY"],
+    model="gpt-5.6",
+)
+narrated_result = narration_service.narrate(result)
+```
+
+Expected provider authentication, rate-limit, response, and availability
+failures produce no narration while preserving the exact recommendation result.
+Empty results skip the model call. Normal tests and CI use fake providers and
+transports, require no API key, and never make a live AI request.
+
 ## Configuration
 
 Configuration should be introduced when external services require it.

@@ -7,6 +7,7 @@ from solara_travel.ports.errors import (
     ProviderResponseError,
     ProviderUnavailableError,
 )
+from solara_travel.ports.narration import NarrationPrompt, NarrationProvider
 from solara_travel.ports.places import (
     AttractionDiscoveryPort,
     DestinationDiscoveryPort,
@@ -18,6 +19,8 @@ __all__ = [
     "AttractionDiscoveryPort",
     "DestinationDiscoveryPort",
     "HistoricalWeatherProvider",
+    "NarrationPrompt",
+    "NarrationProvider",
     "PlacesProvider",
     "ProviderAuthenticationError",
     "ProviderError",
