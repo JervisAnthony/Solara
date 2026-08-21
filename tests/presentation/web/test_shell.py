@@ -15,6 +15,7 @@ def test_packaged_web_resources_resolve_from_the_web_package() -> None:
     assert STATIC_DIRECTORY.is_dir()
     assert (STATIC_DIRECTORY / "styles.css").is_file()
     assert (STATIC_DIRECTORY / "app.js").is_file()
+    assert (STATIC_DIRECTORY / "results.js").is_file()
 
 
 def test_root_returns_semantic_solara_html_shell() -> None:
@@ -76,6 +77,7 @@ def test_web_shell_and_assets_are_independent_of_api_documentation_policy() -> N
     assert client.get("/").status_code == 200
     assert client.get("/static/styles.css").status_code == 200
     assert client.get("/static/app.js").status_code == 200
+    assert client.get("/static/results.js").status_code == 200
     assert client.get("/health").status_code == 200
     assert client.get("/docs").status_code == 404
     assert client.get("/redoc").status_code == 404

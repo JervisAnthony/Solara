@@ -1053,7 +1053,7 @@ Implemented scope includes:
 - focused browser-shell, static-asset, and API-regression tests.
 
 Commit 39 extends this shell with recommendation inputs and submission; Commit
-40 owns authoritative result rendering.
+40 adds authoritative result rendering.
 
 ## Commit 39 - Traveller recommendation form
 
@@ -1068,11 +1068,23 @@ Implemented scope includes:
 - minimal success and failure acknowledgement;
 - no recommendation-result rendering.
 
-## Commits 40-47 - MVP1 web experience and release
+## Commit 40 - Recommendation results and explainability UI
+
+Implemented scope includes:
+
+- authoritative ranked destination cards and suitability scores;
+- deterministic score components without browser recomputation;
+- selected attraction evidence;
+- historical seasonal and temperature-comfort evidence;
+- optional grounded AI explanation kept separate from deterministic ranking;
+- safe plain-text rendering of response content;
+- repeated-response replacement with no reranking or rescoring;
+- no loading, detailed error, or empty-result UX.
+
+## Commits 41-47 - MVP1 web experience and release
 
 The remaining MVP1 sequence is intentionally staged as:
 
-- Commit 40 - recommendation results and explainability UI;
 - Commit 41 - validation, error, loading, and empty states;
 - Commit 42 - logging, request tracing, and tester feedback;
 - Commit 43 - public-alpha safeguards and rate and cost controls;
