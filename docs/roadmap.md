@@ -570,7 +570,6 @@ Potential endpoints include:
 
 ```text
 GET /health
-POST /recommendations
 ```
 
 Additional endpoints should be introduced only when real use cases require them.
@@ -591,6 +590,13 @@ the CLI, or the API.
 ### Goal
 
 Expose the structured recommendation workflow through a stable API contract.
+
+The implemented public route is `POST /api/v1/recommendations`. It uses typed
+presentation request and response models, explicit HTTP/domain mapping, and
+application-service injection. Responses preserve deterministic ranking,
+scores, components, and selected aggregate evidence while optional grounded
+narration remains non-authoritative. Known provider failures are translated at
+the HTTP boundary without exposing provider details.
 
 ### Potential response
 
@@ -1027,12 +1033,13 @@ Recommendation request and response HTTP behavior remains Commit 37 scope.
 
 ## Commit 37 - Recommendation HTTP API
 
-Expected scope may include:
+Implemented scope includes:
 
-- recommendation request schema;
-- application service invocation;
-- structured recommendation response;
-- API error translation.
+- versioned `POST /api/v1/recommendations` route;
+- typed request and response schemas with explicit domain mapping;
+- per-application `RecommendationService` and optional narration injection;
+- deterministic evidence serialization without raw provider payloads;
+- safe provider-boundary error translation and optional narration degradation.
 
 ## Commits 38-47 - MVP1 web experience and release
 

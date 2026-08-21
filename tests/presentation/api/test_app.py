@@ -7,7 +7,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from solara_travel.presentation.api import ApiSettings, create_app
+from solara_travel.presentation.api import ApiDependencies, ApiSettings, create_app
 
 app_module = importlib.import_module("solara_travel.presentation.api.app")
 
@@ -20,6 +20,8 @@ def test_factory_returns_distinct_fastapi_instances() -> None:
     assert isinstance(second, FastAPI)
     assert first is not second
     assert isinstance(app_module.app, FastAPI)
+    assert isinstance(first.state.api_dependencies, ApiDependencies)
+    assert first.state.api_dependencies is not second.state.api_dependencies
 
 
 def test_factory_uses_stable_distribution_metadata() -> None:
@@ -46,6 +48,21 @@ def test_factory_rejects_invalid_settings(settings: object) -> None:
         create_app(settings)  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize("dependencies", [object(), {}, False])
+def test_factory_rejects_invalid_dependencies(dependencies: object) -> None:
+    with pytest.raises(TypeError, match="dependencies must be ApiDependencies or None"):
+        create_app(dependencies=dependencies)  # type: ignore[arg-type]
+
+
+def test_factory_stores_only_supplied_dependencies_on_created_application() -> None:
+    dependencies = ApiDependencies()
+
+    application = create_app(ApiSettings(docs_enabled=False), dependencies=dependencies)
+
+    assert application.state.api_dependencies is dependencies
+    assert app_module.app.state.api_dependencies is not dependencies
+
+
 def test_health_endpoint_returns_exact_typed_json_response() -> None:
     response = TestClient(create_app()).get("/health")
 
@@ -54,7 +71,7 @@ def test_health_endpoint_returns_exact_typed_json_response() -> None:
     assert response.headers["content-type"].startswith("application/json")
 
 
-def test_openapi_exposes_only_the_health_contract() -> None:
+def test_openapi_exposes_health_and_versioned_recommendation_contracts() -> None:
     response = TestClient(create_app()).get("/openapi.json")
 
     assert response.status_code == 200
@@ -63,9 +80,17 @@ def test_openapi_exposes_only_the_health_contract() -> None:
         "title": "Solara Travel API",
         "version": metadata.version("solara-travel-ai"),
     }
-    assert set(schema["paths"]) == {"/health"}
+    assert set(schema["paths"]) == {"/health", "/api/v1/recommendations"}
     assert "get" in schema["paths"]["/health"]
+    recommendation = schema["paths"]["/api/v1/recommendations"]["post"]
+    assert recommendation["requestBody"]["content"]["application/json"]["schema"]
+    assert recommendation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert recommendation["responses"]["502"]["content"]["application/json"]["schema"]
+    assert recommendation["responses"]["503"]["content"]["application/json"]["schema"]
     assert "HealthResponse" in schema["components"]["schemas"]
+    assert "RecommendationRequestBody" in schema["components"]["schemas"]
+    assert "RecommendationResponse" in schema["components"]["schemas"]
+    assert "ApiErrorResponse" in schema["components"]["schemas"]
 
 
 def test_interactive_documentation_is_enabled_by_default() -> None:
@@ -91,7 +116,6 @@ def test_interactive_documentation_can_be_disabled_without_disabling_openapi() -
         ("get", "/"),
         ("post", "/recommendations"),
         ("post", "/api/recommendations"),
-        ("post", "/api/v1/recommendations"),
     ],
 )
 def test_unimplemented_routes_remain_absent(method: str, path: str) -> None:

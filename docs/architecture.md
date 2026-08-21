@@ -493,10 +493,54 @@ new application instance without reading environment configuration, composing
 providers, or making network calls. Application and domain modules do not
 depend on FastAPI.
 
-The initial `GET /health` route proves only that the ASGI process can serve and
-serialize an HTTP response. It does not check Google Places, Open-Meteo, OpenAI,
-or recommendation readiness. Recommendation HTTP behavior remains Commit 37
-scope.
+The unversioned `GET /health` route proves only that the ASGI process can serve
+and serialize an HTTP response. It does not check Google Places, Open-Meteo,
+OpenAI, or recommendation readiness.
+
+### Recommendation HTTP boundary
+
+The public application contract exposes `POST /api/v1/recommendations` while
+operational health remains unversioned. Recommendation logic stays in the
+application and domain layers:
+
+```text
+HTTP JSON
+    |
+    v
+RecommendationRequestBody
+    |
+    v
+HTTP-to-domain mapper
+    |
+    v
+RecommendationRequest
+    |
+    v
+RecommendationService
+    |
+    v
+RecommendationResult
+    |
+    +----> optional RecommendationNarrationService
+    |
+    v
+HTTP response mapper
+    |
+    v
+RecommendationResponse
+```
+
+`ApiDependencies` injects application services when each FastAPI instance is
+created. The default module-level app remains credential-free; it serves health
+normally and returns a safe `503` for recommendation calls until a
+`RecommendationService` is supplied.
+
+The presentation layer explicitly maps domain values and selected aggregate
+evidence. It preserves recommendation order, scores, components, and request
+data without rescoring or exposing raw provider payloads or historical
+observations. Known provider-boundary failures become safe `502` or `503`
+responses. Optional narration is applied only after the deterministic result;
+an AI provider failure leaves that result usable with no narration.
 
 ## Configuration
 

@@ -4,14 +4,22 @@ from importlib import metadata
 
 from fastapi import FastAPI
 
+from solara_travel.presentation.api.dependencies import ApiDependencies
 from solara_travel.presentation.api.routes.health import router as health_router
+from solara_travel.presentation.api.routes.recommendations import (
+    router as recommendations_router,
+)
 from solara_travel.presentation.api.settings import ApiSettings
 
 _DISTRIBUTION_NAME = "solara-travel-ai"
 _UNINSTALLED_VERSION = "0.0.0+uninstalled"
 
 
-def create_app(settings: ApiSettings | None = None) -> FastAPI:
+def create_app(
+    settings: ApiSettings | None = None,
+    *,
+    dependencies: ApiDependencies | None = None,
+) -> FastAPI:
     """Create a new credential-free FastAPI presentation application."""
 
     if settings is None:
@@ -19,13 +27,20 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     elif not isinstance(settings, ApiSettings):
         raise TypeError("settings must be ApiSettings or None")
 
+    if dependencies is None:
+        dependencies = ApiDependencies()
+    elif not isinstance(dependencies, ApiDependencies):
+        raise TypeError("dependencies must be ApiDependencies or None")
+
     application = FastAPI(
         title="Solara Travel API",
         version=_application_version(),
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url="/redoc" if settings.docs_enabled else None,
     )
+    application.state.api_dependencies = dependencies
     application.include_router(health_router)
+    application.include_router(recommendations_router)
     return application
 
 

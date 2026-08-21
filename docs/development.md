@@ -627,7 +627,7 @@ failures produce no narration while preserving the exact recommendation result.
 Empty results skip the model call. Normal tests and CI use fake providers and
 transports, require no API key, and never make a live AI request.
 
-## FastAPI application foundation
+## FastAPI recommendation API
 
 Install local development and HTTP presentation dependencies with:
 
@@ -641,10 +641,11 @@ Run the ASGI application locally with reload enabled for development only:
 python -m uvicorn solara_travel.presentation.api.app:app --reload
 ```
 
-The current HTTP surface is deliberately limited to:
+The HTTP surface is deliberately limited to:
 
 ```text
 GET /health
+POST /api/v1/recommendations
 GET /openapi.json
 GET /docs
 GET /redoc
@@ -655,8 +656,47 @@ with `ApiSettings(docs_enabled=False)` disables `/docs` and `/redoc` while
 retaining `/openapi.json` and `/health`.
 
 Health indicates only that the ASGI process is serving requests; it does not
-check provider availability. No provider credentials are required, and no
-recommendation HTTP endpoint exists until Commit 37.
+check provider availability. The default module-level app has no recommendation
+service configured, so a valid `POST /api/v1/recommendations` returns `503`
+until application composition supplies `ApiDependencies`.
+
+A recommendation request uses this shape:
+
+```json
+{
+  "travel_period": {
+    "start_date": "2026-04-10",
+    "end_date": "2026-04-12"
+  },
+  "preferences": {
+    "interests": ["nature"],
+    "preferred_pace": "relaxed",
+    "preferred_climate": "warm"
+  },
+  "destination": null
+}
+```
+
+Tests and local demonstrations compose the endpoint explicitly with offline or
+fake services and need no credentials:
+
+```python
+from solara_travel.domain import TemperatureComfortRange
+from solara_travel.presentation.api import ApiDependencies, create_app
+from solara_travel.workflows import build_offline_recommendation_service
+
+service = build_offline_recommendation_service(
+    comfort_range=TemperatureComfortRange(18.0, 28.0, 10.0)
+)
+app = create_app(
+    dependencies=ApiDependencies(recommendation_service=service)
+)
+```
+
+Without a narration service, successful responses contain `narration: null`.
+When narration is configured, an AI-provider failure still returns the complete
+deterministic result with no narration. Seasonal weather fields are aggregated
+historical evidence, not current conditions or forecasts.
 
 ## Configuration
 
