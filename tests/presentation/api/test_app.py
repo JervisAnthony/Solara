@@ -113,7 +113,6 @@ def test_interactive_documentation_can_be_disabled_without_disabling_openapi() -
 @pytest.mark.parametrize(
     ("method", "path"),
     [
-        ("get", "/"),
         ("post", "/recommendations"),
         ("post", "/api/recommendations"),
     ],

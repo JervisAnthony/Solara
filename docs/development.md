@@ -627,7 +627,7 @@ failures produce no narration while preserving the exact recommendation result.
 Empty results skip the model call. Normal tests and CI use fake providers and
 transports, require no API key, and never make a live AI request.
 
-## FastAPI recommendation API
+## FastAPI browser shell and recommendation API
 
 Install local development and HTTP presentation dependencies with:
 
@@ -641,9 +641,15 @@ Run the ASGI application locally with reload enabled for development only:
 python -m uvicorn solara_travel.presentation.api.app:app --reload
 ```
 
-The HTTP surface is deliberately limited to:
+Open `http://127.0.0.1:8000/` to view the Solara browser shell. The shell and its
+stylesheet are package-local, need no credentials, and make no browser request
+to the recommendation API. The traveller form arrives in Commit 39.
+
+The current browser and API surface is deliberately limited to:
 
 ```text
+GET /
+GET /static/styles.css
 GET /health
 POST /api/v1/recommendations
 GET /openapi.json
@@ -653,12 +659,14 @@ GET /redoc
 
 Interactive Swagger and ReDoc pages are enabled by default. Creating the app
 with `ApiSettings(docs_enabled=False)` disables `/docs` and `/redoc` while
-retaining `/openapi.json` and `/health`.
+retaining `/`, `/static/styles.css`, `/openapi.json`, and `/health`. The browser
+root and static mount are not included in OpenAPI.
 
 Health indicates only that the ASGI process is serving requests; it does not
 check provider availability. The default module-level app has no recommendation
 service configured, so a valid `POST /api/v1/recommendations` returns `503`
-until application composition supplies `ApiDependencies`.
+until application composition supplies `ApiDependencies`. This does not prevent
+the static browser shell from rendering.
 
 A recommendation request uses this shape:
 

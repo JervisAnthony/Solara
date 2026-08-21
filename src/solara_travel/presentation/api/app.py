@@ -3,6 +3,7 @@
 from importlib import metadata
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from solara_travel.presentation.api.dependencies import ApiDependencies
 from solara_travel.presentation.api.routes.health import router as health_router
@@ -10,6 +11,8 @@ from solara_travel.presentation.api.routes.recommendations import (
     router as recommendations_router,
 )
 from solara_travel.presentation.api.settings import ApiSettings
+from solara_travel.presentation.web.assets import STATIC_DIRECTORY
+from solara_travel.presentation.web.routes import router as web_router
 
 _DISTRIBUTION_NAME = "solara-travel-ai"
 _UNINSTALLED_VERSION = "0.0.0+uninstalled"
@@ -39,6 +42,8 @@ def create_app(
         redoc_url="/redoc" if settings.docs_enabled else None,
     )
     application.state.api_dependencies = dependencies
+    application.include_router(web_router)
+    application.mount("/static", StaticFiles(directory=STATIC_DIRECTORY), name="static")
     application.include_router(health_router)
     application.include_router(recommendations_router)
     return application

@@ -542,6 +542,45 @@ observations. Known provider-boundary failures become safe `502` or `503`
 responses. Optional narration is applied only after the deterministic result;
 an AI provider failure leaves that result usable with no narration.
 
+### Browser presentation boundary
+
+The presentation layer now has separate `api` and `web` surfaces. The browser
+shell is a static, package-owned document flow:
+
+```text
+Browser
+    |
+    v
+GET /
+    |
+    v
+Web presentation
+    |
+    +----> packaged semantic HTML
+    |
+    +----> packaged CSS at /static/styles.css
+```
+
+The root route is excluded from OpenAPI, and its local static mount is likewise
+separate from the JSON API contract. HTML and CSS resolve relative to the
+installed `presentation.web` package, so the shell works from a wheel without a
+repository working-directory assumption or external frontend dependency.
+
+The shell contains no recommendation logic and needs no providers, service
+composition, credentials, or network access. Its future interaction remains a
+separate flow:
+
+```text
+Browser UI
+    |
+    | future interaction
+    v
+POST /api/v1/recommendations
+```
+
+Commit 38 does not connect those flows. The traveller form belongs to Commit 39,
+and authoritative recommendation-result rendering belongs to Commit 40.
+
 ## Configuration
 
 The `config` package will own typed application configuration when external
