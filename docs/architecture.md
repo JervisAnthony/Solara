@@ -579,29 +579,38 @@ Traveller
 Recommendation form
     |
     v
-packaged app.js
+app.js validation
+    |
+    +----> validation summary / field errors
     |
     v
-JSON RecommendationRequestBody
+solara:recommendation-request-start
+    |
+    v
+loading state + stale-result clearing
     |
     v
 POST /api/v1/recommendations
     |
-    v
-RecommendationResponse
+    +----> 422 validation state
+    +----> 502/503 provider or service state
+    +----> network / unexpected HTTP state
     |
-    v
-solara:recommendation-ready
-    |
-    v
-results.js
-    |
-    +----> authoritative ranked cards
-    +----> deterministic score factors
-    +----> attraction evidence
-    +----> historical seasonal evidence
-    +----> temperature comfort evidence
-    +----> optional grounded narration
+    +----> RecommendationResponse
+              |
+              v
+        solara:recommendation-ready
+              |
+              v
+        results.js
+              |
+              +----> authoritative ranked cards
+              +----> deterministic score factors
+              +----> attraction evidence
+              +----> historical seasonal evidence
+              +----> temperature comfort evidence
+              +----> optional grounded narration
+              +----> successful empty state
 ```
 
 The script is presentation-only and calls the same-origin recommendation API;
@@ -611,16 +620,26 @@ programmatic API continues to support a preselected destination.
 
 Current deterministic scoring is season-led. Interests, preferred pace, and
 preferred climate travel through the request but are not yet separate score
-components. `app.js` remains the request owner and dispatches the internal
-`solara:recommendation-ready` event. `results.js` consumes that parsed response
-without fetching independently, preserves response array order and rank, and
-never rescores or recomputes weighted contributions.
+components. Browser validation supplements the authoritative domain validation:
+it reports known date and interest problems but never silently repairs malformed
+input. After validation, `app.js` owns busy state, fetching, safe status/code
+classification, and fixed local error copy. Raw backend error text never reaches
+the DOM.
+
+`app.js` dispatches `solara:recommendation-request-start` only when a real
+network request begins. `results.js` uses that event to clear stale results, so
+an invalid edit does not destroy the previous useful outcome. Retry calls the
+normal `form.requestSubmit()` path and therefore revalidates current values;
+there is no automatic retry or backoff. On success, the existing
+`solara:recommendation-ready` event remains the sole handoff. `results.js`
+consumes the parsed response without fetching independently, preserves response
+array order and rank, never rescores, and owns both ranked and successful-empty
+rendering.
 
 Result cards present deterministic and provider-derived evidence. Optional
 grounded narration is separate enrichment and never controls ranking. All
 response text is inserted through safe DOM text APIs rather than interpreted as
-HTML or Markdown. Commit 41 owns comprehensive validation, loading, error, and
-empty-state presentation.
+HTML or Markdown. Logging and request tracing remain deferred to Commit 42.
 
 ## Configuration
 

@@ -228,6 +228,35 @@ h3 {
   gap: 1.75rem;
 }
 
+.validation-summary,
+.request-error {
+  padding: 1.25rem;
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(141, 67, 29, 0.35);
+  border-radius: var(--radius-small);
+}
+
+.validation-summary {
+  background: var(--color-accent-soft);
+}
+
+.validation-summary h3,
+.request-error h3 {
+  margin-bottom: 0.65rem;
+}
+
+.validation-summary ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.validation-summary a {
+  font-weight: 700;
+  text-underline-offset: 0.18em;
+}
+
 .recommendation-form fieldset {
   min-width: 0;
   margin: 0;
@@ -301,9 +330,23 @@ h3 {
   border-color: var(--color-accent-dark);
 }
 
+.form-field input[aria-invalid="true"] {
+  border-width: 2px;
+  border-color: var(--color-accent-dark);
+  background: #fff8ef;
+}
+
 .field-help {
   margin: 0.4rem 0 0;
   font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.field-error {
+  margin: 0.4rem 0 0;
+  color: var(--color-accent-dark);
+  font-size: 0.84rem;
+  font-weight: 700;
   line-height: 1.45;
 }
 
@@ -331,11 +374,45 @@ h3 {
   border-color: var(--color-forest);
 }
 
+.form-actions button:disabled {
+  border-color: var(--color-text-muted);
+  background: var(--color-text-muted);
+  color: var(--color-surface);
+  cursor: wait;
+  opacity: 0.82;
+}
+
 .form-status {
   min-height: 1.6em;
   margin: 0;
   color: var(--color-text-muted);
   font-size: 0.9rem;
+}
+
+.request-error {
+  background: rgba(255, 253, 248, 0.82);
+  border-left: 0.3rem solid var(--color-accent-dark);
+}
+
+.request-error p {
+  margin-bottom: 1rem;
+  color: var(--color-text-muted);
+}
+
+.request-error button {
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--color-accent-dark);
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--color-accent-dark);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.request-error button:hover {
+  background: var(--color-accent-soft);
 }
 
 .recommendation-results {
@@ -357,6 +434,28 @@ h3 {
   border-left: 2px solid var(--color-accent);
   color: var(--color-text) !important;
   font-weight: 700;
+}
+
+.recommendation-empty {
+  max-width: 48rem;
+  margin-bottom: 2rem;
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  overflow-wrap: anywhere;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background: rgba(255, 253, 248, 0.72);
+}
+
+.recommendation-empty h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.recommendation-empty > p:last-child {
+  margin-bottom: 0;
+  color: var(--color-text-muted);
 }
 
 .recommendation-list {
@@ -657,6 +756,12 @@ h3 {
     align-items: flex-start;
     flex-direction: column;
     justify-content: center;
+  }
+
+  .form-actions,
+  .form-actions button,
+  .request-error button {
+    width: 100%;
   }
 
   .header-layout {

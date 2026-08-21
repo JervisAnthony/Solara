@@ -695,6 +695,14 @@ to use destination-discovery mode. It does not expose raw coordinate entry;
 preselected destinations remain available to programmatic API callers. Blank
 optional fields serialize as `null`.
 
+The form keeps native `required` semantics while using explicit accessible
+browser feedback. Submission validates that both dates exist, the end date is
+the same as or after the start date, comma-separated interests contain no blank
+items, and interests do not repeat after trimming and ordinary case-insensitive
+comparison. Valid interests preserve order and capitalization. Invalid input is
+not repaired and does not reach `fetch`; field messages and a focusable summary
+identify the problem while the server/domain remains authoritative.
+
 Tests and local demonstrations compose the endpoint explicitly with offline or
 fake services and need no credentials:
 
@@ -718,17 +726,37 @@ historical evidence, not current conditions or forecasts.
 
 Current deterministic scoring is season-led. The optional interest, pace, and
 climate values are preserved in the request but are not yet independent score
-components. After a successful submission, `app.js` dispatches
-`solara:recommendation-ready`; `results.js` renders a non-empty
+components. Browser request states are idle, validation error, loading, success,
+successful empty, and request error. A valid submission disables the submit
+button, marks the form busy, and announces loading. It dispatches
+`solara:recommendation-request-start` before the request; `results.js` clears
+old results only on that event, so local validation failures preserve the last
+successful outcome.
+
+The browser parses non-success JSON defensively and maps stable status/code
+values to fixed local product copy. Structural and domain `422` responses may
+be mapped to known fields; `502`, `503`, unexpected HTTP failures, malformed
+successful JSON, and network rejection use a dedicated request-error region.
+Raw server messages, provider details, and response bodies are not rendered.
+Retry is offered only for transient states and calls `form.requestSubmit()`, so
+it uses current values and the normal validation path. There is no automatic
+retry or backoff. The default unconfigured app therefore presents its safe
+`503` as a tester-friendly preview state rather than composing fixture
+providers.
+
+After a successful submission, `app.js` dispatches
+`solara:recommendation-ready`; `results.js` renders the
 `RecommendationResponse` without another request. Recommendation order, ranks,
 scores, component values, and weighted contributions come directly from the
-response and are not recomputed in the browser.
+response and are not recomputed in the browser. A configured empty offline
+service remains a successful `200` and produces a neutral empty-result state,
+not an error or fabricated recommendation.
 
 Each ranked card exposes selected attractions, historical seasonal aggregates,
 and server-configured temperature-comfort evidence through native disclosure
 controls. Optional narration appears separately only when supplied and is
-rendered as plain text; it does not determine ranking. Explicit loading,
-detailed error, and empty-result experiences remain Commit 41 scope.
+rendered as plain text; it does not determine ranking. These browser paths use
+no live credentials, client persistence, or browser-side provider calls.
 
 ## Configuration
 
