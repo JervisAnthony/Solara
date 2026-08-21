@@ -561,6 +561,8 @@ Web presentation
     +----> packaged CSS at /static/styles.css
     |
     +----> packaged JavaScript at /static/app.js
+    |
+    +----> packaged result renderer at /static/results.js
 ```
 
 The root route is excluded from OpenAPI, and its local static mount is likewise
@@ -589,7 +591,17 @@ POST /api/v1/recommendations
 RecommendationResponse
     |
     v
-Commit 40 result renderer
+solara:recommendation-ready
+    |
+    v
+results.js
+    |
+    +----> authoritative ranked cards
+    +----> deterministic score factors
+    +----> attraction evidence
+    +----> historical seasonal evidence
+    +----> temperature comfort evidence
+    +----> optional grounded narration
 ```
 
 The script is presentation-only and calls the same-origin recommendation API;
@@ -599,10 +611,16 @@ programmatic API continues to support a preselected destination.
 
 Current deterministic scoring is season-led. Interests, preferred pace, and
 preferred climate travel through the request but are not yet separate score
-components. Commit 39 parses a successful response and exposes it through the
-internal `solara:recommendation-ready` browser event without rendering or
-persisting its contents. Commit 40 owns result rendering, and Commit 41 owns
-comprehensive validation, loading, error, and empty-state presentation.
+components. `app.js` remains the request owner and dispatches the internal
+`solara:recommendation-ready` event. `results.js` consumes that parsed response
+without fetching independently, preserves response array order and rank, and
+never rescores or recomputes weighted contributions.
+
+Result cards present deterministic and provider-derived evidence. Optional
+grounded narration is separate enrichment and never controls ranking. All
+response text is inserted through safe DOM text APIs rather than interpreted as
+HTML or Markdown. Commit 41 owns comprehensive validation, loading, error, and
+empty-state presentation.
 
 ## Configuration
 

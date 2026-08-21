@@ -653,6 +653,7 @@ The current browser and API surface is deliberately limited to:
 GET /
 GET /static/styles.css
 GET /static/app.js
+GET /static/results.js
 GET /health
 POST /api/v1/recommendations
 GET /openapi.json
@@ -662,8 +663,8 @@ GET /redoc
 
 Interactive Swagger and ReDoc pages are enabled by default. Creating the app
 with `ApiSettings(docs_enabled=False)` disables `/docs` and `/redoc` while
-retaining `/`, both `/static/styles.css` and `/static/app.js`, `/openapi.json`,
-and `/health`. The browser root and static mount are not included in OpenAPI.
+retaining `/`, all three packaged static assets, `/openapi.json`, and `/health`.
+The browser root and static mount are not included in OpenAPI.
 
 Health indicates only that the ASGI process is serving requests; it does not
 check provider availability. The default module-level app has no recommendation
@@ -717,9 +718,17 @@ historical evidence, not current conditions or forecasts.
 
 Current deterministic scoring is season-led. The optional interest, pace, and
 climate values are preserved in the request but are not yet independent score
-components. Commit 39 acknowledges receipt without displaying response details;
-Commit 40 adds result rendering, and Commit 41 adds comprehensive validation,
-loading, error, and empty-state experiences.
+components. After a successful submission, `app.js` dispatches
+`solara:recommendation-ready`; `results.js` renders a non-empty
+`RecommendationResponse` without another request. Recommendation order, ranks,
+scores, component values, and weighted contributions come directly from the
+response and are not recomputed in the browser.
+
+Each ranked card exposes selected attractions, historical seasonal aggregates,
+and server-configured temperature-comfort evidence through native disclosure
+controls. Optional narration appears separately only when supplied and is
+rendered as plain text; it does not determine ranking. Explicit loading,
+detailed error, and empty-result experiences remain Commit 41 scope.
 
 ## Configuration
 

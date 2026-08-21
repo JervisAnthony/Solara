@@ -9,6 +9,7 @@
       content="Travel recommendations grounded in historical seasonal evidence for your dates."
     >
     <script src="/static/app.js" defer></script>
+    <script src="/static/results.js" defer></script>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
@@ -145,6 +146,40 @@
             ></p>
           </div>
         </form>
+      </section>
+
+      <section
+        id="recommendation-results"
+        class="recommendation-results"
+        aria-labelledby="results-title"
+        hidden
+      >
+        <header class="results-introduction">
+          <p class="section-label">Your results</p>
+          <h2 id="results-title">Your seasonal matches</h2>
+          <p>
+            Ranked using Solara's current deterministic seasonal-fit analysis.
+            Explore the evidence behind each recommendation below.
+          </p>
+          <p id="recommendation-results-summary" class="results-summary"></p>
+        </header>
+
+        <ol id="recommendation-list" class="recommendation-list"></ol>
+
+        <aside
+          id="recommendation-narration"
+          class="recommendation-narration"
+          aria-labelledby="narration-title"
+          hidden
+        >
+          <p class="section-label">Optional context</p>
+          <h3 id="narration-title">AI-assisted explanation</h3>
+          <p>
+            This grounded explanation summarizes the recommendation evidence. It does
+            not set destination rankings or scores.
+          </p>
+          <p id="recommendation-narration-text" class="narration-text"></p>
+        </aside>
       </section>
 
       <section class="principles" aria-labelledby="principles-title">
