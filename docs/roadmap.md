@@ -1052,14 +1052,26 @@ Implemented scope includes:
 - credential-free rendering independent of recommendation composition;
 - focused browser-shell, static-asset, and API-regression tests.
 
-The shell remains deliberately non-interactive. Commit 39 owns recommendation
-inputs and submission; Commit 40 owns authoritative result rendering.
+Commit 39 extends this shell with recommendation inputs and submission; Commit
+40 owns authoritative result rendering.
 
-## Commits 39-47 - MVP1 web experience and release
+## Commit 39 - Traveller recommendation form
+
+Implemented scope includes:
+
+- one accessible traveller input form;
+- required start-date and end-date inputs;
+- optional free-text interests, pace, and climate inputs;
+- exact JSON recommendation-request construction in destination-discovery mode;
+- same-origin submission to `POST /api/v1/recommendations`;
+- packaged, dependency-free browser JavaScript;
+- minimal success and failure acknowledgement;
+- no recommendation-result rendering.
+
+## Commits 40-47 - MVP1 web experience and release
 
 The remaining MVP1 sequence is intentionally staged as:
 
-- Commit 39 - traveller recommendation form;
 - Commit 40 - recommendation results and explainability UI;
 - Commit 41 - validation, error, loading, and empty states;
 - Commit 42 - logging, request tracing, and tester feedback;

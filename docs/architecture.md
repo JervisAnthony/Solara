@@ -544,8 +544,8 @@ an AI provider failure leaves that result usable with no narration.
 
 ### Browser presentation boundary
 
-The presentation layer now has separate `api` and `web` surfaces. The browser
-shell is a static, package-owned document flow:
+The presentation layer has separate `api` and `web` surfaces. The browser is a
+package-owned presentation flow:
 
 ```text
 Browser
@@ -559,27 +559,50 @@ Web presentation
     +----> packaged semantic HTML
     |
     +----> packaged CSS at /static/styles.css
+    |
+    +----> packaged JavaScript at /static/app.js
 ```
 
 The root route is excluded from OpenAPI, and its local static mount is likewise
-separate from the JSON API contract. HTML and CSS resolve relative to the
+separate from the JSON API contract. HTML, CSS, and JavaScript resolve relative to the
 installed `presentation.web` package, so the shell works from a wheel without a
 repository working-directory assumption or external frontend dependency.
 
-The shell contains no recommendation logic and needs no providers, service
-composition, credentials, or network access. Its future interaction remains a
-separate flow:
+The traveller interaction stays at the presentation boundary:
 
 ```text
-Browser UI
+Traveller
     |
-    | future interaction
+    v
+Recommendation form
+    |
+    v
+packaged app.js
+    |
+    v
+JSON RecommendationRequestBody
+    |
     v
 POST /api/v1/recommendations
+    |
+    v
+RecommendationResponse
+    |
+    v
+Commit 40 result renderer
 ```
 
-Commit 38 does not connect those flows. The traveller form belongs to Commit 39,
-and authoritative recommendation-result rendering belongs to Commit 40.
+The script is presentation-only and calls the same-origin recommendation API;
+provider calls remain server-side. The browser uses destination-discovery mode
+with `destination: null` rather than asking travellers for raw coordinates. The
+programmatic API continues to support a preselected destination.
+
+Current deterministic scoring is season-led. Interests, preferred pace, and
+preferred climate travel through the request but are not yet separate score
+components. Commit 39 parses a successful response and exposes it through the
+internal `solara:recommendation-ready` browser event without rendering or
+persisting its contents. Commit 40 owns result rendering, and Commit 41 owns
+comprehensive validation, loading, error, and empty-state presentation.
 
 ## Configuration
 

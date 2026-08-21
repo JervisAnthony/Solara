@@ -641,15 +641,18 @@ Run the ASGI application locally with reload enabled for development only:
 python -m uvicorn solara_travel.presentation.api.app:app --reload
 ```
 
-Open `http://127.0.0.1:8000/` to view the Solara browser shell. The shell and its
-stylesheet are package-local, need no credentials, and make no browser request
-to the recommendation API. The traveller form arrives in Commit 39.
+Open `http://127.0.0.1:8000/` to view the Solara browser shell. Its HTML,
+stylesheet, and script are package-local and need no browser-side credentials.
+The form collects required start and end dates plus optional comma-separated
+interests, preferred pace, and preferred climate. It sends same-origin JSON to
+the recommendation API.
 
 The current browser and API surface is deliberately limited to:
 
 ```text
 GET /
 GET /static/styles.css
+GET /static/app.js
 GET /health
 POST /api/v1/recommendations
 GET /openapi.json
@@ -659,14 +662,15 @@ GET /redoc
 
 Interactive Swagger and ReDoc pages are enabled by default. Creating the app
 with `ApiSettings(docs_enabled=False)` disables `/docs` and `/redoc` while
-retaining `/`, `/static/styles.css`, `/openapi.json`, and `/health`. The browser
-root and static mount are not included in OpenAPI.
+retaining `/`, both `/static/styles.css` and `/static/app.js`, `/openapi.json`,
+and `/health`. The browser root and static mount are not included in OpenAPI.
 
 Health indicates only that the ASGI process is serving requests; it does not
 check provider availability. The default module-level app has no recommendation
 service configured, so a valid `POST /api/v1/recommendations` returns `503`
 until application composition supplies `ApiDependencies`. This does not prevent
-the static browser shell from rendering.
+the browser shell and its assets from rendering, but the form receives the safe
+`recommendation_service_unconfigured` response until a service is supplied.
 
 A recommendation request uses this shape:
 
@@ -684,6 +688,11 @@ A recommendation request uses this shape:
   "destination": null
 }
 ```
+
+The browser constructs this `application/json` shape with `destination: null`
+to use destination-discovery mode. It does not expose raw coordinate entry;
+preselected destinations remain available to programmatic API callers. Blank
+optional fields serialize as `null`.
 
 Tests and local demonstrations compose the endpoint explicitly with offline or
 fake services and need no credentials:
@@ -705,6 +714,12 @@ Without a narration service, successful responses contain `narration: null`.
 When narration is configured, an AI-provider failure still returns the complete
 deterministic result with no narration. Seasonal weather fields are aggregated
 historical evidence, not current conditions or forecasts.
+
+Current deterministic scoring is season-led. The optional interest, pace, and
+climate values are preserved in the request but are not yet independent score
+components. Commit 39 acknowledges receipt without displaying response details;
+Commit 40 adds result rendering, and Commit 41 adds comprehensive validation,
+loading, error, and empty-state experiences.
 
 ## Configuration
 

@@ -1,4 +1,4 @@
-"""Tests for the packaged, non-interactive Solara web shell."""
+"""Tests for the packaged Solara web shell."""
 
 import re
 
@@ -14,6 +14,7 @@ def test_packaged_web_resources_resolve_from_the_web_package() -> None:
     assert INDEX_DOCUMENT.parent.name == "templates"
     assert STATIC_DIRECTORY.is_dir()
     assert (STATIC_DIRECTORY / "styles.css").is_file()
+    assert (STATIC_DIRECTORY / "app.js").is_file()
 
 
 def test_root_returns_semantic_solara_html_shell() -> None:
@@ -36,12 +37,9 @@ def test_root_returns_semantic_solara_html_shell() -> None:
     assert "Season-smart travel intelligence" in html
 
 
-def test_shell_preserves_the_form_and_javascript_milestone_boundary() -> None:
+def test_shell_preserves_the_recommendation_results_milestone_boundary() -> None:
     html = TestClient(create_app()).get("/").text.casefold()
 
-    for forbidden in ("<form", "<input", "<select", "<textarea", "<button", "<script"):
-        assert forbidden not in html
-    assert "/api/v1/recommendations" not in html
     assert "http://" not in html
     assert "https://" not in html
     assert "sunspire bay" not in html
@@ -77,6 +75,7 @@ def test_web_shell_and_assets_are_independent_of_api_documentation_policy() -> N
 
     assert client.get("/").status_code == 200
     assert client.get("/static/styles.css").status_code == 200
+    assert client.get("/static/app.js").status_code == 200
     assert client.get("/health").status_code == 200
     assert client.get("/docs").status_code == 404
     assert client.get("/redoc").status_code == 404

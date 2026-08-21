@@ -6,8 +6,9 @@
     <title>Solara — Season-smart travel intelligence</title>
     <meta
       name="description"
-      content="Travel recommendations shaped by your dates, preferences, and historical seasonal evidence."
+      content="Travel recommendations grounded in historical seasonal evidence for your dates."
     >
+    <script src="/static/app.js" defer></script>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
@@ -28,17 +29,16 @@
           <p class="eyebrow">Season-smart travel intelligence</p>
           <h1 id="hero-title">Travel that fits the season — and you.</h1>
           <p class="hero-summary">
-            Solara helps you compare destinations using your travel dates,
-            preferences, and historical seasonal evidence, with clear explanations
-            for every recommendation.
+            Solara helps you compare destinations using historical seasonal evidence
+            for your travel dates, with clear explanations for every recommendation.
           </p>
         </div>
 
         <aside class="hero-note" aria-label="What guides a Solara recommendation">
           <span class="note-kicker">A clearer starting point</span>
           <p>
-            Dates shape the context. Preferences shape the fit. Evidence makes the
-            reasoning visible.
+            Dates shape the seasonal context. Preferences travel with your request.
+            Evidence makes the reasoning visible.
           </p>
         </aside>
       </section>
@@ -49,38 +49,102 @@
         aria-labelledby="workspace-title"
       >
         <div class="workspace-heading">
-          <p class="section-label">Your planning space</p>
-          <h2 id="workspace-title">Plan with Solara</h2>
+          <p class="section-label">Plan with Solara</p>
+          <h2 id="workspace-title">Tell us about your trip</h2>
           <p>
-            Your interactive recommendation workspace is the next step in the
-            experience. Soon, this space will turn your timing and travel preferences
-            into an evidence-backed shortlist.
+            Choose your travel dates and share any preferences that matter to you.
+          </p>
+          <p class="transparency-note">
+            Current preview scoring focuses on seasonal fit. Your interests and
+            travel-style preferences are included with the request as Solara's
+            recommendation model grows.
           </p>
         </div>
 
-        <ol class="journey-steps" aria-label="How planning with Solara works">
-          <li>
-            <span class="step-number" aria-hidden="true">01</span>
-            <div>
-              <h3>Share your trip context</h3>
-              <p>Start with when you want to travel and what matters to you.</p>
+        <form
+          id="recommendation-form"
+          class="recommendation-form"
+          aria-labelledby="workspace-title"
+        >
+          <fieldset>
+            <legend>Travel dates</legend>
+            <p class="fieldset-help">Both dates are required.</p>
+            <div class="form-grid form-grid-dates">
+              <div class="form-field">
+                <label for="travel-start-date">Start date</label>
+                <input
+                  id="travel-start-date"
+                  name="travel-start-date"
+                  type="date"
+                  required
+                >
+              </div>
+              <div class="form-field">
+                <label for="travel-end-date">End date</label>
+                <input
+                  id="travel-end-date"
+                  name="travel-end-date"
+                  type="date"
+                  required
+                >
+              </div>
             </div>
-          </li>
-          <li>
-            <span class="step-number" aria-hidden="true">02</span>
-            <div>
-              <h3>Compare seasonal fit</h3>
-              <p>See destinations considered against historical conditions.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Travel preferences <span class="optional-label">Optional</span></legend>
+            <div class="form-field">
+              <label for="interests">Interests</label>
+              <input
+                id="interests"
+                name="interests"
+                type="text"
+                aria-describedby="interests-help"
+              >
+              <p id="interests-help" class="field-help">
+                Separate multiple interests with commas, such as history, nature, food.
+              </p>
             </div>
-          </li>
-          <li>
-            <span class="step-number" aria-hidden="true">03</span>
-            <div>
-              <h3>Understand the ranking</h3>
-              <p>Review the evidence and factors behind every recommendation.</p>
+
+            <div class="form-grid form-grid-preferences">
+              <div class="form-field">
+                <label for="preferred-pace">Preferred pace</label>
+                <input
+                  id="preferred-pace"
+                  name="preferred-pace"
+                  type="text"
+                  aria-describedby="preferred-pace-help"
+                >
+                <p id="preferred-pace-help" class="field-help">
+                  For example relaxed, balanced, or fast-paced.
+                </p>
+              </div>
+              <div class="form-field">
+                <label for="preferred-climate">Preferred climate</label>
+                <input
+                  id="preferred-climate"
+                  name="preferred-climate"
+                  type="text"
+                  aria-describedby="preferred-climate-help"
+                >
+                <p id="preferred-climate-help" class="field-help">
+                  For example warm, mild, or cool.
+                </p>
+              </div>
             </div>
-          </li>
-        </ol>
+          </fieldset>
+
+          <div class="form-actions">
+            <button type="submit">Compare destinations</button>
+            <p
+              id="recommendation-form-status"
+              class="form-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            ></p>
+          </div>
+        </form>
       </section>
 
       <section class="principles" aria-labelledby="principles-title">

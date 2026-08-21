@@ -57,6 +57,7 @@ where = ["src"]
 "solara_travel.presentation.web" = [
     "templates/*.html",
     "static/*.css",
+    "static/*.js",
 ]
 
 [tool.pytest.ini_options]
