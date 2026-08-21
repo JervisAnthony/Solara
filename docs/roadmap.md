@@ -1081,11 +1081,25 @@ Implemented scope includes:
 - repeated-response replacement with no reranking or rescoring;
 - no loading, detailed error, or empty-result UX.
 
-## Commits 41-47 - MVP1 web experience and release
+## Commit 41 - Validation, error, loading, and empty states
+
+Implemented scope includes:
+
+- accessible validation summary and field-level feedback;
+- required-date, date-order, malformed-interest, and duplicate-interest checks;
+- request busy state with a disabled action and duplicate-submit guard;
+- stable HTTP error interpretation with safe `422`, `502`, `503`, unexpected,
+  and network-failure presentation;
+- manual retry for transient failures through the normal form submission path;
+- successful empty-result presentation without fabricated recommendations;
+- accessible focus transitions for validation, results, empty, and error states;
+- result clearing only after a locally valid request actually begins;
+- no logging, request tracing, or tester feedback yet.
+
+## Commits 42-47 - MVP1 web experience and release
 
 The remaining MVP1 sequence is intentionally staged as:
 
-- Commit 41 - validation, error, loading, and empty states;
 - Commit 42 - logging, request tracing, and tester feedback;
 - Commit 43 - public-alpha safeguards and rate and cost controls;
 - Commit 44 - deployment configuration;

@@ -66,7 +66,19 @@
           id="recommendation-form"
           class="recommendation-form"
           aria-labelledby="workspace-title"
+          novalidate
         >
+          <section
+            id="recommendation-validation-summary"
+            class="validation-summary"
+            role="alert"
+            tabindex="-1"
+            hidden
+          >
+            <h3>Check your trip details</h3>
+            <ul id="recommendation-validation-list"></ul>
+          </section>
+
           <fieldset>
             <legend>Travel dates</legend>
             <p class="fieldset-help">Both dates are required.</p>
@@ -77,8 +89,10 @@
                   id="travel-start-date"
                   name="travel-start-date"
                   type="date"
+                  aria-describedby="travel-start-date-error"
                   required
                 >
+                <p id="travel-start-date-error" class="field-error" hidden></p>
               </div>
               <div class="form-field">
                 <label for="travel-end-date">End date</label>
@@ -86,8 +100,10 @@
                   id="travel-end-date"
                   name="travel-end-date"
                   type="date"
+                  aria-describedby="travel-end-date-error"
                   required
                 >
+                <p id="travel-end-date-error" class="field-error" hidden></p>
               </div>
             </div>
           </fieldset>
@@ -100,11 +116,12 @@
                 id="interests"
                 name="interests"
                 type="text"
-                aria-describedby="interests-help"
+                aria-describedby="interests-help interests-error"
               >
               <p id="interests-help" class="field-help">
                 Separate multiple interests with commas, such as history, nature, food.
               </p>
+              <p id="interests-error" class="field-error" hidden></p>
             </div>
 
             <div class="form-grid form-grid-preferences">
@@ -114,11 +131,12 @@
                   id="preferred-pace"
                   name="preferred-pace"
                   type="text"
-                  aria-describedby="preferred-pace-help"
+                  aria-describedby="preferred-pace-help preferred-pace-error"
                 >
                 <p id="preferred-pace-help" class="field-help">
                   For example relaxed, balanced, or fast-paced.
                 </p>
+                <p id="preferred-pace-error" class="field-error" hidden></p>
               </div>
               <div class="form-field">
                 <label for="preferred-climate">Preferred climate</label>
@@ -126,17 +144,18 @@
                   id="preferred-climate"
                   name="preferred-climate"
                   type="text"
-                  aria-describedby="preferred-climate-help"
+                  aria-describedby="preferred-climate-help preferred-climate-error"
                 >
                 <p id="preferred-climate-help" class="field-help">
                   For example warm, mild, or cool.
                 </p>
+                <p id="preferred-climate-error" class="field-error" hidden></p>
               </div>
             </div>
           </fieldset>
 
           <div class="form-actions">
-            <button type="submit">Compare destinations</button>
+            <button id="recommendation-submit" type="submit">Compare destinations</button>
             <p
               id="recommendation-form-status"
               class="form-status"
@@ -145,6 +164,20 @@
               aria-atomic="true"
             ></p>
           </div>
+
+          <section
+            id="recommendation-request-error"
+            class="request-error"
+            role="alert"
+            tabindex="-1"
+            hidden
+          >
+            <h3 id="recommendation-request-error-title"></h3>
+            <p id="recommendation-request-error-message"></p>
+            <button id="recommendation-request-retry" type="button" hidden>
+              Try again
+            </button>
+          </section>
         </form>
       </section>
 
@@ -156,13 +189,24 @@
       >
         <header class="results-introduction">
           <p class="section-label">Your results</p>
-          <h2 id="results-title">Your seasonal matches</h2>
+          <h2 id="results-title" tabindex="-1">Your seasonal matches</h2>
           <p>
             Ranked using Solara's current deterministic seasonal-fit analysis.
             Explore the evidence behind each recommendation below.
           </p>
           <p id="recommendation-results-summary" class="results-summary"></p>
         </header>
+
+        <article id="recommendation-empty" class="recommendation-empty" hidden>
+          <p class="section-label">Comparison complete</p>
+          <h3 id="recommendation-empty-title" tabindex="-1">
+            No destinations returned this time
+          </h3>
+          <p id="recommendation-empty-message">
+            Solara didn't receive destination matches for this request. Adjust your
+            trip details and compare again.
+          </p>
+        </article>
 
         <ol id="recommendation-list" class="recommendation-list"></ol>
 

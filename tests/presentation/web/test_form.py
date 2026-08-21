@@ -43,9 +43,9 @@ def test_form_has_required_dates_and_optional_preference_fields() -> None:
         assert 'type="date"' in date_input.group()
         assert "required" in date_input.group()
 
-    assert 'aria-describedby="interests-help"' in html
-    assert 'aria-describedby="preferred-pace-help"' in html
-    assert 'aria-describedby="preferred-climate-help"' in html
+    assert 'aria-describedby="interests-help interests-error"' in html
+    assert 'aria-describedby="preferred-pace-help preferred-pace-error"' in html
+    assert 'aria-describedby="preferred-climate-help preferred-climate-error"' in html
 
 
 def test_form_loads_local_script_and_exposes_polite_status() -> None:

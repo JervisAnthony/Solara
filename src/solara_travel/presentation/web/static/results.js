@@ -4,7 +4,10 @@
   const form = document.querySelector("#recommendation-form");
   const resultsSection = document.querySelector("#recommendation-results");
   const resultsSummary = document.querySelector("#recommendation-results-summary");
+  const resultsTitle = document.querySelector("#results-title");
   const recommendationList = document.querySelector("#recommendation-list");
+  const emptyState = document.querySelector("#recommendation-empty");
+  const emptyTitle = document.querySelector("#recommendation-empty-title");
   const narrationSection = document.querySelector("#recommendation-narration");
   const narrationText = document.querySelector("#recommendation-narration-text");
 
@@ -242,17 +245,15 @@
     resultsSummary.replaceChildren();
     narrationSection.hidden = true;
     narrationText.replaceChildren();
+    emptyState.hidden = true;
   }
 
   function renderRecommendationResponse(response) {
     clearResults();
-    if (
-      typeof response !== "object" ||
-      response === null ||
-      !Array.isArray(response.recommendations) ||
-      response.has_recommendations === false ||
-      response.recommendations.length === 0
-    ) {
+    if (response.has_recommendations === false || response.recommendations.length === 0) {
+      resultsSection.hidden = false;
+      emptyState.hidden = false;
+      emptyTitle.focus();
       return;
     }
 
@@ -270,6 +271,7 @@
       `${String(response.recommendation_count)} ranked recommendations${periodText}.`;
     resultsSection.hidden = false;
     renderNarration(response);
+    resultsTitle.focus();
   }
 
   function handleRecommendationReady(event) {
@@ -284,11 +286,14 @@
     form &&
     resultsSection &&
     resultsSummary &&
+    resultsTitle &&
     recommendationList &&
+    emptyState &&
+    emptyTitle &&
     narrationSection &&
     narrationText
   ) {
-    form.addEventListener("submit", clearResults);
+    form.addEventListener("solara:recommendation-request-start", clearResults);
     form.addEventListener("solara:recommendation-ready", handleRecommendationReady);
   }
 })();

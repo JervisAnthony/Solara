@@ -107,13 +107,21 @@ def test_results_renderer_uses_safe_dom_apis_for_response_text() -> None:
         assert forbidden not in script
 
 
-def test_results_renderer_clears_stale_and_empty_responses() -> None:
+def test_results_renderer_clears_only_when_a_valid_request_starts() -> None:
     script = _client().get("/static/results.js").text
 
-    assert 'form.addEventListener("submit", clearResults)' in script
+    assert '"solara:recommendation-request-start"' in script
+    assert 'form.addEventListener("submit", clearResults)' not in script
     assert "resultsSection.hidden = true" in script
     assert "recommendationList.replaceChildren()" in script
     assert "narrationText.replaceChildren()" in script
+
+
+def test_results_renderer_reveals_successful_empty_responses() -> None:
+    script = _client().get("/static/results.js").text
+
     assert "response.has_recommendations === false" in script
-    assert '"No recommendations found"' not in script
-    assert '"Try different dates"' not in script
+    assert "emptyState.hidden = false" in script
+    assert "resultsSection.hidden = false" in script
+    assert "emptyTitle.focus()" in script
+    assert '"No recommendations returned this time"' not in script
