@@ -373,5 +373,8 @@ def test_recommendation_aliases_remain_absent(path: str) -> None:
     assert _configured_client().post(path, json=_valid_payload()).status_code == 404
 
 
-def test_root_route_remains_reserved() -> None:
-    assert _configured_client().get("/").status_code == 404
+def test_configured_recommendation_app_also_serves_web_shell() -> None:
+    response = _configured_client().get("/")
+
+    assert response.status_code == 200
+    assert "Solara" in response.text

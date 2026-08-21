@@ -53,6 +53,12 @@ package-dir = { "" = "src" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"solara_travel.presentation.web" = [
+    "templates/*.html",
+    "static/*.css",
+]
+
 [tool.pytest.ini_options]
 addopts = [
     "-ra",

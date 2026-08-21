@@ -1041,20 +1041,33 @@ Implemented scope includes:
 - deterministic evidence serialization without raw provider payloads;
 - safe provider-boundary error translation and optional narration degradation.
 
-## Commits 38-47 - MVP1 web experience and release
+## Commit 38 - Web application shell
+
+Implemented scope includes:
+
+- browser-facing `GET /` route outside the OpenAPI contract;
+- semantic, accessible application shell with stable future-workspace anchors;
+- responsive sunlight-inspired visual foundation;
+- packaged local HTML and CSS with no external frontend dependency;
+- credential-free rendering independent of recommendation composition;
+- focused browser-shell, static-asset, and API-regression tests.
+
+The shell remains deliberately non-interactive. Commit 39 owns recommendation
+inputs and submission; Commit 40 owns authoritative result rendering.
+
+## Commits 39-47 - MVP1 web experience and release
 
 The remaining MVP1 sequence is intentionally staged as:
 
-- web application shell;
-- traveller recommendation form;
-- recommendation results and explainability UI;
-- validation, error, loading, and empty states;
-- logging, request tracing, and tester feedback;
-- public-alpha safeguards and rate and cost controls;
-- deployment configuration;
-- hosted MVP1 deployment;
-- public-alpha integration, smoke, and browser testing;
-- MVP1 release documentation.
+- Commit 39 - traveller recommendation form;
+- Commit 40 - recommendation results and explainability UI;
+- Commit 41 - validation, error, loading, and empty states;
+- Commit 42 - logging, request tracing, and tester feedback;
+- Commit 43 - public-alpha safeguards and rate and cost controls;
+- Commit 44 - deployment configuration;
+- Commit 45 - hosted MVP1 deployment;
+- Commit 46 - public-alpha integration, smoke, and browser testing;
+- Commit 47 - MVP1 release documentation.
 
 ## Release milestones
 
