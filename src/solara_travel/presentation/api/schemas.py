@@ -9,3 +9,16 @@ class HealthResponse(BaseModel):
     """Process-health response returned by the ASGI application."""
 
     status: Literal["ok"]
+
+
+class ApiErrorDetail(BaseModel):
+    """Stable safe details for explicitly translated API failures."""
+
+    code: str
+    message: str
+
+
+class ApiErrorResponse(BaseModel):
+    """Envelope used for known presentation-boundary failures."""
+
+    detail: ApiErrorDetail
