@@ -195,3 +195,61 @@ jobs:
           "$smoke_python" -c "from solara_travel.analytics import SeasonalWeatherProfile, SeasonalTemperatureComfortAssessment, SuitabilityScore"
           "$smoke_python" -c "from solara_travel.domain import Destination, RecommendationRequest"
           "$smoke_python" -c "import solara_travel; print(solara_travel.__file__)"
+
+  container:
+    name: Container / Build & Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build deployment image
+        run: docker build --tag solara-deployment:test .
+
+      - name: Reject missing deployment configuration safely
+        shell: bash
+        run: |
+          set +e
+          output="$(docker run --rm solara-deployment:test 2>&1)"
+          status="$?"
+          set -e
+          test "$status" -ne 0
+          grep -Fq 'Missing required deployment variables' <<<"$output"
+          grep -Fq 'SOLARA_GOOGLE_PLACES_API_KEY' <<<"$output"
+          grep -Fq 'SOLARA_OPENAI_API_KEY' <<<"$output"
+          grep -Fq 'SOLARA_OPENAI_MODEL' <<<"$output"
+
+      - name: Run deployment container
+        run: >-
+          docker run --detach --rm
+          --name solara-deployment-smoke
+          --publish 127.0.0.1:8000:8000
+          --env SOLARA_GOOGLE_PLACES_API_KEY=test-google-key
+          --env SOLARA_OPENAI_API_KEY=test-openai-key
+          --env SOLARA_OPENAI_MODEL=test-model
+          solara-deployment:test
+
+      - name: Smoke health and UI routes
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/health >/dev/null; then
+              break
+            fi
+            if ! docker inspect solara-deployment-smoke >/dev/null 2>&1; then
+              docker logs solara-deployment-smoke
+              exit 1
+            fi
+            sleep 1
+          done
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8000/health)" = "200"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8000/)" = "200"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8000/docs)" = "404"
+
+      - name: Stop deployment container
+        if: always()
+        run: docker stop solara-deployment-smoke || true

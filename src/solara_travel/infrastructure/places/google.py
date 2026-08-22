@@ -1,7 +1,7 @@
 """Google Places normalization and provider integration for Solara."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import isfinite
 from numbers import Real
 from typing import Protocol
@@ -70,7 +70,7 @@ class GooglePlacesClient(Protocol):
 class GooglePlacesHttpClient:
     """Google Places API client using an injected JSON HTTP transport."""
 
-    api_key: str
+    api_key: str = field(repr=False)
     transport: JsonHttpTransport
     timeout_seconds: float = 10.0
     destination_page_size: int = 10

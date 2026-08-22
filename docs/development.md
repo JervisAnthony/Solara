@@ -873,11 +873,12 @@ settings = ApiSettings(
 )
 ```
 
-There is intentionally no environment-variable mapping yet; Commit 45 owns
-deployment configuration. Runtime state is process-local, resets on restart,
-and is not shared across workers. It must not be described as a guaranteed cost
-ceiling. Deterministic tests inject a fake monotonic clock and use `Event` or
-`Barrier` for concurrency; never add real sleeps to limiter tests.
+The hosted deployment factory maps environment overrides into this policy. The
+ordinary `create_app()` continues to use explicit `ApiSettings` and reads no
+environment. Runtime state is process-local, resets on restart, and is not
+shared across workers. It must not be described as a guaranteed cost ceiling.
+Deterministic tests inject a fake monotonic clock and use `Event` or `Barrier`
+for concurrency; never add real sleeps to limiter tests.
 
 Solara-owned safeguard responses use HTTP `429`, integer delta-seconds
 `Retry-After`, and one of `recommendation_rate_limited`,
@@ -888,37 +889,53 @@ disable submit/retry controls during a bounded cooldown, restore them without
 automatic retry, and never persist cooldown state or render raw error messages.
 
 Structured process logs remain the feedback recording mechanism. There is no
-database, file sink, forwarding service, retention job, identity-based quota,
-or deployment configuration. Commit 45 deployment work owns environment
-mapping, log transport, and retention.
+database, file sink, forwarding service, retention job, or identity-based
+quota. Commit 45 supplies environment mapping and portable process/container
+configuration; host log transport and retention remain a Commit 46 concern.
 
-## Configuration
+## Configuration and application factories
 
-Configuration should be introduced when external services require it.
+Use `create_app()` for credential-free development and tests. It reads no
+environment, makes no network calls, and returns the safe unconfigured
+recommendation API unless services are injected explicitly.
 
-Configuration must:
+Use `create_deployment_app()` only for the hosted application. On invocation it
+loads typed settings, requires Google Places and OpenAI configuration, composes
+the live provider graph, and delegates to `create_app()`. Importing either the
+config package or deployment module is safe without credentials. Provider calls
+still happen only on admitted recommendation or narration work, never at
+startup.
 
-- keep secrets out of source code;
-- provide explicit environment-driven settings;
-- avoid import-time provider initialization;
-- avoid preventing domain modules from being imported when credentials are
-  missing;
-- distinguish required settings from optional integrations.
+Tests should pass a deterministic mapping rather than mutate process state:
 
-A missing optional AI credential should not prevent deterministic analytics from
-being used.
+```python
+from solara_travel.presentation.api.deployment import create_deployment_app
+
+app = create_deployment_app(
+    environ={
+        "SOLARA_GOOGLE_PLACES_API_KEY": "test-google-key",
+        "SOLARA_OPENAI_API_KEY": "test-openai-key",
+        "SOLARA_OPENAI_MODEL": "test-model",
+    }
+)
+```
+
+The default test suite does not require live credentials or internet access.
+See [deployment.md](deployment.md) for the complete environment and container
+contract.
 
 ## Secrets
 
 Real credentials must never be committed.
 
-The repository may eventually contain:
+The repository contains a safe reference template:
 
 ```text
 .env.example
 ```
 
-with empty placeholders for required configuration names.
+with empty placeholders for required configuration names. Solara never loads it
+automatically.
 
 It must never contain usable secrets.
 

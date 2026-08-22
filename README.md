@@ -122,6 +122,19 @@ Build the source distribution and wheel:
 python -m build
 ```
 
+## Deployment configuration
+
+Commit 45 adds a portable, environment-driven hosted application factory and
+Docker image configuration. The hosted factory requires
+`SOLARA_GOOGLE_PLACES_API_KEY`, `SOLARA_OPENAI_API_KEY`, and
+`SOLARA_OPENAI_MODEL`; [.env.example](.env.example) lists every supported
+variable and safe default. Solara does not load that file automatically, and
+real credentials must come from the hosting platform's secret store.
+
+See the [deployment configuration guide](docs/deployment.md) for local and
+container commands. This repository is prepared for deployment but is not yet
+publicly hosted; hosted MVP1 deployment remains Commit 46.
+
 ## Current structure
 
 ```text
@@ -148,6 +161,7 @@ The architecture will grow incrementally through small, reviewed commits.
 - [Product scope](docs/product-scope.md)
 - [Architecture](docs/architecture.md)
 - [Development guide](docs/development.md)
+- [Deployment configuration](docs/deployment.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Package names
