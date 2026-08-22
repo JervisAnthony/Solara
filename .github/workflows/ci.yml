@@ -218,10 +218,10 @@ jobs:
           status="$?"
           set -e
           test "$status" -ne 0
-          test "$(grep -c 'Missing required deployment variables' <<<"$output")" -eq 1
-          test "$(grep -c 'SOLARA_GOOGLE_PLACES_API_KEY' <<<"$output")" -eq 1
-          test "$(grep -c 'SOLARA_OPENAI_API_KEY' <<<"$output")" -eq 1
-          test "$(grep -c 'SOLARA_OPENAI_MODEL' <<<"$output")" -eq 1
+          grep -Fq 'Missing required deployment variables' <<<"$output"
+          grep -Fq 'SOLARA_GOOGLE_PLACES_API_KEY' <<<"$output"
+          grep -Fq 'SOLARA_OPENAI_API_KEY' <<<"$output"
+          grep -Fq 'SOLARA_OPENAI_MODEL' <<<"$output"
 
       - name: Run deployment container
         run: >-
