@@ -563,6 +563,8 @@ Web presentation
     +----> packaged JavaScript at /static/app.js
     |
     +----> packaged result renderer at /static/results.js
+    |
+    +----> packaged tester feedback at /static/feedback.js
 ```
 
 The root route is excluded from OpenAPI, and its local static mount is likewise
@@ -639,7 +641,18 @@ rendering.
 Result cards present deterministic and provider-derived evidence. Optional
 grounded narration is separate enrichment and never controls ranking. All
 response text is inserted through safe DOM text APIs rather than interpreted as
-HTML or Markdown. Logging and request tracing remain deferred to Commit 42.
+HTML or Markdown. `app.js` also reads the server-owned `X-Request-ID` response
+header before consuming a recommendation response. A handled HTTP outcome shows
+that opaque UUID as a request reference and stores it only in the recommendation
+form's transient dataset for `feedback.js`; local validation and network failure
+never fabricate a reference, and no browser persistence is used.
+
+After recommendation results, the tester-feedback form collects one required
+`helpful`, `mixed`, or `not_helpful` rating and an optional 1,000-character
+comment. `feedback.js` sends exactly those explicit fields plus the current
+opaque recommendation request reference, when available, to the same-origin
+feedback endpoint. It owns its in-flight, success, and fixed-copy failure states
+without reading recommendation content or client metadata.
 
 ## Configuration
 
@@ -876,22 +889,63 @@ Caching policy must not become embedded in domain logic.
 
 ## Observability
 
-Production observability will be introduced when Solara gains deployed
-application workflows.
+Operational observability is isolated in the HTTP presentation layer:
 
-Potential future concerns include:
+```text
+HTTP request
+    |
+    v
+RequestTracingMiddleware
+    |
+    +----> fresh server-generated UUID4
+    +----> request.state.request_id
+    +----> X-Request-ID response header
+    +----> monotonic request timing
+    |
+    v
+route
 
-- structured logging;
-- provider latency;
-- provider failures;
-- recommendation execution time;
-- cache effectiveness;
-- request volume;
-- AI token usage;
-- degraded-result frequency.
+POST /api/v1/recommendations
+    |
+    +----> deterministic recommendation timing
+    +----> optional narration timing
+    +----> safe aggregate completed, failed, or rejected event
 
-Observability should help explain system behaviour without capturing sensitive
-traveller information unnecessarily.
+Browser feedback + optional recommendation request ID
+    |
+    v
+POST /api/v1/feedback
+    |
+    +----> feedback UUID receipt
+    +----> structured feedback.accepted event
+    |
+    v
+202 Accepted
+```
+
+`solara_travel.api` emits one standard-library JSON log record per product
+event. Every record has schema version 1, a UTC timestamp, and a stable dotted
+event name. Request timing uses a monotonic clock. The middleware never trusts
+or echoes inbound `X-Request-ID`; every handled request gets a new server-owned
+identifier. Static assets and `/health` still receive the response header but
+are excluded from structured request-event logging to avoid routine asset and
+probe noise.
+
+General request events contain only request ID, method, path without query
+string, status, and duration. Recommendation events contain only safe failure
+codes or aggregate count, narration availability, and stage timings. They never
+record travel request bodies, destination or attraction data, scores, weather,
+recommendation responses, IP addresses, User-Agent strings, cookies, provider
+payloads, exception text, or narration content.
+
+Tester feedback is deliberately different: `feedback.accepted` intentionally
+records the explicitly submitted rating and comment, JSON escaped on one log
+line, plus opaque feedback, HTTP-request, and optional recommendation-request
+IDs. The UI asks testers not to provide sensitive personal information. There
+is no feedback database or file persistence; the hosting process log stream is
+the MVP1 alpha review mechanism. Log transport and retention are deployment
+concerns. Rate limiting, quotas, abuse safeguards, cost controls, and deployment
+configuration remain deferred to later milestones.
 
 ## Security boundaries
 

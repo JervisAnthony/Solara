@@ -10,6 +10,7 @@
     >
     <script src="/static/app.js" defer></script>
     <script src="/static/results.js" defer></script>
+    <script src="/static/feedback.js" defer></script>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
@@ -178,6 +179,15 @@
               Try again
             </button>
           </section>
+
+          <p
+            id="recommendation-request-reference"
+            class="request-reference"
+            hidden
+          >
+            Request reference:
+            <code id="recommendation-request-reference-value"></code>
+          </p>
         </form>
       </section>
 
@@ -224,6 +234,71 @@
           </p>
           <p id="recommendation-narration-text" class="narration-text"></p>
         </aside>
+      </section>
+
+      <section
+        id="tester-feedback"
+        class="tester-feedback"
+        aria-labelledby="tester-feedback-title"
+      >
+        <div class="feedback-introduction">
+          <p class="section-label">Tester feedback</p>
+          <h2 id="tester-feedback-title">Help improve Solara</h2>
+          <p>
+            Tell us how useful this experience was. If you've just run a comparison,
+            Solara will attach its request reference automatically.
+          </p>
+        </div>
+
+        <form id="tester-feedback-form" class="feedback-form">
+          <fieldset>
+            <legend>How useful was this experience?</legend>
+            <div class="feedback-rating" id="feedback-rating">
+              <label>
+                <input type="radio" name="rating" value="helpful" required>
+                Helpful
+              </label>
+              <label>
+                <input type="radio" name="rating" value="mixed">
+                Mixed
+              </label>
+              <label>
+                <input type="radio" name="rating" value="not_helpful">
+                Not helpful
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="feedback-comment-field">
+            <label for="feedback-comment">
+              Comment <span class="optional-label">Optional</span>
+            </label>
+            <textarea
+              id="feedback-comment"
+              name="comment"
+              maxlength="1000"
+              aria-describedby="feedback-comment-help feedback-privacy-note"
+            ></textarea>
+            <p id="feedback-comment-help" class="field-help">
+              Share what worked or what would make the experience clearer.
+            </p>
+            <p id="feedback-privacy-note" class="feedback-privacy-note">
+              Please don't include names, contact details, passwords, or other sensitive
+              personal information.
+            </p>
+          </div>
+
+          <div class="feedback-actions">
+            <button id="feedback-submit" type="submit">Send feedback</button>
+            <p
+              id="feedback-status"
+              class="feedback-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            ></p>
+          </div>
+        </form>
       </section>
 
       <section class="principles" aria-labelledby="principles-title">
