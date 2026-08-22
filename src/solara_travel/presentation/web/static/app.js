@@ -12,6 +12,10 @@
     "#recommendation-request-error-message",
   );
   const retryButton = document.querySelector("#recommendation-request-retry");
+  const requestReference = document.querySelector("#recommendation-request-reference");
+  const requestReferenceValue = document.querySelector(
+    "#recommendation-request-reference-value",
+  );
   const recommendationEndpoint = "/api/v1/recommendations";
   const idleSubmitLabel = "Compare destinations";
   const loadingSubmitLabel = "Comparing…";
@@ -26,13 +30,20 @@
   };
 
   class RecommendationRequestError extends Error {
-    constructor(kind, status = null, code = null, validationErrors = []) {
+    constructor(
+      kind,
+      status = null,
+      code = null,
+      validationErrors = [],
+      requestId = null,
+    ) {
       super("Recommendation request failed.");
       this.name = "RecommendationRequestError";
       this.kind = kind;
       this.status = status;
       this.code = code;
       this.validationErrors = validationErrors;
+      this.requestId = requestId;
     }
   }
 
@@ -211,12 +222,12 @@
     return [];
   }
 
-  async function readErrorResponse(response) {
+  async function readErrorResponse(response, requestId) {
     let payload = null;
     try {
       payload = await response.json();
     } catch {
-      return new RecommendationRequestError("http", response.status);
+      return new RecommendationRequestError("http", response.status, null, [], requestId);
     }
     const detail = payload?.detail;
     const code =
@@ -232,6 +243,7 @@
       response.status,
       code,
       validationErrors,
+      requestId,
     );
   }
 
@@ -250,24 +262,41 @@
       throw new RecommendationRequestError("network");
     }
 
+    const requestId = response.headers.get("X-Request-ID");
+
     if (!response.ok) {
-      throw await readErrorResponse(response);
+      throw await readErrorResponse(response, requestId);
     }
 
     let responsePayload;
     try {
       responsePayload = await response.json();
     } catch {
-      throw new RecommendationRequestError("response");
+      throw new RecommendationRequestError("response", response.status, null, [], requestId);
     }
     if (
       typeof responsePayload !== "object" ||
       responsePayload === null ||
       !Array.isArray(responsePayload.recommendations)
     ) {
-      throw new RecommendationRequestError("response");
+      throw new RecommendationRequestError("response", response.status, null, [], requestId);
     }
-    return responsePayload;
+    return { payload: responsePayload, requestId };
+  }
+
+  function clearRequestReference() {
+    requestReference.hidden = true;
+    requestReferenceValue.replaceChildren();
+    delete form.dataset.recommendationRequestId;
+  }
+
+  function showRequestReference(requestId) {
+    if (!requestId) {
+      return;
+    }
+    requestReferenceValue.textContent = requestId;
+    requestReference.hidden = false;
+    form.dataset.recommendationRequestId = requestId;
   }
 
   function setSubmissionStatus(message) {
@@ -400,13 +429,14 @@
     }
 
     clearRequestError();
+    clearRequestReference();
     setLoadingState(true);
     setSubmissionStatus("Comparing destinations.");
     form.dispatchEvent(new CustomEvent("solara:recommendation-request-start"));
 
-    let responsePayload;
+    let responseResult;
     try {
-      responsePayload = await submitRecommendationRequest(
+      responseResult = await submitRecommendationRequest(
         recommendationEndpoint,
         buildRecommendationRequest(form),
       );
@@ -415,11 +445,15 @@
         error instanceof RecommendationRequestError
           ? error
           : new RecommendationRequestError("response");
+      showRequestReference(controlledError.requestId);
       showRequestError(controlledError);
       return;
     } finally {
       setLoadingState(false);
     }
+
+    const responsePayload = responseResult.payload;
+    showRequestReference(responseResult.requestId);
 
     const hasRecommendations =
       responsePayload.has_recommendations === true &&
@@ -443,7 +477,9 @@
     requestError &&
     requestErrorTitle &&
     requestErrorMessage &&
-    retryButton
+    retryButton &&
+    requestReference &&
+    requestReferenceValue
   ) {
     form.addEventListener("submit", handleSubmit);
     retryButton.addEventListener("click", () => form.requestSubmit());

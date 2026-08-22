@@ -17,7 +17,7 @@ def test_root_contains_one_accessible_recommendation_form() -> None:
     form_id = html.index('id="recommendation-form"')
     form_start = html.rfind("<form", 0, form_id)
 
-    assert html.count("<form") == 1
+    assert html.count('id="recommendation-form"') == 1
     assert workspace_start < form_start
     assert 'aria-labelledby="workspace-title"' in html[form_start:]
     assert 'type="submit"' in html[form_start:]

@@ -71,7 +71,7 @@ def test_health_endpoint_returns_exact_typed_json_response() -> None:
     assert response.headers["content-type"].startswith("application/json")
 
 
-def test_openapi_exposes_health_and_versioned_recommendation_contracts() -> None:
+def test_openapi_exposes_health_recommendation_and_feedback_contracts() -> None:
     response = TestClient(create_app()).get("/openapi.json")
 
     assert response.status_code == 200
@@ -80,17 +80,26 @@ def test_openapi_exposes_health_and_versioned_recommendation_contracts() -> None
         "title": "Solara Travel API",
         "version": metadata.version("solara-travel-ai"),
     }
-    assert set(schema["paths"]) == {"/health", "/api/v1/recommendations"}
+    assert set(schema["paths"]) == {
+        "/health",
+        "/api/v1/recommendations",
+        "/api/v1/feedback",
+    }
     assert "get" in schema["paths"]["/health"]
     recommendation = schema["paths"]["/api/v1/recommendations"]["post"]
     assert recommendation["requestBody"]["content"]["application/json"]["schema"]
     assert recommendation["responses"]["200"]["content"]["application/json"]["schema"]
     assert recommendation["responses"]["502"]["content"]["application/json"]["schema"]
     assert recommendation["responses"]["503"]["content"]["application/json"]["schema"]
+    feedback = schema["paths"]["/api/v1/feedback"]["post"]
+    assert feedback["requestBody"]["content"]["application/json"]["schema"]
+    assert feedback["responses"]["202"]["content"]["application/json"]["schema"]
     assert "HealthResponse" in schema["components"]["schemas"]
     assert "RecommendationRequestBody" in schema["components"]["schemas"]
     assert "RecommendationResponse" in schema["components"]["schemas"]
     assert "ApiErrorResponse" in schema["components"]["schemas"]
+    assert "FeedbackRequestBody" in schema["components"]["schemas"]
+    assert "FeedbackAcceptedResponse" in schema["components"]["schemas"]
 
 
 def test_interactive_documentation_is_enabled_by_default() -> None:

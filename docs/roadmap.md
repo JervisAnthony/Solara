@@ -863,11 +863,12 @@ Commit 39 - traveller recommendation form
 Commit 40 - recommendation results and explainability UI
 Commit 41 - validation, error, loading, and empty states
 Commit 42 - logging, request tracing, and tester feedback
-Commit 43 - public-alpha safeguards and rate and cost controls
-Commit 44 - deployment configuration
-Commit 45 - hosted MVP1 deployment
-Commit 46 - public-alpha integration, smoke, and browser testing
-Commit 47 - MVP1 release documentation
+Commit 43 - premium UI/GUI redesign
+Commit 44 - public-alpha safeguards and rate and cost controls
+Commit 45 - deployment configuration
+Commit 46 - hosted MVP1 deployment
+Commit 47 - public-alpha integration, smoke, and browser testing
+Commit 48 - MVP1 release documentation
 ```
 
 This sequence is intentionally more granular than the original prototype.
@@ -1094,18 +1095,46 @@ Implemented scope includes:
 - successful empty-result presentation without fabricated recommendations;
 - accessible focus transitions for validation, results, empty, and error states;
 - result clearing only after a locally valid request actually begins;
-- no logging, request tracing, or tester feedback yet.
+- no request tracing or tester feedback before Commit 42.
 
-## Commits 42-47 - MVP1 web experience and release
+## Commit 42 - Logging, request tracing, and tester feedback
+
+Implemented scope includes:
+
+- fresh server-generated UUID4 identifiers for every handled HTTP request;
+- `X-Request-ID` response tracing with untrusted inbound IDs ignored;
+- versioned one-line structured JSON request events and monotonic durations;
+- safe aggregate recommendation completion, rejection, failure, deterministic
+  timing, and optional narration timing events;
+- tester-visible opaque request references held only in transient DOM state;
+- typed `POST /api/v1/feedback` with `202 Accepted` receipts;
+- required helpful, mixed, or not-helpful ratings and optional bounded comments;
+- optional linkage to the recommendation request being discussed;
+- distinct feedback receipt, feedback HTTP request, and recommendation request
+  UUIDs in the structured feedback event;
+- log-backed public-alpha feedback recording with no database or file sink;
+- packaged accessible browser feedback UI and same-origin `feedback.js`;
+- privacy boundaries that exclude travel bodies, response bodies, client
+  metadata, raw provider failures, and narration content from operational logs;
+- no rate limiting, quotas, abuse safeguards, cost controls, or deployment
+  configuration yet.
+
+## Commit 43 - Premium UI/GUI redesign
+
+Redesign the existing Solara web experience to match the approved premium
+travel-interface reference while preserving all recommendation, validation,
+observability, feedback, accessibility, API, and deterministic-ranking
+functionality.
+
+## Commits 44-48 - MVP1 safeguards, deployment, and release
 
 The remaining MVP1 sequence is intentionally staged as:
 
-- Commit 42 - logging, request tracing, and tester feedback;
-- Commit 43 - public-alpha safeguards and rate and cost controls;
-- Commit 44 - deployment configuration;
-- Commit 45 - hosted MVP1 deployment;
-- Commit 46 - public-alpha integration, smoke, and browser testing;
-- Commit 47 - MVP1 release documentation.
+- Commit 44 - public-alpha safeguards and rate and cost controls;
+- Commit 45 - deployment configuration;
+- Commit 46 - hosted MVP1 deployment;
+- Commit 47 - public-alpha integration, smoke, and browser testing;
+- Commit 48 - MVP1 release documentation.
 
 ## Release milestones
 

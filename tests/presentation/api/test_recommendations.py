@@ -23,6 +23,7 @@ from solara_travel.ports import (
 )
 from solara_travel.presentation.api import ApiDependencies, create_app
 from solara_travel.presentation.api.recommendation_schemas import RecommendationRequestBody
+from solara_travel.presentation.api.routes import recommendations as recommendation_routes
 from solara_travel.workflows import build_offline_recommendation_service
 
 
@@ -104,7 +105,15 @@ def _error_service(error: BaseException) -> RecommendationService:
     )
 
 
-def test_default_app_is_healthy_but_recommendation_service_is_unconfigured() -> None:
+def test_default_app_is_healthy_but_recommendation_service_is_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        recommendation_routes,
+        "emit_event",
+        lambda event, **fields: events.append({"event": event, **fields}),
+    )
     client = TestClient(create_app())
 
     assert client.get("/health").json() == {"status": "ok"}
@@ -117,6 +126,14 @@ def test_default_app_is_healthy_but_recommendation_service_is_unconfigured() -> 
             "message": "Recommendation service is not configured.",
         }
     }
+    assert events == [
+        {
+            "event": "recommendation.rejected",
+            "request_id": response.headers["X-Request-ID"],
+            "code": "recommendation_service_unconfigured",
+            "stage": "configuration",
+        }
+    ]
 
 
 def test_offline_http_pipeline_returns_ranked_deterministic_evidence() -> None:
@@ -337,8 +354,17 @@ def test_non_finite_coordinate_is_rejected_during_model_validation(value: float)
     ],
 )
 def test_provider_errors_map_to_safe_stable_http_responses(
-    error: ProviderError, status_code: int, code: str
+    error: ProviderError,
+    status_code: int,
+    code: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    events: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        recommendation_routes,
+        "emit_event",
+        lambda event, **fields: events.append({"event": event, **fields}),
+    )
     response = _configured_client(_error_service(error)).post(
         "/api/v1/recommendations", json=_valid_payload()
     )
@@ -351,6 +377,41 @@ def test_provider_errors_map_to_safe_stable_http_responses(
     assert "Google" not in response.text
     assert "Open-Meteo" not in response.text
     assert "OpenAI" not in response.text
+    assert len(events) == 1
+    duration_ms = events[0]["duration_ms"]
+    assert {key: value for key, value in events[0].items() if key != "duration_ms"} == {
+        "event": "recommendation.failed",
+        "request_id": response.headers["X-Request-ID"],
+        "code": code,
+        "stage": "recommendation",
+    }
+    assert isinstance(duration_ms, (int, float))
+    assert duration_ms >= 0
+    assert str(error) not in str(events[0])
+
+
+def test_domain_rejection_emits_only_a_safe_code(monkeypatch: pytest.MonkeyPatch) -> None:
+    events: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        recommendation_routes,
+        "emit_event",
+        lambda event, **fields: events.append({"event": event, **fields}),
+    )
+    payload = _valid_payload()
+    payload["travel_period"]["end_date"] = "2026-04-09"  # type: ignore[index]
+
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+
+    assert response.status_code == 422
+    assert events == [
+        {
+            "event": "recommendation.rejected",
+            "request_id": response.headers["X-Request-ID"],
+            "code": "invalid_recommendation_request",
+            "stage": "validation",
+        }
+    ]
+    assert "2026-04" not in str(events)
 
 
 def test_unexpected_programming_error_is_not_silently_translated() -> None:

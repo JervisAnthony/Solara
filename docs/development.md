@@ -654,8 +654,10 @@ GET /
 GET /static/styles.css
 GET /static/app.js
 GET /static/results.js
+GET /static/feedback.js
 GET /health
 POST /api/v1/recommendations
+POST /api/v1/feedback
 GET /openapi.json
 GET /docs
 GET /redoc
@@ -663,7 +665,7 @@ GET /redoc
 
 Interactive Swagger and ReDoc pages are enabled by default. Creating the app
 with `ApiSettings(docs_enabled=False)` disables `/docs` and `/redoc` while
-retaining `/`, all three packaged static assets, `/openapi.json`, and `/health`.
+retaining `/`, all four packaged static assets, `/openapi.json`, and `/health`.
 The browser root and static mount are not included in OpenAPI.
 
 Health indicates only that the ASGI process is serving requests; it does not
@@ -757,6 +759,68 @@ and server-configured temperature-comfort evidence through native disclosure
 controls. Optional narration appears separately only when supplied and is
 rendered as plain text; it does not determine ranking. These browser paths use
 no live credentials, client persistence, or browser-side provider calls.
+
+### Request tracing, structured events, and tester feedback
+
+Every ordinary handled HTTP response includes a fresh server-generated UUID4 in
+`X-Request-ID`. An inbound header with the same name is ignored rather than used
+or echoed. Recommendation responses expose this opaque identifier in the browser
+as a request reference; the value is held only in current DOM state so a later
+feedback submission can refer to the relevant comparison. Local validation and
+network failures do not create identifiers.
+
+Inspect a response header locally with a credential-free request such as:
+
+```powershell
+curl.exe -i http://127.0.0.1:8000/health
+```
+
+The `solara_travel.api` logger writes versioned one-line JSON events to the
+process logging stream. Its stable vocabulary is:
+
+- `http.request.completed` and `http.request.exception` for safe HTTP outcome
+  and duration metadata;
+- `recommendation.completed` for aggregate count, narration availability, and
+  deterministic/narration timings;
+- `recommendation.failed` for translated provider failure categories;
+- `recommendation.rejected` for invalid or unconfigured requests;
+- `feedback.accepted` for explicit tester feedback and opaque linkage IDs.
+
+Static assets and `/health` receive request IDs but are intentionally excluded
+from request-event logs to limit hosted noise. Request events never contain
+query strings, bodies, IP addresses, User-Agent strings, cookies, headers, or
+response bodies. Recommendation events never contain travel dates, interests,
+pace, climate, destinations, coordinates, scores, weather, provider payloads,
+exception text, or narration. The one intentional free-text operational field
+is the comment that a tester explicitly enters in the feedback form.
+
+Feedback does not require recommendation-service configuration. Submit a benign
+local example with:
+
+```powershell
+curl.exe -i -X POST http://127.0.0.1:8000/api/v1/feedback `
+  -H "Accept: application/json" `
+  -H "Content-Type: application/json" `
+  -d '{"rating":"helpful","comment":"The evidence view was clear."}'
+```
+
+The request schema accepts an optional UUID `recommendation_request_id`, a
+required `helpful`, `mixed`, or `not_helpful` rating, and an optional comment of
+at most 1,000 characters. Blank comments normalize to null and unknown fields
+are rejected. A successful response is `202 Accepted` with only
+`status: "accepted"` and a new feedback UUID; submitted values are not echoed.
+
+The browser feedback form attaches its current recommendation request reference
+when one exists, resets only after a successful response, and preserves entered
+text after HTTP or network failure. It uses fixed local status copy and no
+browser persistence, identity fields, analytics, client metadata, external
+requests, or automatic retry.
+
+For this alpha milestone, structured process logs are the feedback recording
+mechanism. There is no database, file sink, forwarding service, retention job,
+rate limiting, quota, cost control, abuse safeguard, or deployment configuration
+yet. Commit 44 adds public-alpha safeguards before hosted release; Commit 45
+deployment configuration work owns log transport and retention.
 
 ## Configuration
 

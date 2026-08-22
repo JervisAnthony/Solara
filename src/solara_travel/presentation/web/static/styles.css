@@ -415,6 +415,18 @@ h3 {
   background: var(--color-accent-soft);
 }
 
+.request-reference {
+  margin: -0.5rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+.request-reference code {
+  color: var(--color-text);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
 .recommendation-results {
   padding-top: clamp(5rem, 11vw, 9rem);
 }
@@ -657,6 +669,118 @@ h3 {
   padding-top: clamp(5rem, 11vw, 9rem);
 }
 
+.tester-feedback {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: clamp(2rem, 6vw, 6rem);
+  margin-top: clamp(5rem, 11vw, 9rem);
+  padding: clamp(2rem, 5vw, 4.5rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.feedback-introduction > p:not(.section-label) {
+  color: var(--color-text-muted);
+}
+
+.feedback-form {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.feedback-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.feedback-form legend,
+.feedback-comment-field > label {
+  display: block;
+  margin-bottom: 0.65rem;
+  font-weight: 750;
+}
+
+.feedback-rating {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.feedback-rating label {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface-soft);
+  cursor: pointer;
+  gap: 0.5rem;
+}
+
+.feedback-comment-field textarea {
+  display: block;
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface-soft);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.feedback-privacy-note {
+  margin: 0.65rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.feedback-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.feedback-actions button {
+  min-height: 3rem;
+  padding: 0.7rem 1.2rem;
+  border: 1px solid var(--color-accent-dark);
+  border-radius: var(--radius-small);
+  background: var(--color-accent-dark);
+  color: var(--color-surface);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.feedback-actions button:hover {
+  border-color: var(--color-forest);
+  background: var(--color-forest);
+}
+
+.feedback-actions button:disabled {
+  border-color: var(--color-text-muted);
+  background: var(--color-text-muted);
+  cursor: wait;
+  opacity: 0.82;
+}
+
+.feedback-status {
+  min-height: 1.6em;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
 .section-introduction {
   max-width: 46rem;
   margin-bottom: 2.5rem;
@@ -711,7 +835,8 @@ h3 {
 
 @media (max-width: 48rem) {
   .hero,
-  .recommendation-workspace {
+  .recommendation-workspace,
+  .tester-feedback {
     grid-template-columns: 1fr;
   }
 
@@ -760,7 +885,9 @@ h3 {
 
   .form-actions,
   .form-actions button,
-  .request-error button {
+  .request-error button,
+  .feedback-actions,
+  .feedback-actions button {
     width: 100%;
   }
 
@@ -775,6 +902,16 @@ h3 {
   .recommendation-workspace {
     padding: 1.5rem;
     border-radius: var(--radius-medium);
+  }
+
+  .tester-feedback {
+    padding: 1.5rem;
+    border-radius: var(--radius-medium);
+  }
+
+  .feedback-rating,
+  .feedback-rating label {
+    width: 100%;
   }
 
   .recommendation-card {

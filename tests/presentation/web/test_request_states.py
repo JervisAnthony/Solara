@@ -125,7 +125,7 @@ def test_app_script_maps_stable_api_errors_to_local_copy() -> None:
 
 
 def test_browser_scripts_avoid_unsafe_dom_and_persistence_apis() -> None:
-    for asset in ("/static/app.js", "/static/results.js"):
+    for asset in ("/static/app.js", "/static/results.js", "/static/feedback.js"):
         script = _asset(asset)
         for forbidden in (
             "innerHTML",

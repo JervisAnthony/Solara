@@ -78,6 +78,7 @@ def test_web_shell_and_assets_are_independent_of_api_documentation_policy() -> N
     assert client.get("/static/styles.css").status_code == 200
     assert client.get("/static/app.js").status_code == 200
     assert client.get("/static/results.js").status_code == 200
+    assert client.get("/static/feedback.js").status_code == 200
     assert client.get("/health").status_code == 200
     assert client.get("/docs").status_code == 404
     assert client.get("/redoc").status_code == 404
@@ -87,6 +88,6 @@ def test_web_shell_and_assets_are_independent_of_api_documentation_policy() -> N
 def test_root_and_static_mount_are_excluded_from_openapi() -> None:
     paths = TestClient(create_app()).get("/openapi.json").json()["paths"]
 
-    assert set(paths) == {"/health", "/api/v1/recommendations"}
+    assert set(paths) == {"/health", "/api/v1/recommendations", "/api/v1/feedback"}
     assert "/" not in paths
     assert all(not path.startswith("/static") for path in paths)
