@@ -1139,11 +1139,27 @@ Implemented scope includes:
 - no fabricated recommendations, external assets, persistence, authentication,
   rate limiting, cost controls, deployment configuration, or hosting work.
 
-## Commits 44-48 - MVP1 safeguards, deployment, and release
+## Commit 44 - Public-alpha safeguards and rate and cost controls
+
+Implemented scope includes:
+
+- immutable positive-integer policy for recommendation rate, longer usage,
+  concurrency, narration-attempt, and feedback-rate guardrails;
+- fresh identity-free process-local state for every application instance;
+- atomic recommendation admission with exception-safe concurrency release;
+- safe Solara-owned `429` codes, integer `Retry-After`, request tracing, and
+  privacy-conscious rejection events;
+- narration-budget degradation to the unchanged deterministic `200` result;
+- accessible browser recommendation and feedback cooldowns with fixed local
+  copy, preserved input, no persistence, and no automatic retry;
+- deterministic fake-clock and synchronization-based tests with no sleeps;
+- no IP-based limiting, accounts, distributed limiter, new dependency,
+  deployment configuration, or guaranteed financial ceiling.
+
+## Commits 45-48 - MVP1 deployment and release
 
 The remaining MVP1 sequence is intentionally staged as:
 
-- Commit 44 - public-alpha safeguards and rate and cost controls;
 - Commit 45 - deployment configuration;
 - Commit 46 - hosted MVP1 deployment;
 - Commit 47 - public-alpha integration, smoke, and browser testing;

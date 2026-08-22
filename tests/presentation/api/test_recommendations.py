@@ -1,6 +1,7 @@
 """HTTP tests for the versioned recommendation API."""
 
 from datetime import date
+from threading import Event, Thread
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,9 +22,15 @@ from solara_travel.ports import (
     ProviderResponseError,
     ProviderUnavailableError,
 )
-from solara_travel.presentation.api import ApiDependencies, create_app
+from solara_travel.presentation.api import (
+    ApiDependencies,
+    ApiSettings,
+    PublicAlphaSafeguardSettings,
+    create_app,
+)
 from solara_travel.presentation.api.recommendation_schemas import RecommendationRequestBody
 from solara_travel.presentation.api.routes import recommendations as recommendation_routes
+from solara_travel.presentation.api.safeguards import ApiSafeguards
 from solara_travel.workflows import build_offline_recommendation_service
 
 
@@ -439,3 +446,221 @@ def test_configured_recommendation_app_also_serves_web_shell() -> None:
 
     assert response.status_code == 200
     assert "Solara" in response.text
+
+
+def test_recommendation_rate_limit_returns_safe_429_without_calling_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    events: list[dict[str, object]] = []
+    service = _offline_service()
+    original_recommend = RecommendationService.recommend
+
+    def counted_recommend(self: RecommendationService, request: object) -> object:
+        nonlocal calls
+        calls += 1
+        return original_recommend(self, request)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(RecommendationService, "recommend", counted_recommend)
+    monkeypatch.setattr(
+        recommendation_routes,
+        "emit_event",
+        lambda event, **fields: events.append({"event": event, **fields}),
+    )
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(recommendation_rate_limit=1)
+    )
+    client = TestClient(create_app(settings, dependencies=ApiDependencies(service)))
+
+    assert client.post("/api/v1/recommendations", json=_valid_payload()).status_code == 200
+    rejected = client.post("/api/v1/recommendations", json=_valid_payload())
+
+    assert rejected.status_code == 429
+    assert rejected.headers["Retry-After"] == "60"
+    assert rejected.json() == {
+        "detail": {
+            "code": "recommendation_rate_limited",
+            "message": (
+                "This public preview is receiving too many recommendation requests. "
+                "Please try again shortly."
+            ),
+        }
+    }
+    assert calls == 1
+    assert events[-1] == {
+        "event": "recommendation.rejected",
+        "request_id": rejected.headers["X-Request-ID"],
+        "code": "recommendation_rate_limited",
+        "stage": "safeguard",
+        "retry_after_seconds": 60,
+    }
+
+
+def test_recommendation_long_budget_has_distinct_safe_response() -> None:
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(
+            recommendation_rate_limit=10,
+            recommendation_budget_limit=1,
+        )
+    )
+    client = TestClient(create_app(settings, dependencies=ApiDependencies(_offline_service())))
+
+    assert client.post("/api/v1/recommendations", json=_valid_payload()).status_code == 200
+    rejected = client.post("/api/v1/recommendations", json=_valid_payload())
+
+    assert rejected.status_code == 429
+    assert rejected.headers["Retry-After"] == "3600"
+    assert rejected.json()["detail"]["code"] == "recommendation_budget_exhausted"
+    assert "allowance" in rejected.json()["detail"]["message"]
+
+
+def test_invalid_and_unconfigured_requests_do_not_consume_recommendation_quota() -> None:
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(recommendation_rate_limit=1)
+    )
+    application = create_app(settings)
+    client = TestClient(application)
+    invalid = _valid_payload()
+    invalid["travel_period"]["end_date"] = "2026-04-09"  # type: ignore[index]
+
+    assert client.post("/api/v1/recommendations", json=_valid_payload()).status_code == 503
+    assert client.post("/api/v1/recommendations", json=invalid).status_code == 503
+    application.state.api_dependencies = ApiDependencies(_offline_service())
+    assert client.post("/api/v1/recommendations", json=invalid).status_code == 422
+    assert client.post("/api/v1/recommendations", json=_valid_payload()).status_code == 200
+    assert client.post("/api/v1/recommendations", json=_valid_payload()).status_code == 429
+
+
+def test_provider_attempt_failure_consumes_quota_and_preserves_503_mapping() -> None:
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(recommendation_rate_limit=2)
+    )
+    client = TestClient(
+        create_app(
+            settings,
+            dependencies=ApiDependencies(
+                _error_service(ProviderRateLimitError("private provider detail"))
+            ),
+        )
+    )
+
+    first = client.post("/api/v1/recommendations", json=_valid_payload())
+    second = client.post("/api/v1/recommendations", json=_valid_payload())
+    third = client.post("/api/v1/recommendations", json=_valid_payload())
+
+    assert first.status_code == 503
+    assert first.json()["detail"]["code"] == "provider_rate_limited"
+    assert "Retry-After" not in first.headers
+    assert second.status_code == 503
+    assert second.json()["detail"]["code"] == "provider_rate_limited"
+    assert third.status_code == 429
+    assert third.json()["detail"]["code"] == "recommendation_rate_limited"
+
+
+def test_capacity_rejection_does_not_call_service_and_slot_releases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started = Event()
+    release = Event()
+    calls = 0
+    service = _offline_service()
+    original_recommend = RecommendationService.recommend
+
+    def blocking_recommend(self: RecommendationService, request: object) -> object:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            started.set()
+            assert release.wait(timeout=5)
+        return original_recommend(self, request)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(RecommendationService, "recommend", blocking_recommend)
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(
+            recommendation_rate_limit=10,
+            recommendation_concurrency_limit=1,
+        )
+    )
+    application = create_app(settings, dependencies=ApiDependencies(service))
+    first_client = TestClient(application)
+    second_client = TestClient(application)
+    responses: list[object] = []
+    thread = Thread(
+        target=lambda: responses.append(
+            first_client.post("/api/v1/recommendations", json=_valid_payload())
+        )
+    )
+    thread.start()
+    assert started.wait(timeout=5)
+
+    rejected = second_client.post("/api/v1/recommendations", json=_valid_payload())
+    assert rejected.status_code == 429
+    assert rejected.headers["Retry-After"] == "1"
+    assert rejected.json()["detail"]["code"] == "recommendation_capacity_reached"
+    assert calls == 1
+
+    release.set()
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    assert responses[0].status_code == 200  # type: ignore[attr-defined]
+    assert second_client.post("/api/v1/recommendations", json=_valid_payload()).status_code == 200
+    assert calls == 2
+
+
+def test_narration_budget_skips_enrichment_then_expires(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = [0.0]
+    events: list[dict[str, object]] = []
+    provider = FakeNarrationProvider("Fixed grounded narration")
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(
+            recommendation_rate_limit=10,
+            narration_budget_limit=1,
+            narration_budget_window_seconds=10,
+        )
+    )
+    application = create_app(
+        settings,
+        dependencies=ApiDependencies(_offline_service(), RecommendationNarrationService(provider)),
+    )
+    application.state.api_safeguards = ApiSafeguards(
+        settings.public_alpha_safeguards, clock=lambda: now[0]
+    )
+    monkeypatch.setattr(
+        recommendation_routes,
+        "emit_event",
+        lambda event, **fields: events.append({"event": event, **fields}),
+    )
+    client = TestClient(application)
+
+    first = client.post("/api/v1/recommendations", json=_valid_payload())
+    skipped = client.post("/api/v1/recommendations", json=_valid_payload())
+
+    assert first.status_code == skipped.status_code == 200
+    assert first.json()["has_narration"] is True
+    assert skipped.json()["has_narration"] is False
+    assert skipped.json()["narration"] is None
+    assert len(provider.prompts) == 1
+    assert [event for event in events if event["event"] == "narration.skipped"] == [
+        {
+            "event": "narration.skipped",
+            "request_id": skipped.headers["X-Request-ID"],
+            "code": "narration_budget_exhausted",
+            "stage": "safeguard",
+        }
+    ]
+    skipped_completed = [
+        event
+        for event in events
+        if event["event"] == "recommendation.completed"
+        and event["request_id"] == skipped.headers["X-Request-ID"]
+    ][0]
+    assert skipped_completed["narration_attempted"] is False
+    assert skipped_completed["narration_duration_ms"] is None
+
+    now[0] = 10.0
+    renewed = client.post("/api/v1/recommendations", json=_valid_payload())
+    assert renewed.status_code == 200
+    assert renewed.json()["has_narration"] is True
+    assert len(provider.prompts) == 2

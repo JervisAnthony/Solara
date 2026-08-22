@@ -61,6 +61,7 @@ def test_factory_stores_only_supplied_dependencies_on_created_application() -> N
 
     assert application.state.api_dependencies is dependencies
     assert app_module.app.state.api_dependencies is not dependencies
+    assert application.state.api_safeguards is not app_module.app.state.api_safeguards
 
 
 def test_health_endpoint_returns_exact_typed_json_response() -> None:
@@ -89,11 +90,13 @@ def test_openapi_exposes_health_recommendation_and_feedback_contracts() -> None:
     recommendation = schema["paths"]["/api/v1/recommendations"]["post"]
     assert recommendation["requestBody"]["content"]["application/json"]["schema"]
     assert recommendation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert recommendation["responses"]["429"]["content"]["application/json"]["schema"]
     assert recommendation["responses"]["502"]["content"]["application/json"]["schema"]
     assert recommendation["responses"]["503"]["content"]["application/json"]["schema"]
     feedback = schema["paths"]["/api/v1/feedback"]["post"]
     assert feedback["requestBody"]["content"]["application/json"]["schema"]
     assert feedback["responses"]["202"]["content"]["application/json"]["schema"]
+    assert feedback["responses"]["429"]["content"]["application/json"]["schema"]
     assert "HealthResponse" in schema["components"]["schemas"]
     assert "RecommendationRequestBody" in schema["components"]["schemas"]
     assert "RecommendationResponse" in schema["components"]["schemas"]

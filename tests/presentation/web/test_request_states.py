@@ -112,6 +112,9 @@ def test_app_script_maps_stable_api_errors_to_local_copy() -> None:
         "provider_unavailable",
         "provider_error",
         "invalid_recommendation_request",
+        "recommendation_rate_limited",
+        "recommendation_budget_exhausted",
+        "recommendation_capacity_reached",
     ):
         assert code in script
 
@@ -120,8 +123,36 @@ def test_app_script_maps_stable_api_errors_to_local_copy() -> None:
         "Travel data is busy right now",
         "Can't reach Solara right now",
         "Something went wrong",
+        "Solara is taking a short pause",
+        "Solara has reached its current preview allowance",
+        "Solara is busy right now",
     ):
         assert safe_copy in script
+
+
+def test_app_script_applies_a_safe_bounded_429_cooldown_without_auto_retry() -> None:
+    script = _asset("/static/app.js")
+
+    for marker in (
+        'response.headers.get("Retry-After")',
+        "Number.parseInt",
+        "Number.isSafeInteger",
+        "seconds <= 0",
+        "maximumCooldownSeconds = 86400",
+        "defaultCooldownSeconds = 60",
+        "cooldownActive",
+        "window.setTimeout",
+        "submitButton.disabled = loading || cooldownActive",
+        "retryButton.disabled = true",
+        "retryButton.disabled = false",
+        "requestInFlight || cooldownActive",
+        "You can try again in about",
+    ):
+        assert marker in script
+    assert "form.requestSubmit()" in script
+    assert "setTimeout(() => form.requestSubmit" not in script
+    assert "setInterval" not in script
+    assert "detail.message" not in script[script.index("function classifyRequestError") :]
 
 
 def test_browser_scripts_avoid_unsafe_dom_and_persistence_apis() -> None:

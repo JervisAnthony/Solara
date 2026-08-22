@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from solara_travel.domain import RecommendationRequest
 from solara_travel.ports import (
     ProviderAuthenticationError,
     ProviderError,
@@ -25,6 +26,11 @@ from solara_travel.presentation.api.recommendation_mapping import (
 from solara_travel.presentation.api.recommendation_schemas import (
     RecommendationRequestBody,
     RecommendationResponse,
+)
+from solara_travel.presentation.api.safeguards import (
+    ApiSafeguards,
+    RecommendationLease,
+    SafeguardRejection,
 )
 from solara_travel.presentation.api.schemas import ApiErrorResponse
 
@@ -53,6 +59,10 @@ def _configured_dependencies(request: Request) -> ApiDependencies:
     response_model=RecommendationResponse,
     status_code=status.HTTP_200_OK,
     responses={
+        status.HTTP_429_TOO_MANY_REQUESTS: {
+            "model": ApiErrorResponse,
+            "description": "A process-local public-alpha safeguard rejected the request.",
+        },
         status.HTTP_502_BAD_GATEWAY: {
             "model": ApiErrorResponse,
             "description": "An upstream provider returned unusable data.",
@@ -85,6 +95,22 @@ def recommend(
             str(exc),
         ) from exc
 
+    safeguards: ApiSafeguards = request.app.state.api_safeguards
+    admission = safeguards.admit_recommendation()
+    if isinstance(admission, SafeguardRejection):
+        _reject_for_safeguard(request, admission)
+    assert isinstance(admission, RecommendationLease)
+
+    with admission:
+        return _run_recommendation(request, domain_request, dependencies, safeguards)
+
+
+def _run_recommendation(
+    request: Request,
+    domain_request: RecommendationRequest,
+    dependencies: ApiDependencies,
+    safeguards: ApiSafeguards,
+) -> RecommendationResponse:
     recommendation_service = dependencies.recommendation_service
     assert recommendation_service is not None
     recommendation_started_at = perf_counter()
@@ -133,13 +159,23 @@ def recommend(
     recommendation_duration_ms = elapsed_milliseconds(recommendation_started_at)
     narration = None
     narration_duration_ms = None
-    narration_attempted = dependencies.narration_service is not None
-    if dependencies.narration_service is not None:
+    narration_attempted = (
+        dependencies.narration_service is not None and safeguards.admit_narration()
+    )
+    if narration_attempted:
+        assert dependencies.narration_service is not None
         narration_started_at = perf_counter()
         narrated = dependencies.narration_service.narrate(result)
         narration_duration_ms = elapsed_milliseconds(narration_started_at)
         result = narrated.recommendation_result
         narration = narrated.narration
+    elif dependencies.narration_service is not None:
+        emit_event(
+            "narration.skipped",
+            request_id=request_id_from_request(request),
+            code="narration_budget_exhausted",
+            stage="safeguard",
+        )
 
     response = recommendation_result_to_response(result, narration)
     emit_event(
@@ -154,6 +190,38 @@ def recommend(
     return response
 
 
+_SAFEGUARD_MESSAGES = {
+    "recommendation_rate_limited": (
+        "This public preview is receiving too many recommendation requests. "
+        "Please try again shortly."
+    ),
+    "recommendation_budget_exhausted": (
+        "This public preview has reached its current recommendation allowance. "
+        "Please try again later."
+    ),
+    "recommendation_capacity_reached": (
+        "Solara is already processing the maximum number of recommendation requests. "
+        "Please try again shortly."
+    ),
+}
+
+
+def _reject_for_safeguard(request: Request, rejection: SafeguardRejection) -> None:
+    emit_event(
+        "recommendation.rejected",
+        request_id=request_id_from_request(request),
+        code=rejection.code,
+        stage="safeguard",
+        retry_after_seconds=rejection.retry_after_seconds,
+    )
+    raise _api_error(
+        status.HTTP_429_TOO_MANY_REQUESTS,
+        rejection.code,
+        _SAFEGUARD_MESSAGES[rejection.code],
+        retry_after_seconds=rejection.retry_after_seconds,
+    )
+
+
 def _emit_recommendation_failure(request: Request, code: str, started_at: float) -> None:
     emit_event(
         "recommendation.failed",
@@ -164,8 +232,16 @@ def _emit_recommendation_failure(request: Request, code: str, started_at: float)
     )
 
 
-def _api_error(status_code: int, code: str, message: str) -> HTTPException:
+def _api_error(
+    status_code: int,
+    code: str,
+    message: str,
+    *,
+    retry_after_seconds: int | None = None,
+) -> HTTPException:
+    headers = {"Retry-After": str(retry_after_seconds)} if retry_after_seconds is not None else None
     return HTTPException(
         status_code=status_code,
         detail={"code": code, "message": message},
+        headers=headers,
     )

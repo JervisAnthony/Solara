@@ -113,6 +113,35 @@ def test_feedback_script_posts_only_the_typed_payload_and_manages_submission_sta
     assert "fetch(recommendation" not in script
 
 
+def test_feedback_429_preserves_input_and_applies_safe_bounded_cooldown() -> None:
+    script = _client().get("/static/feedback.js").text
+
+    for marker in (
+        "response.status === 429",
+        'response.headers.get("Retry-After")',
+        "Number.parseInt",
+        "Number.isSafeInteger",
+        "seconds <= 0",
+        "maximumCooldownSeconds = 86400",
+        "defaultCooldownSeconds = 60",
+        "feedbackInFlight || cooldownActive",
+        "feedbackSubmit.disabled = loading || cooldownActive",
+        "window.setTimeout",
+        "Solara is receiving a lot of feedback right now",
+        "You can try again in about",
+    ):
+        assert marker in script
+    rate_limit_branch = script[
+        script.index("if (response.status === 429)") : script.index(
+            "if (!response.ok || response.status !== 202)"
+        )
+    ]
+    assert "feedbackForm.reset()" not in rate_limit_branch
+    assert "response.json" not in script
+    assert "setInterval" not in script
+    assert "fetch(feedbackEndpoint" in script
+
+
 def test_all_browser_scripts_avoid_unsafe_dom_tracking_and_external_requests() -> None:
     for path in ("/static/app.js", "/static/results.js", "/static/feedback.js"):
         script = _client().get(path).text

@@ -13,7 +13,12 @@ from fastapi.testclient import TestClient
 from solara_travel.application import RecommendationNarrationService
 from solara_travel.domain import TemperatureComfortRange
 from solara_travel.ports import ProviderUnavailableError
-from solara_travel.presentation.api import ApiDependencies, create_app
+from solara_travel.presentation.api import (
+    ApiDependencies,
+    ApiSettings,
+    PublicAlphaSafeguardSettings,
+    create_app,
+)
 from solara_travel.presentation.api.observability import (
     OBSERVABILITY_LOGGER_NAME,
     REQUEST_ID_HEADER,
@@ -156,6 +161,51 @@ def test_health_and_static_receive_headers_without_request_event_noise(
     assert health.headers[REQUEST_ID_HEADER]
     assert static.headers[REQUEST_ID_HEADER]
     assert event_handler.events("http.request.completed") == []
+
+
+def test_safeguard_rejection_and_429_completion_events_are_safe_json(
+    event_handler: EventHandler,
+) -> None:
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(recommendation_rate_limit=1)
+    )
+    client = TestClient(create_app(settings, dependencies=_offline_dependencies()))
+    assert client.post("/api/v1/recommendations", json=_payload()).status_code == 200
+
+    rejected = client.post(
+        "/api/v1/recommendations",
+        json=_payload(),
+        headers={
+            "X-Forwarded-For": "recognizable-private-ip",
+            "User-Agent": "recognizable-private-agent",
+            "Cookie": "recognizable-private-cookie=value",
+        },
+    )
+
+    assert rejected.status_code == 429
+    rejection_event = event_handler.events("recommendation.rejected")[-1]
+    assert {
+        key: value
+        for key, value in rejection_event.items()
+        if key not in {"schema_version", "timestamp"}
+    } == {
+        "event": "recommendation.rejected",
+        "request_id": rejected.headers[REQUEST_ID_HEADER],
+        "code": "recommendation_rate_limited",
+        "stage": "safeguard",
+        "retry_after_seconds": 60,
+    }
+    completed = event_handler.events("http.request.completed")[-1]
+    assert completed["request_id"] == rejected.headers[REQUEST_ID_HEADER]
+    assert completed["status_code"] == 429
+    serialized = json.dumps(event_handler.events())
+    for forbidden in (
+        "Recognizable private interest",
+        "recognizable-private-ip",
+        "recognizable-private-agent",
+        "recognizable-private-cookie",
+    ):
+        assert forbidden not in serialized
 
 
 def test_unhandled_exception_is_logged_safely_and_reraised(event_handler: EventHandler) -> None:
