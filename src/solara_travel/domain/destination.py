@@ -1,8 +1,35 @@
-"""Destination entities used by the Solara travel domain."""
+"""Destination entities and queries used by the Solara travel domain."""
 
 from dataclasses import dataclass
 
 from solara_travel.domain.geography import GeoCoordinates
+
+DESTINATION_QUERY_MAX_LENGTH = 120
+
+
+@dataclass(frozen=True, slots=True)
+class DestinationQuery:
+    """A normalized, provider-independent destination entered by a traveller."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        """Normalize surrounding whitespace and reject unsafe query values."""
+
+        if not isinstance(self.value, str):
+            raise TypeError("destination query must be a string")
+
+        normalized = self.value.strip()
+        if not normalized:
+            raise ValueError("destination query must not be blank")
+        if len(normalized) > DESTINATION_QUERY_MAX_LENGTH:
+            raise ValueError(
+                f"destination query must not exceed {DESTINATION_QUERY_MAX_LENGTH} characters"
+            )
+        if any(not character.isprintable() for character in normalized):
+            raise ValueError("destination query must not contain control characters")
+
+        object.__setattr__(self, "value", normalized)
 
 
 @dataclass(frozen=True, slots=True)

@@ -37,6 +37,7 @@ def test_form_exposes_initially_hidden_accessible_validation_feedback() -> None:
     for field_id, error_id in (
         ("travel-start-date", "travel-start-date-error"),
         ("travel-end-date", "travel-end-date-error"),
+        ("destination-input", "destination-error"),
         ("interests", "interests-error"),
         ("preferred-pace", "preferred-pace-error"),
         ("preferred-climate", "preferred-climate-error"),
@@ -57,7 +58,7 @@ def test_form_exposes_loading_and_request_error_controls() -> None:
     retry = _tag_with_id(html, "button", "recommendation-request-retry")
 
     assert 'type="submit"' in submit
-    assert "Compare destinations" in html[html.index(submit) :]
+    assert "Find destinations" in html[html.index(submit) :]
     assert 'role="alert"' in error
     assert 'tabindex="-1"' in error
     assert "hidden" in error
@@ -87,7 +88,9 @@ def test_app_script_protects_validation_and_loading_lifecycle() -> None:
         "requestInFlight",
         "aria-busy",
         ".disabled",
-        "Compare destinations",
+        "COMPARE DESTINATIONS",
+        "FIND DESTINATIONS",
+        "EXPLORE",
         "Comparing",
         "solara:recommendation-request-start",
         "solara:recommendation-ready",
@@ -115,6 +118,7 @@ def test_app_script_maps_stable_api_errors_to_local_copy() -> None:
         "recommendation_rate_limited",
         "recommendation_budget_exhausted",
         "recommendation_capacity_reached",
+        "destination_not_found",
     ):
         assert code in script
 
@@ -153,6 +157,27 @@ def test_app_script_applies_a_safe_bounded_429_cooldown_without_auto_retry() -> 
     assert "setTimeout(() => form.requestSubmit" not in script
     assert "setInterval" not in script
     assert "detail.message" not in script[script.index("function classifyRequestError") :]
+
+
+def test_destination_script_preserves_state_and_prevents_duplicate_requests() -> None:
+    script = _asset("/static/app.js")
+
+    for marker in (
+        "destinationQueries",
+        "maximumDestinations = 5",
+        "commitPendingDestination",
+        "toLowerCase()",
+        'event.key === "Enter"',
+        "event.preventDefault()",
+        "requestInFlight || cooldownActive",
+        "destinationAddButton.disabled = loading",
+        "destination_queries",
+        "coldStartThresholdMilliseconds = 10000",
+        "Solara may be waking up",
+    ):
+        assert marker in script
+    assert "setInterval" not in script
+    assert "destinationQueries.length = 0" not in script
 
 
 def test_browser_scripts_avoid_unsafe_dom_and_persistence_apis() -> None:

@@ -7,6 +7,7 @@ import pytest
 from solara_travel.domain import (
     Attraction,
     Destination,
+    DestinationQuery,
     GeoCoordinates,
     RecommendationRequest,
     TravelPeriod,
@@ -113,6 +114,20 @@ def test_offline_places_provider_requires_destination() -> None:
 
     with pytest.raises(TypeError, match="destination must be a Destination"):
         provider.discover_attractions(None)  # type: ignore[arg-type]
+
+
+def test_offline_places_provider_resolves_name_and_name_country() -> None:
+    provider = OfflinePlacesProvider(_dataset())
+    expected = provider.dataset.fixtures[0].destination
+
+    assert provider.resolve_destination(DestinationQuery("first haven")) == expected
+    assert provider.resolve_destination(DestinationQuery("First Haven, Fixtureland")) == expected
+    assert provider.resolve_destination(DestinationQuery("Unknown")) is None
+
+
+def test_offline_places_provider_requires_destination_query() -> None:
+    with pytest.raises(TypeError, match="query must be a DestinationQuery"):
+        OfflinePlacesProvider(_dataset()).resolve_destination("First Haven")  # type: ignore[arg-type]
 
 
 def test_offline_weather_provider_filters_period_inclusively() -> None:

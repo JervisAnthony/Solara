@@ -7,6 +7,7 @@ import pytest
 from solara_travel.application import RecommendationNarration
 from solara_travel.domain import (
     Destination,
+    DestinationQuery,
     GeoCoordinates,
     RecommendationRequest,
     TemperatureComfortRange,
@@ -67,6 +68,29 @@ def test_request_mapping_uses_default_preferences_and_discovery_mode() -> None:
 
     assert mapped.preferences == TravellerPreferences()
     assert mapped.destination is None
+    assert mapped.destination_queries == ()
+
+
+def test_request_schema_accepts_explicit_null_destination_queries() -> None:
+    body = RecommendationRequestBody.model_validate(
+        {
+            "travel_period": {"start_date": "2026-04-10", "end_date": "2026-04-12"},
+            "destination_queries": None,
+        }
+    )
+
+    assert body.destination_queries is None
+
+
+def test_request_schema_accepts_exactly_five_destination_queries() -> None:
+    body = RecommendationRequestBody.model_validate(
+        {
+            "travel_period": {"start_date": "2026-04-10", "end_date": "2026-04-12"},
+            "destination_queries": ["one", "two", "three", "four", "five"],
+        }
+    )
+
+    assert body.destination_queries == ["one", "two", "three", "four", "five"]
 
 
 def test_response_mapping_preserves_authoritative_order_values_and_selected_evidence() -> None:
@@ -86,6 +110,8 @@ def test_response_mapping_preserves_authoritative_order_values_and_selected_evid
     assert response.request.travel_period.start_date == date(2026, 4, 10)
     assert response.request.preferences.interests == ["nature"]
     assert response.request.destination is None
+    assert response.request.destination_queries == []
+    assert response.request.destination_mode == "discovery"
     assert response.recommendation_count == 3
     assert response.has_recommendations
     assert response.has_narration
@@ -128,3 +154,14 @@ def test_response_mapping_represents_empty_result_without_narration() -> None:
     assert response.recommendations == []
     assert not response.has_narration
     assert response.narration is None
+
+
+def test_request_mapping_normalizes_explicit_destination_queries() -> None:
+    body = _request_body(destination=None, destination_queries=[" Budapest ", "Vienna"])
+
+    mapped = to_domain_recommendation_request(body)
+
+    assert mapped.destination_queries == (
+        DestinationQuery("Budapest"),
+        DestinationQuery("Vienna"),
+    )

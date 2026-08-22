@@ -4,6 +4,7 @@ from solara_travel.application import RecommendationNarration, RecommendationRes
 from solara_travel.domain import (
     Attraction,
     Destination,
+    DestinationQuery,
     GeoCoordinates,
     RecommendationRequest,
     TravellerInterests,
@@ -62,6 +63,9 @@ def to_domain_recommendation_request(
         ),
         preferences=preferences,
         destination=destination,
+        destination_queries=tuple(
+            DestinationQuery(value) for value in (request_body.destination_queries or [])
+        ),
     )
 
 
@@ -162,6 +166,14 @@ def _request_response(request: RecommendationRequest) -> RecommendationRequestRe
         ),
         destination=(
             None if request.destination is None else _destination_response(request.destination)
+        ),
+        destination_queries=[query.value for query in request.destination_queries],
+        destination_mode=(
+            "pre_resolved"
+            if request.destination is not None
+            else "explicit_queries"
+            if request.destination_queries
+            else "discovery"
         ),
     )
 

@@ -43,6 +43,9 @@ dev = [
     "pytest-cov",
     "ruff",
 ]
+browser = [
+    "playwright>=1.55,<2",
+]
 
 [project.urls]
 Repository = "https://github.com/JervisAnthony/Solara"

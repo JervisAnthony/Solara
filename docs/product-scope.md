@@ -25,8 +25,10 @@ Solara is intended for travellers who:
 
 ### Destination discovery
 
-A traveller provides their timing, preferences, and constraints. Solara
-identifies and ranks destinations that appear suitable.
+A traveller may leave destination input blank and ask where to go, supply one
+human-readable destination for evaluation, or supply two to five destinations
+for a bounded comparison. Solara resolves explicit names server-side, then uses
+the same evidence, deterministic scoring, and ranking pipeline in every mode.
 
 ### Attraction discovery
 
@@ -53,6 +55,7 @@ duration, pace, interests, and known constraints.
 The first usable version should support:
 
 - structured destination-recommendation requests;
+- discovery, single-destination evaluation, and small destination comparisons;
 - traveller interests and trip-style preferences;
 - destination and attraction representations;
 - normalized weather and seasonal observations;

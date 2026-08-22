@@ -6,10 +6,10 @@ from math import inf, nan
 
 import pytest
 
-from solara_travel.application import RecommendationService
+from solara_travel.application import DestinationNotFoundError, RecommendationService
 from solara_travel.domain.attraction import Attraction
 from solara_travel.domain.climate import TemperatureComfortRange
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.recommendation import RecommendationRequest
 from solara_travel.domain.travel import TravelPeriod
@@ -62,11 +62,14 @@ class FakePlacesProvider:
         self,
         destinations: tuple[Destination, ...],
         attractions: dict[Destination, tuple[Attraction, ...]] | None = None,
+        resolutions: dict[str, Destination | None] | None = None,
     ) -> None:
         self.destinations = destinations
         self.attractions = attractions or {}
         self.destination_requests: list[RecommendationRequest] = []
         self.attraction_requests: list[Destination] = []
+        self.resolutions = resolutions or {}
+        self.resolution_requests: list[DestinationQuery] = []
 
     def discover_destinations(
         self,
@@ -81,6 +84,10 @@ class FakePlacesProvider:
     ) -> tuple[Attraction, ...]:
         self.attraction_requests.append(destination)
         return self.attractions.get(destination, ())
+
+    def resolve_destination(self, query: DestinationQuery) -> Destination | None:
+        self.resolution_requests.append(query)
+        return self.resolutions.get(query.value)
 
 
 class FakeWeatherProvider:
@@ -111,8 +118,7 @@ def _service(
         places_provider=places,
         weather_provider=weather,
         historical_period=TravelPeriod(date(2020, 1, 1), date(2024, 12, 31)),
-        comfort_range=comfort_range
-        or TemperatureComfortRange(18.0, 28.0, 10.0),
+        comfort_range=comfort_range or TemperatureComfortRange(18.0, 28.0, 10.0),
         seasonal_weight=seasonal_weight,
     )
 
@@ -144,6 +150,107 @@ def test_service_discovers_candidates_and_builds_ranked_results() -> None:
     assert places.destination_requests == [request]
     assert places.attraction_requests == [warm, cool]
     assert [destination for destination, _ in weather.requests] == [warm, cool]
+
+
+def test_service_resolves_explicit_queries_in_order_then_ranks_shared_evidence() -> None:
+    budapest = _destination("Budapest", 47.5, 19.0, "Hungary")
+    vienna = _destination("Vienna", 48.2, 16.4, "Austria")
+    queries = (DestinationQuery("Budapest, Hungary"), DestinationQuery("Vienna, Austria"))
+    places = FakePlacesProvider(
+        (),
+        resolutions={queries[0].value: budapest, queries[1].value: vienna},
+    )
+    weather = FakeWeatherProvider({budapest: _weather(34.0), vienna: _weather(22.0)})
+    request = RecommendationRequest(
+        TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
+        destination_queries=queries,
+    )
+
+    result = _service(places, weather).recommend(request)
+
+    assert places.resolution_requests == list(queries)
+    assert places.destination_requests == []
+    assert places.attraction_requests == [budapest, vienna]
+    assert [destination for destination, _ in weather.requests] == [budapest, vienna]
+    assert tuple(item.destination for item in result.recommendations) == (vienna, budapest)
+
+
+def test_service_fails_whole_explicit_request_on_first_unresolved_query() -> None:
+    query = DestinationQuery("Atlantis")
+    places = FakePlacesProvider((), resolutions={query.value: None})
+
+    with pytest.raises(DestinationNotFoundError) as exc_info:
+        _service(places, FakeWeatherProvider({})).recommend(
+            RecommendationRequest(
+                TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
+                destination_queries=(query,),
+            )
+        )
+
+    assert exc_info.value.query is query
+    assert places.attraction_requests == []
+
+
+def test_service_deduplicates_equivalent_resolved_destinations() -> None:
+    budapest = _destination("Budapest", 47.5, 19.0, "Hungary")
+    queries = (DestinationQuery("Budapest"), DestinationQuery("Budapest city"))
+    places = FakePlacesProvider(
+        (),
+        resolutions={query.value: budapest for query in queries},
+    )
+    weather = FakeWeatherProvider({budapest: _weather(22.0)})
+
+    result = _service(places, weather).recommend(
+        RecommendationRequest(
+            TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
+            destination_queries=queries,
+        )
+    )
+
+    assert result.recommendation_count == 1
+    assert places.resolution_requests == list(queries)
+
+
+def test_explicit_queries_require_a_resolution_port() -> None:
+    class DiscoveryOnlyProvider:
+        def discover_destinations(self, request: RecommendationRequest) -> tuple[Destination, ...]:
+            return ()
+
+        def discover_attractions(self, destination: Destination) -> tuple[Attraction, ...]:
+            return ()
+
+    service = RecommendationService(
+        DiscoveryOnlyProvider(),
+        FakeWeatherProvider({}),
+        TravelPeriod(date(2020, 1, 1), date(2024, 12, 31)),
+        TemperatureComfortRange(18.0, 28.0, 10.0),
+    )
+
+    with pytest.raises(TypeError, match="DestinationResolutionPort"):
+        service.recommend(
+            RecommendationRequest(
+                TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
+                destination_queries=(DestinationQuery("Budapest"),),
+            )
+        )
+
+
+def test_destination_resolver_rejects_invalid_return_type() -> None:
+    query = DestinationQuery("Budapest")
+    places = FakePlacesProvider((), resolutions={query.value: "not a destination"})
+
+    with pytest.raises(TypeError, match="resolver must return"):
+        _service(places, FakeWeatherProvider({})).recommend(
+            RecommendationRequest(
+                TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
+                destination_queries=(query,),
+            )
+        )
+
+
+def test_destination_not_found_error_requires_query_value() -> None:
+    with pytest.raises(TypeError, match="query must be"):
+        DestinationNotFoundError("Budapest")  # type: ignore[arg-type]
 
 
 def test_ranking_is_stable_when_scores_tie() -> None:
@@ -226,10 +333,7 @@ def test_service_builds_seasonal_component_with_configured_weight() -> None:
     component = result.recommendations[0].components[0]
     assert component.name == "seasonal_temperature_comfort"
     assert component.weight == 0.4
-    assert (
-        component.score
-        == result.recommendations[0].evidence.seasonal_temperature_comfort.score
-    )
+    assert component.score == result.recommendations[0].evidence.seasonal_temperature_comfort.score
 
 
 def test_service_uses_explicit_comfort_range() -> None:
@@ -393,9 +497,7 @@ def test_result_evidence_uses_only_matching_target_calendar_days() -> None:
 
     assert tuple(
         observation.observed_on.day
-        for observation in (
-            result.recommendations[0].evidence.seasonal_weather.observations
-        )
+        for observation in (result.recommendations[0].evidence.seasonal_weather.observations)
     ) == (10, 12)
 
 
@@ -403,11 +505,7 @@ def test_no_matching_historical_evidence_remains_visible_as_error() -> None:
     destination = _destination("Kyoto", 35.0116, 135.7681)
     places = FakePlacesProvider((destination,))
     weather = FakeWeatherProvider(
-        {
-            destination: (
-                WeatherObservation(date(2020, 5, 1), 22.0, 60.0, 0.0),
-            )
-        }
+        {destination: (WeatherObservation(date(2020, 5, 1), 22.0, 60.0, 0.0),)}
     )
 
     with pytest.raises(ValueError, match="no historical observations match target period"):

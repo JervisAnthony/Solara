@@ -68,6 +68,8 @@ def test_results_javascript_asset_exposes_authoritative_response_contract() -> N
         "temperature_comfort",
         "narration",
         "recommendation_count",
+        "destination_mode",
+        "destination_queries",
         "replaceChildren",
     ):
         assert marker in script
@@ -125,3 +127,15 @@ def test_results_renderer_reveals_successful_empty_responses() -> None:
     assert "resultsSection.hidden = false" in script
     assert "emptyTitle.focus()" in script
     assert '"No recommendations returned this time"' not in script
+
+
+def test_results_renderer_uses_one_pipeline_with_mode_specific_copy() -> None:
+    script = _client().get("/static/results.js").text
+
+    for copy in (
+        "Recommended destinations",
+        "Destination for your trip",
+        "Your destination comparison",
+    ):
+        assert copy in script
+    assert script.count("function renderRecommendationResponse") == 1

@@ -148,7 +148,10 @@ def test_offline_http_pipeline_returns_ranked_deterministic_evidence() -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["request"] == _valid_payload()
+    assert body["request"] == _valid_payload() | {
+        "destination_queries": [],
+        "destination_mode": "discovery",
+    }
     assert body["recommendation_count"] == 3
     assert body["has_recommendations"] is True
     assert body["has_narration"] is False
@@ -195,7 +198,10 @@ def test_preselected_destination_and_preferences_are_preserved() -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["request"] == payload
+    assert body["request"] == payload | {
+        "destination_queries": [],
+        "destination_mode": "pre_resolved",
+    }
     assert body["recommendation_count"] == 1
     assert body["recommendations"][0]["destination"] == payload["destination"]
 
@@ -211,6 +217,105 @@ def test_omitted_preferences_become_authoritative_empty_preferences() -> None:
         "preferred_pace": None,
         "preferred_climate": None,
     }
+
+
+@pytest.mark.parametrize(
+    ("queries", "expected_count"),
+    [
+        (["Sunspire Bay"], 1),
+        (["Sunspire Bay", "Mistral Hollow"], 2),
+        (["Sunspire Bay", "Mistral Hollow", "Frostglass Vale"], 3),
+    ],
+)
+def test_explicit_destination_queries_resolve_and_echo_authoritative_mode(
+    queries: list[str], expected_count: int
+) -> None:
+    payload = _valid_payload()
+    payload["destination_queries"] = queries
+
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["request"]["destination_queries"] == queries
+    assert body["request"]["destination_mode"] == "explicit_queries"
+    assert body["request"]["destination"] is None
+    assert body["recommendation_count"] == expected_count
+
+
+def test_empty_destination_queries_preserve_discovery_mode() -> None:
+    payload = _valid_payload() | {"destination_queries": []}
+
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["request"]["destination_mode"] == "discovery"
+
+
+@pytest.mark.parametrize(
+    "queries",
+    [
+        ["one", "two", "three", "four", "five", "six"],
+        ["   "],
+    ],
+)
+def test_invalid_destination_query_collections_use_fastapi_422(queries: list[str]) -> None:
+    payload = _valid_payload() | {"destination_queries": queries}
+
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_duplicate_destination_queries_use_safe_domain_422() -> None:
+    payload = _valid_payload() | {"destination_queries": ["Budapest", "BUDAPEST"]}
+
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "invalid_recommendation_request"
+
+
+def test_structured_destination_and_queries_are_mutually_exclusive() -> None:
+    payload = _valid_payload()
+    payload["destination"] = {
+        "name": "Budapest",
+        "country": "Hungary",
+        "coordinates": {"latitude": 47.5, "longitude": 19.0},
+    }
+    payload["destination_queries"] = ["Budapest"]
+
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+
+    assert response.status_code == 422
+    assert "mutually exclusive" in response.text
+
+
+def test_destination_not_found_maps_to_safe_422_without_query_logging(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        recommendation_routes,
+        "emit_event",
+        lambda event, **fields: events.append({"event": event, **fields}),
+    )
+    payload = _valid_payload() | {"destination_queries": ["Atlantis"]}
+
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "destination_not_found",
+        "message": (
+            "One requested destination could not be found. Review the destination and try again."
+        ),
+    }
+    failure = next(event for event in events if event["event"] == "recommendation.failed")
+    assert failure["code"] == "destination_not_found"
+    assert failure["stage"] == "destination_resolution"
+    assert failure["destination_count"] == 1
+    assert "Atlantis" not in repr(events)
 
 
 def test_empty_recommendation_result_is_a_valid_success() -> None:

@@ -8,6 +8,7 @@ from solara_travel.analytics.seasonality import (
     build_seasonal_weather_profile,
     seasonal_temperature_comfort_score_component,
 )
+from solara_travel.application.errors import DestinationNotFoundError
 from solara_travel.application.results import (
     DestinationRecommendation,
     RecommendationEvidence,
@@ -17,7 +18,7 @@ from solara_travel.domain.climate import TemperatureComfortRange
 from solara_travel.domain.destination import Destination
 from solara_travel.domain.recommendation import RecommendationRequest
 from solara_travel.domain.travel import TravelPeriod
-from solara_travel.ports.places import PlacesProvider
+from solara_travel.ports.places import DestinationResolutionPort, PlacesProvider
 from solara_travel.ports.weather import HistoricalWeatherProvider
 
 
@@ -38,9 +39,7 @@ class RecommendationService:
             raise TypeError("places_provider must satisfy PlacesProvider")
 
         if not isinstance(self.weather_provider, HistoricalWeatherProvider):
-            raise TypeError(
-                "weather_provider must satisfy HistoricalWeatherProvider"
-            )
+            raise TypeError("weather_provider must satisfy HistoricalWeatherProvider")
 
         if not isinstance(self.historical_period, TravelPeriod):
             raise TypeError("historical_period must be a TravelPeriod")
@@ -67,8 +66,7 @@ class RecommendationService:
 
         candidates = self._candidate_destinations(request)
         recommendations = tuple(
-            self._recommend_destination(destination, request)
-            for destination in candidates
+            self._recommend_destination(destination, request) for destination in candidates
         )
         ranked = tuple(
             sorted(
@@ -83,10 +81,29 @@ class RecommendationService:
         self,
         request: RecommendationRequest,
     ) -> tuple[Destination, ...]:
-        """Return a preselected destination or discover provider candidates."""
+        """Return preselected, explicitly resolved, or discovered candidates."""
 
         if request.destination is not None:
             return (request.destination,)
+
+        if request.destination_queries:
+            if not isinstance(self.places_provider, DestinationResolutionPort):
+                raise TypeError(
+                    "places_provider must satisfy DestinationResolutionPort for explicit queries"
+                )
+            resolved: list[Destination] = []
+            seen: set[tuple[str, str]] = set()
+            for query in request.destination_queries:
+                destination = self.places_provider.resolve_destination(query)
+                if destination is None:
+                    raise DestinationNotFoundError(query)
+                if not isinstance(destination, Destination):
+                    raise TypeError("destination resolver must return Destination or None")
+                identity = (destination.name.casefold(), destination.country.casefold())
+                if identity not in seen:
+                    resolved.append(destination)
+                    seen.add(identity)
+            return tuple(resolved)
 
         candidates = self.places_provider.discover_destinations(request)
         if not isinstance(candidates, tuple):

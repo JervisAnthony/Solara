@@ -45,7 +45,8 @@ def test_root_returns_semantic_solara_html_shell() -> None:
     assert 'id="recommendation-workspace"' in html
     assert html.count("<h1") == 1
     assert "Solara" in html
-    assert "Development preview" in html
+    assert "Public alpha" in html
+    assert "Development preview" not in html
     assert "Season-smart travel intelligence" in html
     assert "Travel that fits the season &mdash; and you." in html
     assert "A clearer starting point" in html
@@ -56,7 +57,7 @@ def test_shell_uses_every_approved_local_brand_asset() -> None:
     html = TestClient(create_app()).get("/").text
 
     for filename in BRANDING_FILENAMES:
-        assert f'/static/branding/{filename}' in html
+        assert f"/static/branding/{filename}" in html
     assert 'rel="icon"' in html
     assert 'href="/static/branding/solara-mark-gold.png"' in html
     assert "<picture" not in html

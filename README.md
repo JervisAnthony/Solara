@@ -116,6 +116,15 @@ Run tests with coverage:
 python -m pytest --cov=solara_travel --cov-report=term-missing
 ```
 
+Run the deterministic local Chromium smoke suite (no provider credentials or
+live provider calls):
+
+```powershell
+python -m pip install -e ".[browser,dev,web]"
+python -m playwright install chromium
+python -m pytest tests/browser
+```
+
 Build the source distribution and wheel:
 
 ```powershell
@@ -135,8 +144,10 @@ The hosted MVP1 deployment is live at
 [https://solara-travel-mvp1.onrender.com](https://solara-travel-mvp1.onrender.com).
 It runs on Render Free in Singapore as one Docker web service, one instance, and
 one Uvicorn worker. `GET /health` is the health check; hosted API documentation
-is disabled. Idle spin-down can cause cold starts. Provider-backed integration
-and broader browser validation remain Commit 47.
+is disabled. Idle spin-down can cause cold starts. The public-alpha form now
+supports blank discovery, one explicit destination, or a comparison of up to
+five destinations. Provider-backed integration and live hosted browser
+validation remain the Commit 47 Phase 2 gate.
 
 See the [deployment guide](docs/deployment.md) for local, container, and hosted
 operational details.

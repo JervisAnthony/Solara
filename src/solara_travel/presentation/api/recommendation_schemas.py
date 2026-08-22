@@ -1,9 +1,11 @@
 """Typed HTTP schemas for Solara recommendation requests and responses."""
 
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from solara_travel.domain import DestinationQuery
 
 FiniteStrictFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 
@@ -50,6 +52,24 @@ class RecommendationRequestBody(StrictRequestModel):
     travel_period: TravelPeriodRequest
     preferences: TravellerPreferencesRequest = Field(default_factory=TravellerPreferencesRequest)
     destination: DestinationRequest | None = None
+    destination_queries: list[str] | None = Field(default=None, max_length=5)
+
+    @field_validator("destination_queries")
+    @classmethod
+    def validate_destination_queries(cls, values: list[str] | None) -> list[str] | None:
+        """Normalize and validate public destination query strings."""
+
+        if values is None:
+            return None
+        return [DestinationQuery(value).value for value in values]
+
+    @model_validator(mode="after")
+    def validate_destination_input_mode(self) -> "RecommendationRequestBody":
+        """Reject simultaneous structured and free-text destination input."""
+
+        if self.destination is not None and self.destination_queries:
+            raise ValueError("destination and destination_queries are mutually exclusive")
+        return self
 
 
 class CoordinatesResponse(BaseModel):
@@ -88,6 +108,8 @@ class RecommendationRequestResponse(BaseModel):
     travel_period: TravelPeriodResponse
     preferences: TravellerPreferencesResponse
     destination: DestinationResponse | None
+    destination_queries: list[str]
+    destination_mode: Literal["discovery", "pre_resolved", "explicit_queries"]
 
 
 class ScoreComponentResponse(BaseModel):

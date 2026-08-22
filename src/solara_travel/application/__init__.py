@@ -1,5 +1,6 @@
 """Application recommendation values and services exposed by Solara."""
 
+from solara_travel.application.errors import DestinationNotFoundError
 from solara_travel.application.narration import (
     NarratedRecommendationResult,
     RecommendationNarration,
@@ -14,6 +15,7 @@ from solara_travel.application.results import (
 
 __all__ = [
     "DestinationRecommendation",
+    "DestinationNotFoundError",
     "NarratedRecommendationResult",
     "RecommendationEvidence",
     "RecommendationNarration",

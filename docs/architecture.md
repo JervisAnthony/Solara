@@ -676,9 +676,21 @@ POST /api/v1/recommendations
 ```
 
 The script is presentation-only and calls the same-origin recommendation API;
-provider calls remain server-side. The browser uses destination-discovery mode
-with `destination: null` rather than asking travellers for raw coordinates. The
-programmatic API continues to support a preselected destination.
+provider calls remain server-side. The browser omits `destination_queries` for
+discovery, sends one query for a named-destination evaluation, or sends two to
+five queries for comparison. A `DestinationQuery` is an immutable,
+provider-independent domain value. `DestinationResolutionPort` resolves each
+explicit query to a normalized `Destination`; Google implements that operation
+as a narrow locality Text Search requesting only display name, coordinates, and
+country. The programmatic API continues to support a pre-resolved structured
+destination, which is mutually exclusive with destination queries.
+
+Candidate precedence is pre-resolved destination, explicit query resolution,
+then discovery. After selection, every mode uses the same attraction, historical
+weather, seasonal profile, comfort, deterministic score, rank, and optional
+single-narration pipeline. A legitimate no-match becomes the Solara-owned
+`destination_not_found` HTTP `422`; provider failures retain their established
+translations. Submitted destination text is not added to operational logs.
 
 Current deterministic scoring is season-led. Interests, preferred pace, and
 preferred climate travel through the request but are not yet separate score
@@ -778,8 +790,10 @@ GitHub main -> CI checks -> Render Docker web service
 The live service uses Render's Singapore region and Free plan. It keeps the
 browser and API same-origin in one service and adds no database, cache, worker,
 custom domain, or trusted proxy-header boundary. Root, health, and disabled-docs
-behavior are verified; provider-backed recommendation, feedback, responsive,
-and broader browser validation remain Commit 47.
+behavior are verified; provider-backed recommendation, feedback, and live
+responsive-browser validation remain the Commit 47 Phase 2 gate. Phase 1
+supplies deterministic local Chromium coverage with fake providers and no live
+network dependency.
 
 The service was manually configured before `render.yaml` existed remotely. The
 repository Blueprint now represents the desired topology but does not yet manage

@@ -1201,6 +1201,13 @@ The remaining MVP1 sequence is exactly:
 - Commit 47 - public-alpha integration, smoke, and browser testing;
 - Commit 48 - MVP1 release documentation.
 
+Commit 47 Phase 1 is in progress. Its deterministic implementation adds
+provider-independent destination queries, explicit server-side locality
+resolution, discovery/single/comparison browser modes, cold-start and repeated-
+submit UX, and a local fake-provider Chromium CI gate. Provider-backed hosted
+recommendations, real feedback smoke, and live responsive-browser validation
+remain Phase 2 gates; Commit 47 is not complete until those gates pass.
+
 ## Release milestones
 
 ### Foundation milestone

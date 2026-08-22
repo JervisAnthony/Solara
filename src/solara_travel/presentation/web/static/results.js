@@ -250,6 +250,17 @@
 
   function renderRecommendationResponse(response) {
     clearResults();
+    const mode = response.request?.destination_mode;
+    if (mode === "explicit_queries" && response.request.destination_queries?.length === 1) {
+      const destinationName = response.recommendations[0]?.destination?.name;
+      resultsTitle.textContent = destinationName
+        ? `${String(destinationName)} for your trip`
+        : "Destination for your trip";
+    } else if (mode === "explicit_queries") {
+      resultsTitle.textContent = "Your destination comparison";
+    } else {
+      resultsTitle.textContent = "Recommended destinations";
+    }
     if (response.has_recommendations === false || response.recommendations.length === 0) {
       resultsSection.hidden = false;
       emptyState.hidden = false;

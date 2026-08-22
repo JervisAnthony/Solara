@@ -37,7 +37,7 @@
         </a>
         <div class="header-meta">
           <span class="preview-dot" aria-hidden="true"></span>
-          <span class="preview-label">Development preview</span>
+          <span class="preview-label">Public alpha</span>
         </div>
       </div>
     </header>
@@ -140,6 +140,44 @@
               <ul id="recommendation-validation-list"></ul>
             </section>
 
+            <fieldset class="destination-fieldset">
+              <legend>
+                Destinations <span class="optional-label">Optional</span>
+              </legend>
+              <div class="form-field">
+                <label for="destination-input">Destination</label>
+                <div class="destination-entry-row">
+                  <input
+                    id="destination-input"
+                    name="destination-input"
+                    type="text"
+                    maxlength="120"
+                    placeholder="Budapest, Hungary"
+                    autocomplete="off"
+                    aria-describedby="destination-help destination-error destination-status"
+                  >
+                  <button id="destination-add" type="button">Add destination</button>
+                </div>
+                <p id="destination-help" class="field-help">
+                  Add places you want Solara to evaluate, or leave blank to discover
+                  destinations. Up to five destinations.
+                </p>
+                <p id="destination-error" class="field-error" hidden></p>
+                <p
+                  id="destination-status"
+                  class="destination-status"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                ></p>
+                <ul
+                  id="destination-chips"
+                  class="destination-chips"
+                  aria-label="Destinations to evaluate"
+                ></ul>
+              </div>
+            </fieldset>
+
             <fieldset>
               <legend>Travel dates</legend>
               <p class="fieldset-help">Both dates are required.</p>
@@ -219,7 +257,7 @@
 
             <div class="form-actions">
               <button id="recommendation-submit" type="submit">
-                Compare destinations
+                Find destinations
                 <span aria-hidden="true">&rarr;</span>
               </button>
               <p
@@ -425,7 +463,7 @@
         >
         <div class="footer-copy">
           <p>Season-smart choices, supported by visible evidence.</p>
-          <span>Premium travel intelligence, in development.</span>
+          <span>Premium travel intelligence, public alpha.</span>
         </div>
       </div>
     </footer>

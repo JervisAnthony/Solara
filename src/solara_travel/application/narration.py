@@ -127,6 +127,7 @@ def _build_narration_prompt(result: RecommendationResult) -> NarrationPrompt:
                     "country": preselected_destination.country,
                 }
             ),
+            "destination_queries": [query.value for query in result.request.destination_queries],
         },
         "recommendations": [
             _ground_recommendation(recommendation, rank)
