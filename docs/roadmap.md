@@ -1175,11 +1175,29 @@ Implemented scope includes:
 - no hosting account, public URL, production deployment, distributed limiter,
   or change to recommendation ranking.
 
-## Commits 46-48 - MVP1 deployment and release
+## Commit 46 - Hosted MVP1 deployment
+
+Implemented scope includes:
+
+- a live single-service, single-instance Docker deployment on Render Free in
+  Singapore;
+- a managed HTTPS public endpoint with root and health responses verified;
+- hosted Swagger and ReDoc routes verified disabled;
+- server-side Google Places and OpenAI configuration with no secrets in source;
+- `gpt-5.6-luna` as the initial hosted narration model;
+- a repository Blueprint capturing the canonical desired Render configuration;
+- documented Free-instance cold starts and process-local safeguard resets;
+- no provider-backed recommendation, narration, feedback, responsive-browser,
+  or broad public-alpha interaction validation yet.
+
+The service was manually configured before the Blueprint existed remotely, so
+Blueprint adoption remains an operational follow-up and must reuse the existing
+service rather than create another one.
+
+## Commits 47-48 - MVP1 integration and release
 
 The remaining MVP1 sequence is exactly:
 
-- Commit 46 - hosted MVP1 deployment;
 - Commit 47 - public-alpha integration, smoke, and browser testing;
 - Commit 48 - MVP1 release documentation.
 

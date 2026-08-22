@@ -122,7 +122,7 @@ Build the source distribution and wheel:
 python -m build
 ```
 
-## Deployment configuration
+## Hosted MVP1 deployment
 
 Commit 45 adds a portable, environment-driven hosted application factory and
 Docker image configuration. The hosted factory requires
@@ -131,9 +131,15 @@ Docker image configuration. The hosted factory requires
 variable and safe default. Solara does not load that file automatically, and
 real credentials must come from the hosting platform's secret store.
 
-See the [deployment configuration guide](docs/deployment.md) for local and
-container commands. This repository is prepared for deployment but is not yet
-publicly hosted; hosted MVP1 deployment remains Commit 46.
+The hosted MVP1 deployment is live at
+[https://solara-travel-mvp1.onrender.com](https://solara-travel-mvp1.onrender.com).
+It runs on Render Free in Singapore as one Docker web service, one instance, and
+one Uvicorn worker. `GET /health` is the health check; hosted API documentation
+is disabled. Idle spin-down can cause cold starts. Provider-backed integration
+and broader browser validation remain Commit 47.
+
+See the [deployment guide](docs/deployment.md) for local, container, and hosted
+operational details.
 
 ## Current structure
 

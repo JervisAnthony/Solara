@@ -764,6 +764,28 @@ Solara's privacy-conscious structured request events authoritative. MVP1 uses
 one container/instance; additional processes or replicas would multiply the
 effective limits until a distributed safeguard design exists.
 
+The deployed MVP1 topology is operationally narrow:
+
+```text
+GitHub main -> CI checks -> Render Docker web service
+    -> single Uvicorn process -> create_deployment_app()
+    -> RecommendationService
+        -> Google Places
+        -> Open-Meteo
+        -> optional OpenAI narration
+```
+
+The live service uses Render's Singapore region and Free plan. It keeps the
+browser and API same-origin in one service and adds no database, cache, worker,
+custom domain, or trusted proxy-header boundary. Root, health, and disabled-docs
+behavior are verified; provider-backed recommendation, feedback, responsive,
+and broader browser validation remain Commit 47.
+
+The service was manually configured before `render.yaml` existed remotely. The
+repository Blueprint now represents the desired topology but does not yet manage
+the live service; adoption must match the existing service rather than create a
+second one.
+
 ## Dependency direction
 
 The intended dependency direction is:
@@ -1034,9 +1056,9 @@ records the explicitly submitted rating and comment, JSON escaped on one log
 line, plus opaque feedback, HTTP-request, and optional recommendation-request
 IDs. The UI asks testers not to provide sensitive personal information. There
 is no feedback database or file persistence; the hosting process log stream is
-the MVP1 alpha review mechanism. Log transport and retention are deployment
-concerns. Commit 44 adds the process-local safeguards described above;
-deployment configuration, log transport, and retention remain deferred.
+the MVP1 alpha review mechanism. Commit 44 adds the process-local safeguards
+described above, and Commit 45 adds portable deployment configuration. Host log
+transport and retention remain operational concerns.
 
 ## Security boundaries
 

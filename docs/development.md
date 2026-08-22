@@ -906,6 +906,14 @@ config package or deployment module is safe without credentials. Provider calls
 still happen only on admitted recommendation or narration work, never at
 startup.
 
+Render is the live hosted MVP1 target, with the root `render.yaml` representing
+its desired configuration. That deployment does not change the local workflow:
+ordinary development and the default test suite use `create_app()` and require
+neither Render access nor live provider credentials. Hosted composition tests
+use explicit fake configuration and make no provider requests. Live-network and
+provider-backed browser checks remain an explicit Commit 47 activity, not part
+of the default development test workflow.
+
 Tests should pass a deterministic mapping rather than mutate process state:
 
 ```python
