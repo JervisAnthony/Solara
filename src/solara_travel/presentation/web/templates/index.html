@@ -3,10 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Solara — Season-smart travel intelligence</title>
+    <title>Solara &mdash; Season-smart travel intelligence</title>
     <meta
       name="description"
       content="Travel recommendations grounded in historical seasonal evidence for your dates."
+    >
+    <meta name="theme-color" content="#f7f1e5">
+    <link
+      rel="icon"
+      type="image/png"
+      href="/static/branding/solara-mark-gold.png"
     >
     <script src="/static/app.js" defer></script>
     <script src="/static/results.js" defer></script>
@@ -16,32 +22,73 @@
   <body>
     <a class="skip-link" href="#main-content">Skip to main content</a>
 
-    <div class="page-glow" aria-hidden="true"></div>
+    <div class="page-glow page-glow-top" aria-hidden="true"></div>
+    <div class="page-glow page-glow-middle" aria-hidden="true"></div>
 
     <header class="site-header">
       <div class="shell header-layout">
-        <span class="wordmark">Solara</span>
-        <span class="preview-label">Development preview</span>
+        <a class="brand-lockup" href="#main-content" aria-label="Solara home">
+          <img
+            src="/static/branding/solara-logo-horizontal.png"
+            alt="Solara"
+            width="2172"
+            height="724"
+          >
+        </a>
+        <div class="header-meta">
+          <span class="preview-dot" aria-hidden="true"></span>
+          <span class="preview-label">Development preview</span>
+        </div>
       </div>
     </header>
 
-    <main id="main-content" class="shell page-main">
-      <section class="hero" aria-labelledby="hero-title">
+    <main id="main-content">
+      <section class="hero shell" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">Season-smart travel intelligence</p>
-          <h1 id="hero-title">Travel that fits the season — and you.</h1>
+          <h1 id="hero-title">Travel that fits the season &mdash; and you.</h1>
           <p class="hero-summary">
-            Solara helps you compare destinations using historical seasonal evidence
-            for your travel dates, with clear explanations for every recommendation.
+            Compare destinations through the lens of your travel dates. Solara turns
+            historical seasonal evidence into calm, clear recommendations you can
+            understand.
           </p>
+          <div class="hero-actions">
+            <a class="primary-link" href="#recommendation-workspace">
+              Plan with Solara
+              <span aria-hidden="true">&rarr;</span>
+            </a>
+            <p>Deterministic ranking. Visible evidence.</p>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <span class="hero-orbit hero-orbit-outer"></span>
+          <span class="hero-orbit hero-orbit-inner"></span>
+          <img
+            class="hero-brand-art"
+            src="/static/branding/solara-logo-stacked.png"
+            alt=""
+            width="1254"
+            height="1254"
+          >
         </div>
 
         <aside class="hero-note" aria-label="What guides a Solara recommendation">
-          <span class="note-kicker">A clearer starting point</span>
-          <p>
-            Dates shape the seasonal context. Preferences travel with your request.
-            Evidence makes the reasoning visible.
-          </p>
+          <div class="note-mark" aria-hidden="true">
+            <img
+              src="/static/branding/solara-mark-gold.png"
+              alt=""
+              width="1254"
+              height="1254"
+            >
+          </div>
+          <div>
+            <span class="note-kicker">A clearer starting point</span>
+            <p>
+              Dates shape the seasonal context. Preferences travel with your request.
+              Evidence makes the reasoning visible.
+            </p>
+          </div>
         </aside>
       </section>
 
@@ -50,155 +97,174 @@
         class="recommendation-workspace"
         aria-labelledby="workspace-title"
       >
-        <div class="workspace-heading">
-          <p class="section-label">Plan with Solara</p>
-          <h2 id="workspace-title">Tell us about your trip</h2>
-          <p>
-            Choose your travel dates and share any preferences that matter to you.
-          </p>
-          <p class="transparency-note">
-            Current preview scoring focuses on seasonal fit. Your interests and
-            travel-style preferences are included with the request as Solara's
-            recommendation model grows.
-          </p>
-        </div>
-
-        <form
-          id="recommendation-form"
-          class="recommendation-form"
-          aria-labelledby="workspace-title"
-          novalidate
-        >
-          <section
-            id="recommendation-validation-summary"
-            class="validation-summary"
-            role="alert"
-            tabindex="-1"
-            hidden
-          >
-            <h3>Check your trip details</h3>
-            <ul id="recommendation-validation-list"></ul>
-          </section>
-
-          <fieldset>
-            <legend>Travel dates</legend>
-            <p class="fieldset-help">Both dates are required.</p>
-            <div class="form-grid form-grid-dates">
-              <div class="form-field">
-                <label for="travel-start-date">Start date</label>
-                <input
-                  id="travel-start-date"
-                  name="travel-start-date"
-                  type="date"
-                  aria-describedby="travel-start-date-error"
-                  required
-                >
-                <p id="travel-start-date-error" class="field-error" hidden></p>
-              </div>
-              <div class="form-field">
-                <label for="travel-end-date">End date</label>
-                <input
-                  id="travel-end-date"
-                  name="travel-end-date"
-                  type="date"
-                  aria-describedby="travel-end-date-error"
-                  required
-                >
-                <p id="travel-end-date-error" class="field-error" hidden></p>
-              </div>
+        <div class="shell workspace-shell">
+          <div class="workspace-heading">
+            <p class="section-label">The journey begins here</p>
+            <h2 id="workspace-title">Shape your seasonal escape</h2>
+            <p class="workspace-summary">
+              Choose your dates and share the travel preferences that matter to you.
+              Solara will compare the available destinations with the same transparent
+              seasonal-fit method every time.
+            </p>
+            <div class="workspace-assurance" aria-label="Planner qualities">
+              <span>Season-led</span>
+              <span>Explainable</span>
+              <span>Private by design</span>
             </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>Travel preferences <span class="optional-label">Optional</span></legend>
-            <div class="form-field">
-              <label for="interests">Interests</label>
-              <input
-                id="interests"
-                name="interests"
-                type="text"
-                aria-describedby="interests-help interests-error"
-              >
-              <p id="interests-help" class="field-help">
-                Separate multiple interests with commas, such as history, nature, food.
-              </p>
-              <p id="interests-error" class="field-error" hidden></p>
-            </div>
-
-            <div class="form-grid form-grid-preferences">
-              <div class="form-field">
-                <label for="preferred-pace">Preferred pace</label>
-                <input
-                  id="preferred-pace"
-                  name="preferred-pace"
-                  type="text"
-                  aria-describedby="preferred-pace-help preferred-pace-error"
-                >
-                <p id="preferred-pace-help" class="field-help">
-                  For example relaxed, balanced, or fast-paced.
-                </p>
-                <p id="preferred-pace-error" class="field-error" hidden></p>
-              </div>
-              <div class="form-field">
-                <label for="preferred-climate">Preferred climate</label>
-                <input
-                  id="preferred-climate"
-                  name="preferred-climate"
-                  type="text"
-                  aria-describedby="preferred-climate-help preferred-climate-error"
-                >
-                <p id="preferred-climate-help" class="field-help">
-                  For example warm, mild, or cool.
-                </p>
-                <p id="preferred-climate-error" class="field-error" hidden></p>
-              </div>
-            </div>
-          </fieldset>
-
-          <div class="form-actions">
-            <button id="recommendation-submit" type="submit">Compare destinations</button>
-            <p
-              id="recommendation-form-status"
-              class="form-status"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            ></p>
+            <p class="transparency-note">
+              Current preview scoring focuses on seasonal fit. Your interests and
+              travel-style preferences are included with the request as Solara's
+              recommendation model grows.
+            </p>
           </div>
 
-          <section
-            id="recommendation-request-error"
-            class="request-error"
-            role="alert"
-            tabindex="-1"
-            hidden
+          <form
+            id="recommendation-form"
+            class="recommendation-form"
+            aria-labelledby="workspace-title"
+            novalidate
           >
-            <h3 id="recommendation-request-error-title"></h3>
-            <p id="recommendation-request-error-message"></p>
-            <button id="recommendation-request-retry" type="button" hidden>
-              Try again
-            </button>
-          </section>
+            <div class="form-header" aria-hidden="true">
+              <span>Travel profile</span>
+              <span>01</span>
+            </div>
 
-          <p
-            id="recommendation-request-reference"
-            class="request-reference"
-            hidden
-          >
-            Request reference:
-            <code id="recommendation-request-reference-value"></code>
-          </p>
-        </form>
+            <section
+              id="recommendation-validation-summary"
+              class="validation-summary"
+              role="alert"
+              tabindex="-1"
+              hidden
+            >
+              <h3>Check your trip details</h3>
+              <ul id="recommendation-validation-list"></ul>
+            </section>
+
+            <fieldset>
+              <legend>Travel dates</legend>
+              <p class="fieldset-help">Both dates are required.</p>
+              <div class="form-grid form-grid-dates">
+                <div class="form-field">
+                  <label for="travel-start-date">Start date</label>
+                  <input
+                    id="travel-start-date"
+                    name="travel-start-date"
+                    type="date"
+                    aria-describedby="travel-start-date-error"
+                    required
+                  >
+                  <p id="travel-start-date-error" class="field-error" hidden></p>
+                </div>
+                <div class="form-field">
+                  <label for="travel-end-date">End date</label>
+                  <input
+                    id="travel-end-date"
+                    name="travel-end-date"
+                    type="date"
+                    aria-describedby="travel-end-date-error"
+                    required
+                  >
+                  <p id="travel-end-date-error" class="field-error" hidden></p>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>
+                Travel preferences <span class="optional-label">Optional</span>
+              </legend>
+              <div class="form-field">
+                <label for="interests">Interests</label>
+                <input
+                  id="interests"
+                  name="interests"
+                  type="text"
+                  aria-describedby="interests-help interests-error"
+                >
+                <p id="interests-help" class="field-help">
+                  Separate multiple interests with commas, such as history, nature, food.
+                </p>
+                <p id="interests-error" class="field-error" hidden></p>
+              </div>
+
+              <div class="form-grid form-grid-preferences">
+                <div class="form-field">
+                  <label for="preferred-pace">Preferred pace</label>
+                  <input
+                    id="preferred-pace"
+                    name="preferred-pace"
+                    type="text"
+                    aria-describedby="preferred-pace-help preferred-pace-error"
+                  >
+                  <p id="preferred-pace-help" class="field-help">
+                    For example relaxed, balanced, or fast-paced.
+                  </p>
+                  <p id="preferred-pace-error" class="field-error" hidden></p>
+                </div>
+                <div class="form-field">
+                  <label for="preferred-climate">Preferred climate</label>
+                  <input
+                    id="preferred-climate"
+                    name="preferred-climate"
+                    type="text"
+                    aria-describedby="preferred-climate-help preferred-climate-error"
+                  >
+                  <p id="preferred-climate-help" class="field-help">
+                    For example warm, mild, or cool.
+                  </p>
+                  <p id="preferred-climate-error" class="field-error" hidden></p>
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="form-actions">
+              <button id="recommendation-submit" type="submit">
+                Compare destinations
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+              <p
+                id="recommendation-form-status"
+                class="form-status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              ></p>
+            </div>
+
+            <section
+              id="recommendation-request-error"
+              class="request-error"
+              role="alert"
+              tabindex="-1"
+              hidden
+            >
+              <h3 id="recommendation-request-error-title"></h3>
+              <p id="recommendation-request-error-message"></p>
+              <button id="recommendation-request-retry" type="button" hidden>
+                Try again
+              </button>
+            </section>
+
+            <p
+              id="recommendation-request-reference"
+              class="request-reference"
+              hidden
+            >
+              Request reference:
+              <code id="recommendation-request-reference-value"></code>
+            </p>
+          </form>
+        </div>
       </section>
 
       <section
         id="recommendation-results"
-        class="recommendation-results"
+        class="recommendation-results shell"
         aria-labelledby="results-title"
         hidden
       >
         <header class="results-introduction">
-          <p class="section-label">Your results</p>
+          <p class="section-label">Your considered shortlist</p>
           <h2 id="results-title" tabindex="-1">Your seasonal matches</h2>
           <p>
             Ranked using Solara's current deterministic seasonal-fit analysis.
@@ -241,89 +307,103 @@
         class="tester-feedback"
         aria-labelledby="tester-feedback-title"
       >
-        <div class="feedback-introduction">
-          <p class="section-label">Tester feedback</p>
-          <h2 id="tester-feedback-title">Help improve Solara</h2>
-          <p>
-            Tell us how useful this experience was. If you've just run a comparison,
-            Solara will attach its request reference automatically.
-          </p>
-        </div>
+        <div class="shell feedback-shell">
+          <div class="feedback-introduction">
+            <img
+              class="feedback-mark"
+              src="/static/branding/solara-mark-gold.png"
+              alt=""
+              width="1254"
+              height="1254"
+              aria-hidden="true"
+            >
+            <p class="section-label">Shape what comes next</p>
+            <h2 id="tester-feedback-title">Help improve Solara</h2>
+            <p>
+              Tell us how useful this experience was. If you've just run a comparison,
+              Solara will attach its request reference automatically.
+            </p>
+          </div>
 
-        <form id="tester-feedback-form" class="feedback-form">
-          <fieldset>
-            <legend>How useful was this experience?</legend>
-            <div class="feedback-rating" id="feedback-rating">
-              <label>
-                <input type="radio" name="rating" value="helpful" required>
-                Helpful
+          <form id="tester-feedback-form" class="feedback-form">
+            <fieldset>
+              <legend>How useful was this experience?</legend>
+              <div class="feedback-rating" id="feedback-rating">
+                <label>
+                  <input type="radio" name="rating" value="helpful" required>
+                  <span>Helpful</span>
+                </label>
+                <label>
+                  <input type="radio" name="rating" value="mixed">
+                  <span>Mixed</span>
+                </label>
+                <label>
+                  <input type="radio" name="rating" value="not_helpful">
+                  <span>Not helpful</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="feedback-comment-field">
+              <label for="feedback-comment">
+                Comment <span class="optional-label">Optional</span>
               </label>
-              <label>
-                <input type="radio" name="rating" value="mixed">
-                Mixed
-              </label>
-              <label>
-                <input type="radio" name="rating" value="not_helpful">
-                Not helpful
-              </label>
+              <textarea
+                id="feedback-comment"
+                name="comment"
+                maxlength="1000"
+                aria-describedby="feedback-comment-help feedback-privacy-note"
+              ></textarea>
+              <p id="feedback-comment-help" class="field-help">
+                Share what worked or what would make the experience clearer.
+              </p>
+              <p id="feedback-privacy-note" class="feedback-privacy-note">
+                Please don't include names, contact details, passwords, or other sensitive
+                personal information.
+              </p>
             </div>
-          </fieldset>
 
-          <div class="feedback-comment-field">
-            <label for="feedback-comment">
-              Comment <span class="optional-label">Optional</span>
-            </label>
-            <textarea
-              id="feedback-comment"
-              name="comment"
-              maxlength="1000"
-              aria-describedby="feedback-comment-help feedback-privacy-note"
-            ></textarea>
-            <p id="feedback-comment-help" class="field-help">
-              Share what worked or what would make the experience clearer.
-            </p>
-            <p id="feedback-privacy-note" class="feedback-privacy-note">
-              Please don't include names, contact details, passwords, or other sensitive
-              personal information.
-            </p>
-          </div>
-
-          <div class="feedback-actions">
-            <button id="feedback-submit" type="submit">Send feedback</button>
-            <p
-              id="feedback-status"
-              class="feedback-status"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            ></p>
-          </div>
-        </form>
+            <div class="feedback-actions">
+              <button id="feedback-submit" type="submit">Send feedback</button>
+              <p
+                id="feedback-status"
+                class="feedback-status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              ></p>
+            </div>
+          </form>
+        </div>
       </section>
 
       <section class="principles" aria-labelledby="principles-title">
         <div class="section-introduction">
           <p class="section-label">Designed for thoughtful discovery</p>
           <h2 id="principles-title">Useful intelligence, clearly explained</h2>
+          <p>
+            Solara keeps recommendation logic visible, grounded, and separate from
+            optional narration.
+          </p>
         </div>
 
         <div class="principle-grid">
           <article class="principle-card">
-            <span class="principle-mark" aria-hidden="true">S</span>
+            <span class="principle-mark" aria-hidden="true">01</span>
             <h3>Season-aware</h3>
             <p>
               Recommendations consider historical conditions around your travel dates.
             </p>
           </article>
           <article class="principle-card">
-            <span class="principle-mark" aria-hidden="true">E</span>
+            <span class="principle-mark" aria-hidden="true">02</span>
             <h3>Explainable</h3>
             <p>
               Scores are supported by visible evidence rather than unexplained rankings.
             </p>
           </article>
           <article class="principle-card">
-            <span class="principle-mark" aria-hidden="true">A</span>
+            <span class="principle-mark" aria-hidden="true">03</span>
             <h3>AI-assisted</h3>
             <p>
               Grounded AI can explain deterministic recommendations without controlling
@@ -336,8 +416,17 @@
 
     <footer class="site-footer">
       <div class="shell footer-layout">
-        <span class="wordmark wordmark-small">Solara</span>
-        <p>Season-smart choices, supported by visible evidence.</p>
+        <img
+          class="footer-logo"
+          src="/static/branding/solara-logo-monochrome.png"
+          alt="Solara"
+          width="2172"
+          height="724"
+        >
+        <div class="footer-copy">
+          <p>Season-smart choices, supported by visible evidence.</p>
+          <span>Premium travel intelligence, in development.</span>
+        </div>
       </div>
     </footer>
   </body>
