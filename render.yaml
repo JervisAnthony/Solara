@@ -1,0 +1,65 @@
+services:
+  - type: web
+    name: solara-travel-mvp1
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    numInstances: 1
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    renderSubdomainPolicy: enabled
+    envVars:
+      - key: SOLARA_GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: SOLARA_OPENAI_API_KEY
+        sync: false
+      - key: SOLARA_OPENAI_MODEL
+        value: "gpt-5.6-luna"
+      - key: SOLARA_DOCS_ENABLED
+        value: "false"
+      - key: SOLARA_GOOGLE_PLACES_TIMEOUT_SECONDS
+        value: "10"
+      - key: SOLARA_GOOGLE_PLACES_DESTINATION_PAGE_SIZE
+        value: "10"
+      - key: SOLARA_GOOGLE_PLACES_ATTRACTION_MAX_RESULTS
+        value: "20"
+      - key: SOLARA_GOOGLE_PLACES_ATTRACTION_RADIUS_METERS
+        value: "30000"
+      - key: SOLARA_OPEN_METEO_TIMEOUT_SECONDS
+        value: "10"
+      - key: SOLARA_OPENAI_TIMEOUT_SECONDS
+        value: "30"
+      - key: SOLARA_OPENAI_MAX_OUTPUT_TOKENS
+        value: "1200"
+      - key: SOLARA_HISTORICAL_START_DATE
+        value: "2020-01-01"
+      - key: SOLARA_HISTORICAL_END_DATE
+        value: "2024-12-31"
+      - key: SOLARA_COMFORT_MIN_CELSIUS
+        value: "18"
+      - key: SOLARA_COMFORT_MAX_CELSIUS
+        value: "28"
+      - key: SOLARA_COMFORT_TOLERANCE_CELSIUS
+        value: "10"
+      - key: SOLARA_SEASONAL_WEIGHT
+        value: "1.0"
+      - key: SOLARA_RECOMMENDATION_RATE_LIMIT
+        value: "12"
+      - key: SOLARA_RECOMMENDATION_RATE_WINDOW_SECONDS
+        value: "60"
+      - key: SOLARA_RECOMMENDATION_BUDGET_LIMIT
+        value: "60"
+      - key: SOLARA_RECOMMENDATION_BUDGET_WINDOW_SECONDS
+        value: "3600"
+      - key: SOLARA_RECOMMENDATION_CONCURRENCY_LIMIT
+        value: "2"
+      - key: SOLARA_FEEDBACK_RATE_LIMIT
+        value: "30"
+      - key: SOLARA_FEEDBACK_RATE_WINDOW_SECONDS
+        value: "60"
+      - key: SOLARA_NARRATION_BUDGET_LIMIT
+        value: "30"
+      - key: SOLARA_NARRATION_BUDGET_WINDOW_SECONDS
+        value: "3600"
