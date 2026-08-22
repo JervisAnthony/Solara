@@ -722,22 +722,47 @@ or submitted data.
 
 ## Configuration
 
-The `config` package will own typed application configuration when external
-integrations are introduced.
+The framework-independent `solara_travel.config` package owns immutable typed
+deployment settings and explicit environment parsing. The implemented hosted
+composition path is:
 
-Configuration should:
+```text
+environment
+    |
+    v
+solara_travel.config
+    |
+    v
+workflows.hosted
+    |
+    v
+ApiSettings + ApiDependencies
+    |
+    v
+create_app
+```
 
-- read environment-driven values at application boundaries;
-- distinguish required and optional integrations;
-- provide useful errors for missing required configuration;
-- avoid import-time validation side effects;
-- avoid global provider-client construction;
-- never embed secrets in source control.
+`load_deployment_settings()` reads `os.environ` only when invoked without an
+explicit mapping. Importing the config or deployment module performs no
+environment read, provider construction, network call, or validation. Domain,
+analytics, application, and provider contracts remain environment-independent
+and importable without FastAPI or credentials.
 
-Domain and analytics modules must remain importable without API keys.
+The hosted factory requires Google Places access plus OpenAI narration; Open-
+Meteo needs no key. API keys are excluded from settings and provider reprs, and
+configuration errors name variables without echoing values. Provider endpoints
+remain trusted adapter constants rather than environment-controlled URLs.
 
-The presence or absence of an OpenAI, places, or weather credential should not
-determine whether Solara's core domain package can be imported.
+Every `create_deployment_app()` invocation composes its own shared HTTP
+transport, provider graph, application services, and process-local safeguards.
+Construction makes no provider requests. It then delegates all route and
+middleware registration to the existing credential-free `create_app()`.
+
+The deployment Uvicorn runner uses one worker because public-alpha safeguards
+are process-local. It disables access logging and proxy-header trust, leaving
+Solara's privacy-conscious structured request events authoritative. MVP1 uses
+one container/instance; additional processes or replicas would multiply the
+effective limits until a distributed safeguard design exists.
 
 ## Dependency direction
 

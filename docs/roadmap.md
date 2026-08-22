@@ -1156,11 +1156,29 @@ Implemented scope includes:
 - no IP-based limiting, accounts, distributed limiter, new dependency,
   deployment configuration, or guaranteed financial ceiling.
 
-## Commits 45-48 - MVP1 deployment and release
+## Commit 45 - Deployment configuration
 
-The remaining MVP1 sequence is intentionally staged as:
+Implemented scope includes:
 
-- Commit 45 - deployment configuration;
+- immutable framework-independent settings and explicit environment parsing;
+- required Google Places and OpenAI configuration with safe aggregate startup
+  errors and secret-free reprs;
+- one fresh live-provider dependency graph per hosted application, with no
+  provider calls during startup;
+- a dedicated environment-driven FastAPI factory that preserves the ordinary
+  credential-free application factory;
+- a one-worker Uvicorn entrypoint with access logs and proxy-header trust
+  disabled;
+- a non-root Python 3.13 slim Docker image, health check, secret-protecting
+  Docker context, safe environment template, and CI container smoke gate;
+- deployment, architecture, and development documentation;
+- no hosting account, public URL, production deployment, distributed limiter,
+  or change to recommendation ranking.
+
+## Commits 46-48 - MVP1 deployment and release
+
+The remaining MVP1 sequence is exactly:
+
 - Commit 46 - hosted MVP1 deployment;
 - Commit 47 - public-alpha integration, smoke, and browser testing;
 - Commit 48 - MVP1 release documentation.
