@@ -851,11 +851,46 @@ text after HTTP or network failure. It uses fixed local status copy and no
 browser persistence, identity fields, analytics, client metadata, external
 requests, or automatic retry.
 
-For this alpha milestone, structured process logs are the feedback recording
-mechanism. There is no database, file sink, forwarding service, retention job,
-rate limiting, quota, cost control, abuse safeguard, or deployment configuration
-yet. Commit 44 adds public-alpha safeguards before hosted release; Commit 45
-deployment configuration work owns log transport and retention.
+### Public-alpha safeguards
+
+Every `create_app()` call owns independent, identity-free in-memory safeguard
+state. Defaults are 12 accepted recommendation attempts per 60 seconds, 60 per
+3,600 seconds, two concurrent recommendations, 30 feedback submissions per 60
+seconds, and 30 narration attempts per 3,600 seconds. All values must be actual
+positive integers; booleans are rejected.
+
+Tests and local composition can supply alternate policy explicitly:
+
+```python
+from solara_travel.presentation.api import ApiSettings, PublicAlphaSafeguardSettings
+
+settings = ApiSettings(
+    public_alpha_safeguards=PublicAlphaSafeguardSettings(
+        recommendation_rate_limit=2,
+        recommendation_rate_window_seconds=10,
+        recommendation_concurrency_limit=1,
+    )
+)
+```
+
+There is intentionally no environment-variable mapping yet; Commit 45 owns
+deployment configuration. Runtime state is process-local, resets on restart,
+and is not shared across workers. It must not be described as a guaranteed cost
+ceiling. Deterministic tests inject a fake monotonic clock and use `Event` or
+`Barrier` for concurrency; never add real sleeps to limiter tests.
+
+Solara-owned safeguard responses use HTTP `429`, integer delta-seconds
+`Retry-After`, and one of `recommendation_rate_limited`,
+`recommendation_budget_exhausted`, `recommendation_capacity_reached`, or
+`feedback_rate_limited`. The distinct upstream `provider_rate_limited` mapping
+remains HTTP `503`. Browser scripts use fixed local copy, keep form values,
+disable submit/retry controls during a bounded cooldown, restore them without
+automatic retry, and never persist cooldown state or render raw error messages.
+
+Structured process logs remain the feedback recording mechanism. There is no
+database, file sink, forwarding service, retention job, identity-based quota,
+or deployment configuration. Commit 45 deployment work owns environment
+mapping, log transport, and retention.
 
 ## Configuration
 

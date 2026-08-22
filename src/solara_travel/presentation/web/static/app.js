@@ -19,7 +19,11 @@
   const recommendationEndpoint = "/api/v1/recommendations";
   const idleSubmitLabel = "Compare destinations";
   const loadingSubmitLabel = "Comparing…";
+  const defaultCooldownSeconds = 60;
+  const maximumCooldownSeconds = 86400;
   let requestInFlight = false;
+  let cooldownActive = false;
+  let cooldownTimer = null;
 
   const fieldContracts = {
     "travel-start-date": "travel-start-date-error",
@@ -36,6 +40,7 @@
       code = null,
       validationErrors = [],
       requestId = null,
+      retryAfterSeconds = null,
     ) {
       super("Recommendation request failed.");
       this.name = "RecommendationRequestError";
@@ -44,7 +49,20 @@
       this.code = code;
       this.validationErrors = validationErrors;
       this.requestId = requestId;
+      this.retryAfterSeconds = retryAfterSeconds;
     }
+  }
+
+  function parseRetryAfter(response) {
+    const rawValue = response.headers.get("Retry-After");
+    if (typeof rawValue !== "string" || !/^\d+$/.test(rawValue)) {
+      return null;
+    }
+    const seconds = Number.parseInt(rawValue, 10);
+    if (!Number.isSafeInteger(seconds) || seconds <= 0) {
+      return null;
+    }
+    return Math.min(seconds, maximumCooldownSeconds);
   }
 
   function optionalText(value) {
@@ -223,11 +241,19 @@
   }
 
   async function readErrorResponse(response, requestId) {
+    const retryAfterSeconds = parseRetryAfter(response);
     let payload = null;
     try {
       payload = await response.json();
     } catch {
-      return new RecommendationRequestError("http", response.status, null, [], requestId);
+      return new RecommendationRequestError(
+        "http",
+        response.status,
+        null,
+        [],
+        requestId,
+        retryAfterSeconds,
+      );
     }
     const detail = payload?.detail;
     const code =
@@ -244,6 +270,7 @@
       code,
       validationErrors,
       requestId,
+      retryAfterSeconds,
     );
   }
 
@@ -305,13 +332,26 @@
 
   function setLoadingState(loading) {
     requestInFlight = loading;
-    submitButton.disabled = loading;
+    submitButton.disabled = loading || cooldownActive;
     submitButton.textContent = loading ? loadingSubmitLabel : idleSubmitLabel;
     if (loading) {
       form.setAttribute("aria-busy", "true");
     } else {
       form.removeAttribute("aria-busy");
     }
+  }
+
+  function startCooldown(retryAfterSeconds) {
+    const seconds = retryAfterSeconds ?? defaultCooldownSeconds;
+    cooldownActive = true;
+    submitButton.disabled = true;
+    retryButton.disabled = true;
+    window.clearTimeout(cooldownTimer);
+    cooldownTimer = window.setTimeout(() => {
+      cooldownActive = false;
+      submitButton.disabled = requestInFlight;
+      retryButton.disabled = false;
+    }, seconds * 1000);
   }
 
   function clearRequestError() {
@@ -365,6 +405,24 @@
           "Some trip details could not be accepted. Review the form and try again.",
         retry: false,
       },
+      recommendation_rate_limited: {
+        title: "Solara is taking a short pause",
+        message:
+          "This public preview has received several comparison requests. Please wait a little before trying again.",
+        retry: true,
+      },
+      recommendation_budget_exhausted: {
+        title: "Solara has reached its current preview allowance",
+        message:
+          "Recommendation capacity for this public preview is temporarily exhausted. Please try again later.",
+        retry: true,
+      },
+      recommendation_capacity_reached: {
+        title: "Solara is busy right now",
+        message:
+          "Other recommendations are currently being prepared. Please wait a moment and try again.",
+        retry: true,
+      },
     };
     if (error.code && knownCodes[error.code]) {
       return knownCodes[error.code];
@@ -394,6 +452,13 @@
         retry: true,
       };
     }
+    if (error.status === 429) {
+      return {
+        title: "Solara needs a short pause",
+        message: "Please wait a little before trying this recommendation request again.",
+        retry: true,
+      };
+    }
     return {
       title: "Solara couldn't complete the request",
       message: "The recommendation request didn't complete successfully. Please try again.",
@@ -411,13 +476,19 @@
     requestErrorMessage.textContent = presentation.message;
     retryButton.hidden = !presentation.retry;
     requestError.hidden = false;
-    setSubmissionStatus("Solara couldn't complete the recommendation request.");
-    requestError.focus();
+    if (error.status === 429) {
+      startCooldown(error.retryAfterSeconds);
+      const seconds = error.retryAfterSeconds ?? defaultCooldownSeconds;
+      setSubmissionStatus(`You can try again in about ${seconds} seconds.`);
+    } else {
+      setSubmissionStatus("Solara couldn't complete the recommendation request.");
+      requestError.focus();
+    }
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (requestInFlight) {
+    if (requestInFlight || cooldownActive) {
       return;
     }
 

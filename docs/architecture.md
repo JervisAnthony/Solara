@@ -542,6 +542,53 @@ observations. Known provider-boundary failures become safe `502` or `503`
 responses. Optional narration is applied only after the deterministic result;
 an AI provider failure leaves that result usable with no narration.
 
+### Public-alpha safeguard boundary
+
+`PublicAlphaSafeguardSettings` supplies immutable positive-integer policy to a
+fresh `ApiSafeguards` instance stored on each application. The runtime uses a
+monotonic clock, bounded rolling timestamp queues, one lock for atomic
+recommendation admission, and a concurrency lease that is released on every
+success or exception path. Admission happens only after HTTP and domain
+validation and service-configuration checks:
+
+```text
+valid recommendation request
+    |
+    v
+process-local admission: concurrency -> short rate -> longer budget
+    |-- rejected --> safe 429 + Retry-After
+    v
+RecommendationService -> deterministic result
+    |
+    v
+narration budget
+    |-- available --> optional narration attempt
+    `-- exhausted --> deterministic result only
+    |
+    v
+RecommendationResponse
+```
+
+Accepted recommendation attempts consume the short-window and longer-budget
+slots atomically; concurrency or rate rejection consumes no unrelated quota.
+The separate narration budget never blocks or changes deterministic ranking.
+When it is exhausted, Solara skips the provider call, emits `narration.skipped`,
+and returns the deterministic `200` response without narration. Valid feedback
+has an independent rolling rate and invalid bodies consume no capacity.
+
+Safeguard rejections expose only a stable Solara-owned code, fixed safe message,
+integer delta-seconds `Retry-After`, and the ordinary server-owned request ID.
+Safe `recommendation.rejected` and `feedback.rejected` events include only the
+request ID, code, safeguard stage, and retry duration. They contain no submitted
+body or client metadata.
+
+These guardrails are deliberately global and identity-free: IP addresses,
+forwarding headers, cookies, request IDs, fingerprints, geolocation, and account
+identifiers are never limiter keys. State exists only in one application
+process, resets at restart, and is not coordinated across workers or instances.
+It is best-effort public-alpha protection, not a guaranteed financial ceiling or
+distributed abuse-prevention platform.
+
 ### Browser presentation boundary
 
 The presentation layer has separate `api` and `web` surfaces. The browser is a
@@ -963,8 +1010,8 @@ line, plus opaque feedback, HTTP-request, and optional recommendation-request
 IDs. The UI asks testers not to provide sensitive personal information. There
 is no feedback database or file persistence; the hosting process log stream is
 the MVP1 alpha review mechanism. Log transport and retention are deployment
-concerns. Rate limiting, quotas, abuse safeguards, cost controls, and deployment
-configuration remain deferred to later milestones.
+concerns. Commit 44 adds the process-local safeguards described above;
+deployment configuration, log transport, and retention remain deferred.
 
 ## Security boundaries
 

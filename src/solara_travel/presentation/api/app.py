@@ -15,6 +15,7 @@ from solara_travel.presentation.api.routes.health import router as health_router
 from solara_travel.presentation.api.routes.recommendations import (
     router as recommendations_router,
 )
+from solara_travel.presentation.api.safeguards import ApiSafeguards
 from solara_travel.presentation.api.settings import ApiSettings
 from solara_travel.presentation.web.assets import STATIC_DIRECTORY
 from solara_travel.presentation.web.routes import router as web_router
@@ -49,6 +50,7 @@ def create_app(
     configure_structured_logging()
     application.add_middleware(RequestTracingMiddleware)
     application.state.api_dependencies = dependencies
+    application.state.api_safeguards = ApiSafeguards(settings.public_alpha_safeguards)
     application.include_router(web_router)
     application.mount("/static", StaticFiles(directory=STATIC_DIRECTORY), name="static")
     application.include_router(health_router)

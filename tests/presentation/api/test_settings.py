@@ -4,13 +4,14 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from solara_travel.presentation.api import ApiSettings
+from solara_travel.presentation.api import ApiSettings, PublicAlphaSafeguardSettings
 
 
 def test_api_settings_enable_docs_by_default() -> None:
     settings = ApiSettings()
 
     assert settings.docs_enabled is True
+    assert settings.public_alpha_safeguards == PublicAlphaSafeguardSettings()
 
 
 @pytest.mark.parametrize("docs_enabled", [True, False])
@@ -31,3 +32,8 @@ def test_api_settings_are_frozen() -> None:
 
     with pytest.raises(FrozenInstanceError):
         settings.docs_enabled = False  # type: ignore[misc]
+
+
+def test_api_settings_reject_invalid_safeguard_settings() -> None:
+    with pytest.raises(TypeError, match="public_alpha_safeguards"):
+        ApiSettings(public_alpha_safeguards=object())  # type: ignore[arg-type]

@@ -8,11 +8,16 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from solara_travel.presentation.api import create_app
+from solara_travel.presentation.api import (
+    ApiSettings,
+    PublicAlphaSafeguardSettings,
+    create_app,
+)
 from solara_travel.presentation.api.observability import (
     OBSERVABILITY_LOGGER_NAME,
     REQUEST_ID_HEADER,
 )
+from solara_travel.presentation.api.safeguards import ApiSafeguards
 
 
 class FeedbackEventHandler(logging.Handler):
@@ -31,6 +36,9 @@ class FeedbackEventHandler(logging.Handler):
             for event in map(json.loads, self.messages)
             if event["event"] == "feedback.accepted"
         ]
+
+    def events(self, event_name: str) -> list[dict[str, object]]:
+        return [event for event in map(json.loads, self.messages) if event["event"] == event_name]
 
 
 @pytest.fixture
@@ -177,3 +185,95 @@ def test_feedback_events_contain_only_intended_explicit_fields(
         "recommendations",
     ):
         assert forbidden not in serialized
+
+
+def test_feedback_rate_limit_is_safe_private_and_preserves_independent_routes(
+    feedback_events: FeedbackEventHandler,
+) -> None:
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(feedback_rate_limit=1)
+    )
+    client = TestClient(create_app(settings))
+
+    accepted = client.post(
+        "/api/v1/feedback", json={"rating": "helpful", "comment": "accepted comment"}
+    )
+    rejected = client.post(
+        "/api/v1/feedback",
+        json={"rating": "not_helpful", "comment": "private rejected comment"},
+        headers={
+            "X-Forwarded-For": "private-ip",
+            "User-Agent": "private-agent",
+            "Cookie": "private-cookie=value",
+        },
+    )
+
+    assert accepted.status_code == 202
+    assert rejected.status_code == 429
+    assert rejected.headers["Retry-After"] == "60"
+    assert rejected.json() == {
+        "detail": {
+            "code": "feedback_rate_limited",
+            "message": (
+                "This public preview is receiving too much feedback traffic. "
+                "Please try again shortly."
+            ),
+        }
+    }
+    event = feedback_events.events("feedback.rejected")[-1]
+    assert {
+        key: value for key, value in event.items() if key not in {"schema_version", "timestamp"}
+    } == {
+        "event": "feedback.rejected",
+        "request_id": rejected.headers[REQUEST_ID_HEADER],
+        "code": "feedback_rate_limited",
+        "stage": "safeguard",
+        "retry_after_seconds": 60,
+    }
+    serialized = json.dumps(event)
+    for forbidden in (
+        "private rejected comment",
+        "not_helpful",
+        "private-ip",
+        "private-agent",
+        "private-cookie",
+    ):
+        assert forbidden not in serialized
+    assert client.get("/health").status_code == 200
+
+
+def test_invalid_feedback_does_not_consume_rate_quota(
+    feedback_events: FeedbackEventHandler,
+) -> None:
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(feedback_rate_limit=1)
+    )
+    client = TestClient(create_app(settings))
+
+    assert client.post("/api/v1/feedback", json={"rating": "invalid"}).status_code == 422
+    assert client.post("/api/v1/feedback", json={"rating": "mixed"}).status_code == 202
+    assert client.post("/api/v1/feedback", json={"rating": "mixed"}).status_code == 429
+    assert len(feedback_events.feedback_events()) == 1
+
+
+def test_feedback_rate_window_expires_with_an_injected_clock(
+    feedback_events: FeedbackEventHandler,
+) -> None:
+    now = [0.0]
+    settings = ApiSettings(
+        public_alpha_safeguards=PublicAlphaSafeguardSettings(
+            feedback_rate_limit=1,
+            feedback_rate_window_seconds=10,
+        )
+    )
+    application = create_app(settings)
+    application.state.api_safeguards = ApiSafeguards(
+        settings.public_alpha_safeguards, clock=lambda: now[0]
+    )
+    client = TestClient(application)
+
+    assert client.post("/api/v1/feedback", json={"rating": "helpful"}).status_code == 202
+    assert client.post("/api/v1/feedback", json={"rating": "mixed"}).status_code == 429
+    now[0] = 10.0
+    assert client.post("/api/v1/feedback", json={"rating": "mixed"}).status_code == 202
+    assert len(feedback_events.feedback_events()) == 2
