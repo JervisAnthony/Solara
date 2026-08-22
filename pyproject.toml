@@ -58,6 +58,7 @@ where = ["src"]
     "templates/*.html",
     "static/*.css",
     "static/*.js",
+    "static/branding/*.png",
 ]
 
 [tool.pytest.ini_options]

@@ -565,12 +565,25 @@ Web presentation
     +----> packaged result renderer at /static/results.js
     |
     +----> packaged tester feedback at /static/feedback.js
+    |
+    +----> approved brand assets at /static/branding/*.png
 ```
 
 The root route is excluded from OpenAPI, and its local static mount is likewise
 separate from the JSON API contract. HTML, CSS, and JavaScript resolve relative to the
 installed `presentation.web` package, so the shell works from a wheel without a
-repository working-directory assumption or external frontend dependency.
+repository working-directory assumption or external frontend dependency. The four
+approved Solara logo variants live in the nested `static/branding` directory and are
+explicit package data in both wheel and source distributions. The browser does not
+load external fonts, images, scripts, trackers, or asset CDNs.
+
+Commit 43 presents this boundary as a premium editorial travel experience: a branded
+header, season-smart hero, evidence-oriented insight card, integrated planner, curated
+results region, tester-feedback panel, product-principle section, and quiet branded
+footer. Warm ivory surfaces, forest text, muted gold accents, serif-forward display
+type, responsive layout changes, visible focus treatment, and reduced-motion behavior
+are all owned by packaged HTML and CSS. This visual organization does not add a new
+application layer or browser data source.
 
 The traveller interaction stays at the presentation boundary:
 
@@ -653,6 +666,12 @@ comment. `feedback.js` sends exactly those explicit fields plus the current
 opaque recommendation request reference, when available, to the same-origin
 feedback endpoint. It owns its in-flight, success, and fixed-copy failure states
 without reading recommendation content or client metadata.
+
+The premium redesign preserves the existing element IDs, semantic regions, browser
+events, and same-origin request contracts. `app.js`, `results.js`, and `feedback.js`
+retain their Commit 42 responsibilities; styling and document composition do not
+rescore results, reorder recommendations, fabricate destinations, or broaden logged
+or submitted data.
 
 ## Configuration
 

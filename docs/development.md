@@ -642,7 +642,8 @@ python -m uvicorn solara_travel.presentation.api.app:app --reload
 ```
 
 Open `http://127.0.0.1:8000/` to view the Solara browser shell. Its HTML,
-stylesheet, and script are package-local and need no browser-side credentials.
+stylesheet, scripts, and approved brand images are package-local and need no
+browser-side credentials.
 The form collects required start and end dates plus optional comma-separated
 interests, preferred pace, and preferred climate. It sends same-origin JSON to
 the recommendation API.
@@ -655,6 +656,10 @@ GET /static/styles.css
 GET /static/app.js
 GET /static/results.js
 GET /static/feedback.js
+GET /static/branding/solara-logo-horizontal.png
+GET /static/branding/solara-logo-stacked.png
+GET /static/branding/solara-mark-gold.png
+GET /static/branding/solara-logo-monochrome.png
 GET /health
 POST /api/v1/recommendations
 POST /api/v1/feedback
@@ -665,7 +670,7 @@ GET /redoc
 
 Interactive Swagger and ReDoc pages are enabled by default. Creating the app
 with `ApiSettings(docs_enabled=False)` disables `/docs` and `/redoc` while
-retaining `/`, all four packaged static assets, `/openapi.json`, and `/health`.
+retaining `/`, all packaged static resources, `/openapi.json`, and `/health`.
 The browser root and static mount are not included in OpenAPI.
 
 Health indicates only that the ASGI process is serving requests; it does not
@@ -759,6 +764,36 @@ and server-configured temperature-comfort evidence through native disclosure
 controls. Optional narration appears separately only when supplied and is
 rendered as plain text; it does not determine ranking. These browser paths use
 no live credentials, client persistence, or browser-side provider calls.
+
+### Premium presentation and brand assets
+
+Commit 43 organizes the browser shell as a premium editorial landing experience with
+a branded header, season-smart hero, supporting insight, integrated planner, curated
+results, tester feedback, product principles, and footer. The redesign preserves the
+existing semantic region IDs and JavaScript handoffs, so UI presentation changes do
+not alter recommendation requests, ranking, result order, request tracing, or feedback
+submission.
+
+Approved assets are stored under:
+
+```text
+src/solara_travel/presentation/web/static/branding/
+```
+
+The stable asset names are `solara-logo-horizontal.png`,
+`solara-logo-stacked.png`, `solara-mark-gold.png`, and
+`solara-logo-monochrome.png`. Keep the original approved image bytes unchanged.
+`pyproject.toml` must continue to include `static/branding/*.png` as package data;
+package builds and clean-install checks must verify the nested files in both the
+wheel and source distribution. Brand resources are served through the existing
+same-origin `/static` mount. Do not replace them with external URLs, CDN fonts,
+tracking pixels, or browser-side asset services.
+
+Presentation CSS uses system font stacks, visible keyboard focus, touch-friendly
+controls, narrow-screen layouts, and a reduced-motion mode. Decorative images use
+empty alternative text; meaningful logo placements retain concise `Solara` text.
+Static HTML contains no fixture destinations or pretend recommendations, and result
+text continues to be created with safe DOM text APIs.
 
 ### Request tracing, structured events, and tester feedback
 
