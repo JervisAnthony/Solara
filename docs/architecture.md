@@ -802,9 +802,12 @@ The live service uses Render's Singapore region and Free plan. It keeps the
 browser and API same-origin in one service and adds no database, cache, worker,
 custom domain, or trusted proxy-header boundary. Root, health, and disabled-docs
 behavior are verified; provider-backed recommendation, feedback, and live
-responsive-browser validation remain the Commit 47 Phase 2 gate. Phase 1
-supplies deterministic local Chromium coverage with fake providers and no live
-network dependency.
+responsive-browser validation completed for Commit 47's explicit-destination
+public-alpha flow. Deterministic local Chromium coverage continues to use fake
+providers with no live network dependency. A tested hosted blank-discovery
+request completed with an empty result; investigation of real open-discovery
+provider semantics is deferred to Commit 48 without changing deterministic
+scoring and ranking authority.
 
 The service was manually configured before `render.yaml` existed remotely. The
 repository Blueprint now represents the desired topology but does not yet manage

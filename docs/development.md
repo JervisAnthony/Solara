@@ -935,12 +935,21 @@ its desired configuration. That deployment does not change the local workflow:
 ordinary development and the default test suite use `create_app()` and require
 neither Render access nor live provider credentials. Hosted composition tests
 use explicit fake configuration and make no provider requests. Live-network and
-provider-backed browser checks remain the manual Commit 47 Phase 2 gate and are
-never part of CI.
+provider-backed browser checks remain manual and are never part of CI.
 
-The corrective Phase 2 build still requires hosted acceptance after its exact
-signed feature SHA is published and redeployed. Commit 47 remains in progress
-until that corrected live gate passes.
+Commit 47 hosted acceptance deployed exact feature SHA
+`10e3808622834f7f9a3b9fb64ba7b75dff0881b1` to the existing manually
+provisioned `solara-travel-mvp1` service. Single-city and three-city explicit
+destination flows, invalid-destination handling, provider-backed evidence,
+grounded narration, attraction disclosure, and tester feedback passed. Desktop
+and mobile were checked manually; tablet sizing was covered by deterministic
+Chromium validation at representative 1440, 768, and 390 pixel widths rather
+than a separate hosted tablet session.
+
+The tested real blank-discovery request completed without a provider/error-state
+failure but returned no recommendations, and the browser correctly rendered the
+empty state. Correcting real hosted blank/open discovery is a documented Commit
+48 follow-up. Automated tests must continue to avoid live provider calls.
 
 ### Deterministic browser smoke
 

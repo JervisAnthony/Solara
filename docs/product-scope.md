@@ -30,6 +30,10 @@ human-readable city/locality for evaluation, or supply two to five cities for a
 bounded comparison. Country-wide recommendation is not part of MVP1. Solara
 resolves explicit locality names server-side, then uses
 the same evidence, deterministic scoring, and ranking pipeline in every mode.
+Blank discovery remains an intended Solara capability. In the current hosted
+public alpha, however, the tested real blank-discovery request completed with an
+empty result rather than useful destination candidates; correction is deferred
+to the next public-alpha experience iteration in Commit 48.
 
 ### Attraction discovery
 
