@@ -34,6 +34,26 @@
     metrics.append(metric);
   }
 
+  function formatNumber(value, maximumFractionDigits) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return String(value);
+    }
+    return new Intl.NumberFormat("en", {
+      maximumFractionDigits,
+      useGrouping: false,
+    }).format(numericValue);
+  }
+
+  function formatPercentage(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return String(value);
+    }
+    const percentage = Math.round((numericValue * 100 + Number.EPSILON) * 10) / 10;
+    return `${String(percentage)}%`;
+  }
+
   function renderScoreComponents(components) {
     const section = document.createElement("section");
     section.className = "component-section";
@@ -48,23 +68,20 @@
         createTextElement("p", "component-name", humanizeIdentifier(component.name)),
       );
 
-      const metrics = document.createElement("dl");
-      metrics.className = "metric-grid metric-grid-compact";
-      appendMetric(metrics, "Score", String(component.score));
-      appendMetric(metrics, "Weight", String(component.weight));
-      appendMetric(
-        metrics,
-        "Weighted contribution",
-        String(component.weighted_contribution),
+      item.append(
+        createTextElement(
+          "p",
+          "component-fit",
+          `${formatPercentage(component.score)} seasonal fit`,
+        ),
       );
-      item.append(metrics);
       list.append(item);
     }
     section.append(list);
     return section;
   }
 
-  function renderAttractions(attractions) {
+  function renderAttractions(attractions, recommendationRank) {
     if (!Array.isArray(attractions) || attractions.length === 0) {
       return null;
     }
@@ -75,15 +92,38 @@
 
     const list = document.createElement("ul");
     list.className = "attraction-list";
-    for (const attraction of attractions) {
+    for (const [index, attraction] of attractions.entries()) {
       const item = document.createElement("li");
+      if (index >= 6) {
+        item.hidden = true;
+      }
       item.append(
         createTextElement("span", "attraction-name", attraction.name),
         createTextElement("span", "attraction-category", attraction.category),
       );
       list.append(item);
     }
+    list.id = `attraction-list-${String(recommendationRank)}`;
     section.append(list);
+    if (attractions.length > 6) {
+      const toggle = createTextElement("button", "attraction-toggle", "Show all attractions");
+      toggle.type = "button";
+      toggle.setAttribute("aria-controls", list.id);
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.addEventListener("click", () => {
+        const expanded = toggle.getAttribute("aria-expanded") === "true";
+        const nextExpanded = !expanded;
+        for (const item of list.children) {
+          item.hidden = !nextExpanded && Number(item.dataset.attractionIndex) >= 6;
+        }
+        toggle.setAttribute("aria-expanded", String(nextExpanded));
+        toggle.textContent = nextExpanded ? "Show fewer attractions" : "Show all attractions";
+      });
+      for (const [index, item] of Array.from(list.children).entries()) {
+        item.dataset.attractionIndex = String(index);
+      }
+      section.append(toggle);
+    }
     return section;
   }
 
@@ -117,24 +157,25 @@
     appendMetric(
       metrics,
       "Mean temperature",
-      `${String(seasonalWeather.mean_temperature_celsius)} °C`,
+      `${formatNumber(seasonalWeather.mean_temperature_celsius, 1)} °C`,
     );
     appendMetric(
       metrics,
       "Temperature range",
-      `${String(seasonalWeather.minimum_temperature_celsius)} °C — ${String(
+      `${formatNumber(seasonalWeather.minimum_temperature_celsius, 1)} °C — ${formatNumber(
         seasonalWeather.maximum_temperature_celsius,
+        1,
       )} °C`,
     );
     appendMetric(
       metrics,
       "Mean relative humidity",
-      `${String(seasonalWeather.mean_relative_humidity_percent)} %`,
+      `${formatNumber(seasonalWeather.mean_relative_humidity_percent, 1)}%`,
     );
     appendMetric(
       metrics,
       "Mean daily precipitation",
-      `${String(seasonalWeather.mean_daily_precipitation_mm)} mm`,
+      `${formatNumber(seasonalWeather.mean_daily_precipitation_mm, 2)} mm`,
     );
     section.append(metrics);
     return section;
@@ -154,41 +195,42 @@
 
     const metrics = document.createElement("dl");
     metrics.className = "metric-grid";
-    appendMetric(metrics, "Temperature comfort score", String(temperatureComfort.score));
+    appendMetric(metrics, "Seasonal fit", formatPercentage(temperatureComfort.score));
     appendMetric(
       metrics,
       "Configured comfort range",
-      `${String(temperatureComfort.comfort_range.minimum_celsius)} °C — ${String(
+      `${formatNumber(temperatureComfort.comfort_range.minimum_celsius, 1)} °C — ${formatNumber(
         temperatureComfort.comfort_range.maximum_celsius,
+        1,
       )} °C`,
     );
     appendMetric(
       metrics,
       "Tolerance",
-      `${String(temperatureComfort.comfort_range.tolerance_celsius)} °C`,
+      `${formatNumber(temperatureComfort.comfort_range.tolerance_celsius, 1)} °C`,
     );
     appendMetric(
       metrics,
-      "Within preferred range fraction",
-      String(temperatureComfort.within_preferred_fraction),
+      "Within configured comfort range",
+      formatPercentage(temperatureComfort.within_preferred_fraction),
     );
     appendMetric(
       metrics,
       "Mean deviation",
-      `${String(temperatureComfort.mean_deviation_celsius)} °C`,
+      `${formatNumber(temperatureComfort.mean_deviation_celsius, 1)} °C`,
     );
     section.append(metrics);
     return section;
   }
 
-  function renderEvidence(evidence) {
+  function renderEvidence(evidence, recommendationRank) {
     const details = document.createElement("details");
     details.className = "recommendation-evidence";
     details.append(createTextElement("summary", "evidence-summary", "Explore evidence"));
 
     const content = document.createElement("div");
     content.className = "evidence-content";
-    const attractions = renderAttractions(evidence.attractions);
+    const attractions = renderAttractions(evidence.attractions, recommendationRank);
     if (attractions) {
       content.append(attractions);
     }
@@ -217,12 +259,12 @@
 
     const score = document.createElement("dl");
     score.className = "suitability-score";
-    appendMetric(score, "Suitability score", String(recommendation.score));
+    appendMetric(score, "Seasonal fit", formatPercentage(recommendation.score));
     header.append(identity, score);
     card.append(
       header,
       renderScoreComponents(recommendation.components),
-      renderEvidence(recommendation.evidence),
+      renderEvidence(recommendation.evidence, recommendation.rank),
     );
     item.append(card);
     return item;
@@ -250,6 +292,17 @@
 
   function renderRecommendationResponse(response) {
     clearResults();
+    const mode = response.request?.destination_mode;
+    if (mode === "explicit_queries" && response.request.destination_queries?.length === 1) {
+      const destinationName = response.recommendations[0]?.destination?.name;
+      resultsTitle.textContent = destinationName
+        ? `${String(destinationName)} for your trip`
+        : "Destination for your trip";
+    } else if (mode === "explicit_queries") {
+      resultsTitle.textContent = "Your destination comparison";
+    } else {
+      resultsTitle.textContent = "Recommended destinations";
+    }
     if (response.has_recommendations === false || response.recommendations.length === 0) {
       resultsSection.hidden = false;
       emptyState.hidden = false;

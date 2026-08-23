@@ -21,7 +21,7 @@ def test_root_contains_one_accessible_recommendation_form() -> None:
     assert workspace_start < form_start
     assert 'aria-labelledby="workspace-title"' in html[form_start:]
     assert 'type="submit"' in html[form_start:]
-    assert "Compare destinations" in html[form_start:]
+    assert "Find destinations" in html[form_start:]
 
 
 def test_form_has_required_dates_and_optional_preference_fields() -> None:
@@ -48,6 +48,23 @@ def test_form_has_required_dates_and_optional_preference_fields() -> None:
     assert 'aria-describedby="preferred-climate-help preferred-climate-error"' in html
 
 
+def test_form_has_accessible_optional_destination_chip_controls_above_dates() -> None:
+    html = _root_html()
+
+    assert html.index('id="destination-input"') < html.index('id="travel-start-date"')
+    assert '<label for="destination-input">Destination</label>' in html
+    assert 'placeholder="Budapest, Hungary"' in html
+    assert 'id="destination-add" type="button"' in html
+    assert 'id="destination-chips"' in html
+    assert 'aria-label="Destinations to evaluate"' in html
+    assert 'id="destination-status"' in html
+    assert 'aria-live="polite"' in html
+    assert "Add cities you want Solara to evaluate" in html
+    assert "leave blank to discover" in html
+    assert "destinations. Up to five cities" in html
+    assert "Add places you want Solara to evaluate" not in html
+
+
 def test_form_loads_local_script_and_exposes_polite_status() -> None:
     html = _root_html()
 
@@ -60,7 +77,8 @@ def test_form_loads_local_script_and_exposes_polite_status() -> None:
 def test_form_copy_is_truthful_about_current_season_led_scoring() -> None:
     html = _root_html().casefold()
 
-    assert "current preview scoring focuses on seasonal fit" in html
+    assert "current scoring focuses on seasonal fit" in html
+    assert "current preview scoring" not in html
     assert "every preference changes your ranking" not in html
 
 
@@ -87,6 +105,7 @@ def test_javascript_asset_submits_the_existing_request_contract() -> None:
         "preferred_pace",
         "preferred_climate",
         "destination: null",
+        "destination_queries",
         "solara:recommendation-ready",
         "textContent",
     ):

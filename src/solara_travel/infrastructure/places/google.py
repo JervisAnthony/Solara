@@ -7,7 +7,7 @@ from numbers import Real
 from typing import Protocol
 
 from solara_travel.domain.attraction import Attraction
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.recommendation import RecommendationRequest
 from solara_travel.infrastructure.http import (
@@ -25,18 +25,9 @@ from solara_travel.ports.errors import (
 _TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 _NEARBY_SEARCH_URL = "https://places.googleapis.com/v1/places:searchNearby"
 
-_DESTINATION_FIELD_MASK = (
-    "places.displayName,"
-    "places.location,"
-    "places.addressComponents"
-)
+_DESTINATION_FIELD_MASK = "places.displayName,places.location,places.addressComponents"
 
-_ATTRACTION_FIELD_MASK = (
-    "places.displayName,"
-    "places.location,"
-    "places.primaryType,"
-    "places.types"
-)
+_ATTRACTION_FIELD_MASK = "places.displayName,places.location,places.primaryType,places.types"
 
 _GENERIC_GOOGLE_PLACE_TYPES = frozenset(
     {
@@ -65,6 +56,10 @@ class GooglePlacesClient(Protocol):
 
         ...
 
+    def search_destination(self, query: DestinationQuery) -> object:
+        """Return a raw Google Places response for one explicit destination."""
+        ...
+
 
 @dataclass(slots=True)
 class GooglePlacesHttpClient:
@@ -86,10 +81,7 @@ class GooglePlacesHttpClient:
         if not self.api_key.strip():
             raise ValueError("api_key must not be blank")
 
-        if (
-            not isinstance(self.timeout_seconds, Real)
-            or isinstance(self.timeout_seconds, bool)
-        ):
+        if not isinstance(self.timeout_seconds, Real) or isinstance(self.timeout_seconds, bool):
             raise TypeError("timeout_seconds must be a real number")
 
         if not isfinite(self.timeout_seconds):
@@ -98,45 +90,32 @@ class GooglePlacesHttpClient:
         if self.timeout_seconds <= 0.0:
             raise ValueError("timeout_seconds must be greater than zero")
 
-        if (
-            not isinstance(self.destination_page_size, int)
-            or isinstance(self.destination_page_size, bool)
+        if not isinstance(self.destination_page_size, int) or isinstance(
+            self.destination_page_size, bool
         ):
             raise TypeError("destination_page_size must be an integer")
 
         if not 1 <= self.destination_page_size <= 20:
-            raise ValueError(
-                "destination_page_size must be between 1 and 20"
-            )
+            raise ValueError("destination_page_size must be between 1 and 20")
 
-        if (
-            not isinstance(self.attraction_max_results, int)
-            or isinstance(self.attraction_max_results, bool)
+        if not isinstance(self.attraction_max_results, int) or isinstance(
+            self.attraction_max_results, bool
         ):
             raise TypeError("attraction_max_results must be an integer")
 
         if not 1 <= self.attraction_max_results <= 20:
-            raise ValueError(
-                "attraction_max_results must be between 1 and 20"
-            )
+            raise ValueError("attraction_max_results must be between 1 and 20")
 
-        if (
-            not isinstance(self.attraction_radius_meters, Real)
-            or isinstance(self.attraction_radius_meters, bool)
+        if not isinstance(self.attraction_radius_meters, Real) or isinstance(
+            self.attraction_radius_meters, bool
         ):
-            raise TypeError(
-                "attraction_radius_meters must be a real number"
-            )
+            raise TypeError("attraction_radius_meters must be a real number")
 
         if not isfinite(self.attraction_radius_meters):
-            raise ValueError(
-                "attraction_radius_meters must be a finite number"
-            )
+            raise ValueError("attraction_radius_meters must be a finite number")
 
         if not 0.0 < self.attraction_radius_meters <= 50_000.0:
-            raise ValueError(
-                "attraction_radius_meters must be between 0 and 50000"
-            )
+            raise ValueError("attraction_radius_meters must be between 0 and 50000")
 
     def search_destinations(
         self,
@@ -148,10 +127,7 @@ class GooglePlacesHttpClient:
         interests = request.preferences.interests
 
         if interests is not None:
-            interest_text = ", ".join(
-                interest.strip()
-                for interest in interests.interests
-            )
+            interest_text = ", ".join(interest.strip() for interest in interests.interests)
             text_query = f"{text_query} for {interest_text}"
 
         payload: dict[str, object] = {
@@ -166,6 +142,24 @@ class GooglePlacesHttpClient:
             url=_TEXT_SEARCH_URL,
             field_mask=_DESTINATION_FIELD_MASK,
             payload=payload,
+        )
+
+    def search_destination(self, query: DestinationQuery) -> object:
+        """Search Google Places narrowly for one explicit locality."""
+
+        if not isinstance(query, DestinationQuery):
+            raise TypeError("query must be a DestinationQuery")
+
+        return self._post_google(
+            url=_TEXT_SEARCH_URL,
+            field_mask=_DESTINATION_FIELD_MASK,
+            payload={
+                "textQuery": query.value,
+                "includedType": "locality",
+                "strictTypeFiltering": True,
+                "languageCode": "en",
+                "pageSize": 1,
+            },
         )
 
     def search_attractions(
@@ -219,13 +213,9 @@ class GooglePlacesHttpClient:
                 timeout_seconds=self.timeout_seconds,
             )
         except JsonHttpDecodeError as exc:
-            raise ProviderResponseError(
-                "Google Places returned invalid JSON"
-            ) from exc
+            raise ProviderResponseError("Google Places returned invalid JSON") from exc
         except Exception as exc:
-            raise ProviderUnavailableError(
-                "Google Places request failed"
-            ) from exc
+            raise ProviderUnavailableError("Google Places request failed") from exc
 
         status_code = response.status_code
 
@@ -233,28 +223,18 @@ class GooglePlacesHttpClient:
             return response.payload
 
         if status_code in {401, 403}:
-            raise ProviderAuthenticationError(
-                "Google Places authentication failed"
-            )
+            raise ProviderAuthenticationError("Google Places authentication failed")
 
         if status_code == 429:
-            raise ProviderRateLimitError(
-                "Google Places rate limit exceeded"
-            )
+            raise ProviderRateLimitError("Google Places rate limit exceeded")
 
         if 400 <= status_code < 500:
-            raise ProviderResponseError(
-                "Google Places rejected the request"
-            )
+            raise ProviderResponseError("Google Places rejected the request")
 
         if 500 <= status_code < 600:
-            raise ProviderUnavailableError(
-                "Google Places service unavailable"
-            )
+            raise ProviderUnavailableError("Google Places service unavailable")
 
-        raise ProviderResponseError(
-            "Google Places returned unexpected HTTP status"
-        )
+        raise ProviderResponseError("Google Places returned unexpected HTTP status")
 
 
 @dataclass(slots=True)
@@ -278,16 +258,11 @@ class GooglePlacesProvider:
             response = self.client.search_destinations(request)
             places = _extract_places(response)
 
-            return tuple(
-                normalize_google_destination(place)
-                for place in places
-            )
+            return tuple(normalize_google_destination(place) for place in places)
         except ProviderError:
             raise
         except Exception as exc:
-            raise ProviderUnavailableError(
-                "Google Places request failed"
-            ) from exc
+            raise ProviderUnavailableError("Google Places request failed") from exc
 
     def discover_attractions(
         self,
@@ -299,16 +274,27 @@ class GooglePlacesProvider:
             response = self.client.search_attractions(destination)
             places = _extract_places(response)
 
-            return tuple(
-                normalize_google_attraction(place)
-                for place in places
-            )
+            return tuple(normalize_google_attraction(place) for place in places)
         except ProviderError:
             raise
         except Exception as exc:
-            raise ProviderUnavailableError(
-                "Google Places request failed"
-            ) from exc
+            raise ProviderUnavailableError("Google Places request failed") from exc
+
+    def resolve_destination(self, query: DestinationQuery) -> Destination | None:
+        """Resolve one explicit destination query without generic discovery."""
+
+        if not isinstance(query, DestinationQuery):
+            raise TypeError("query must be a DestinationQuery")
+
+        try:
+            places = _extract_places(self.client.search_destination(query))
+            if not places:
+                return None
+            return normalize_google_destination(places[0])
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderUnavailableError("Google Places request failed") from exc
 
 
 def normalize_google_destination(
@@ -351,9 +337,7 @@ def _extract_places(
     """Extract the places collection from a raw Google search response."""
 
     if not isinstance(response, Mapping):
-        raise ProviderResponseError(
-            "Google Places response must be an object"
-        )
+        raise ProviderResponseError("Google Places response must be an object")
 
     if "places" not in response:
         return []
@@ -361,9 +345,7 @@ def _extract_places(
     places = response["places"]
 
     if not isinstance(places, list):
-        raise ProviderResponseError(
-            "Google Places response places must be a list"
-        )
+        raise ProviderResponseError("Google Places response places must be a list")
 
     return places
 
@@ -374,9 +356,7 @@ def _require_place_mapping(
     """Return a provider place object or raise a normalized response error."""
 
     if not isinstance(payload, Mapping):
-        raise ProviderResponseError(
-            "Google place must be an object"
-        )
+        raise ProviderResponseError("Google place must be an object")
 
     return payload
 
@@ -389,16 +369,12 @@ def _extract_display_name(
     display_name = place.get("displayName")
 
     if not isinstance(display_name, Mapping):
-        raise ProviderResponseError(
-            "Google place displayName must be an object"
-        )
+        raise ProviderResponseError("Google place displayName must be an object")
 
     text = display_name.get("text")
 
     if not isinstance(text, str) or not text.strip():
-        raise ProviderResponseError(
-            "Google place display name must be a non-blank string"
-        )
+        raise ProviderResponseError("Google place display name must be a non-blank string")
 
     return text.strip()
 
@@ -411,9 +387,7 @@ def _extract_coordinates(
     location = place.get("location")
 
     if not isinstance(location, Mapping):
-        raise ProviderResponseError(
-            "Google place location must be an object"
-        )
+        raise ProviderResponseError("Google place location must be an object")
 
     latitude = location.get("latitude")
     longitude = location.get("longitude")
@@ -424,9 +398,7 @@ def _extract_coordinates(
         or not isinstance(longitude, Real)
         or isinstance(longitude, bool)
     ):
-        raise ProviderResponseError(
-            "Google place contains invalid coordinates"
-        )
+        raise ProviderResponseError("Google place contains invalid coordinates")
 
     try:
         return GeoCoordinates(
@@ -434,9 +406,7 @@ def _extract_coordinates(
             longitude=longitude,
         )
     except (TypeError, ValueError) as exc:
-        raise ProviderResponseError(
-            "Google place contains invalid coordinates"
-        ) from exc
+        raise ProviderResponseError("Google place contains invalid coordinates") from exc
 
 
 def _extract_country(
@@ -447,9 +417,7 @@ def _extract_country(
     address_components = place.get("addressComponents")
 
     if not isinstance(address_components, list):
-        raise ProviderResponseError(
-            "Google destination is missing a country"
-        )
+        raise ProviderResponseError("Google destination is missing a country")
 
     for component in address_components:
         if not isinstance(component, Mapping):
@@ -470,9 +438,7 @@ def _extract_country(
         if isinstance(short_text, str) and short_text.strip():
             return short_text.strip()
 
-    raise ProviderResponseError(
-        "Google destination is missing a country"
-    )
+    raise ProviderResponseError("Google destination is missing a country")
 
 
 def _extract_attraction_category(
@@ -489,10 +455,7 @@ def _extract_attraction_category(
 
     if isinstance(types, list):
         for place_type in types:
-            if (
-                not isinstance(place_type, str)
-                or not place_type.strip()
-            ):
+            if not isinstance(place_type, str) or not place_type.strip():
                 continue
 
             normalized_type = place_type.strip().casefold()

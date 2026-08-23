@@ -5,7 +5,7 @@ from datetime import date
 
 import pytest
 
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.preferences import (
     TravellerInterests,
@@ -238,4 +238,57 @@ def test_recommendation_request_is_immutable() -> None:
                 latitude=35.0116,
                 longitude=135.7681,
             ),
+        )
+
+
+def test_recommendation_request_supports_ordered_destination_queries() -> None:
+    queries = (DestinationQuery("Budapest"), DestinationQuery("Vienna"))
+
+    request = RecommendationRequest(
+        TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
+        destination_queries=queries,
+    )
+
+    assert request.destination_queries == queries
+
+
+@pytest.mark.parametrize("queries", [[], "Budapest", None])
+def test_recommendation_request_requires_query_tuple(queries: object) -> None:
+    with pytest.raises(TypeError, match="destination_queries must be a tuple"):
+        RecommendationRequest(
+            TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
+            destination_queries=queries,  # type: ignore[arg-type]
+        )
+
+
+def test_recommendation_request_requires_destination_query_values() -> None:
+    with pytest.raises(TypeError, match="every destination query"):
+        RecommendationRequest(
+            TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
+            destination_queries=("Budapest",),  # type: ignore[arg-type]
+        )
+
+
+def test_recommendation_request_rejects_more_than_five_queries() -> None:
+    with pytest.raises(ValueError, match="at most 5"):
+        RecommendationRequest(
+            TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
+            destination_queries=tuple(DestinationQuery(str(index)) for index in range(6)),
+        )
+
+
+def test_recommendation_request_rejects_case_insensitive_duplicate_queries() -> None:
+    with pytest.raises(ValueError, match="must not contain duplicates"):
+        RecommendationRequest(
+            TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
+            destination_queries=(DestinationQuery("Budapest"), DestinationQuery("BUDAPEST")),
+        )
+
+
+def test_recommendation_request_rejects_both_destination_input_forms() -> None:
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        RecommendationRequest(
+            TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
+            destination=Destination("Kyoto", "Japan", GeoCoordinates(35.0, 135.0)),
+            destination_queries=(DestinationQuery("Budapest"),),
         )

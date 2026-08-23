@@ -16,22 +16,51 @@
   const requestReferenceValue = document.querySelector(
     "#recommendation-request-reference-value",
   );
+  const destinationInput = document.querySelector("#destination-input");
+  const destinationAddButton = document.querySelector("#destination-add");
+  const destinationChips = document.querySelector("#destination-chips");
+  const destinationStatus = document.querySelector("#destination-status");
   const recommendationEndpoint = "/api/v1/recommendations";
-  const idleSubmitLabel = "Compare destinations";
   const loadingSubmitLabel = "Comparing…";
+  const maximumDestinations = 5;
+  const coldStartThresholdMilliseconds = 10000;
   const defaultCooldownSeconds = 60;
   const maximumCooldownSeconds = 86400;
   let requestInFlight = false;
   let cooldownActive = false;
   let cooldownTimer = null;
+  let coldStartTimer = null;
+  const destinationQueries = [];
 
   const fieldContracts = {
+    "destination-input": "destination-error",
     "travel-start-date": "travel-start-date-error",
     "travel-end-date": "travel-end-date-error",
     interests: "interests-error",
     "preferred-pace": "preferred-pace-error",
     "preferred-climate": "preferred-climate-error",
   };
+
+  function shortenedDestination(value) {
+    const name = value.split(",", 1)[0].trim();
+    return name.length <= 24 ? name : `${name.slice(0, 23).trimEnd()}…`;
+  }
+
+  function idleSubmitLabel() {
+    if (destinationQueries.length === 0) {
+      return "FIND DESTINATIONS →";
+    }
+    if (destinationQueries.length === 1) {
+      return `EXPLORE ${shortenedDestination(destinationQueries[0]).toUpperCase()} →`;
+    }
+    return "COMPARE DESTINATIONS →";
+  }
+
+  function updateSubmitLabel() {
+    if (!requestInFlight) {
+      submitButton.textContent = idleSubmitLabel();
+    }
+  }
 
   class RecommendationRequestError extends Error {
     constructor(
@@ -41,6 +70,7 @@
       validationErrors = [],
       requestId = null,
       retryAfterSeconds = null,
+      responseMessage = null,
     ) {
       super("Recommendation request failed.");
       this.name = "RecommendationRequestError";
@@ -50,6 +80,7 @@
       this.validationErrors = validationErrors;
       this.requestId = requestId;
       this.retryAfterSeconds = retryAfterSeconds;
+      this.responseMessage = responseMessage;
     }
   }
 
@@ -89,6 +120,66 @@
       error.replaceChildren();
       error.hidden = true;
     }
+  }
+
+  function showDestinationValidation(message) {
+    const error = document.querySelector("#destination-error");
+    destinationInput.setAttribute("aria-invalid", "true");
+    error.textContent = message;
+    error.hidden = false;
+    destinationStatus.textContent = message;
+  }
+
+  function clearDestinationValidation() {
+    const error = document.querySelector("#destination-error");
+    destinationInput.removeAttribute("aria-invalid");
+    error.replaceChildren();
+    error.hidden = true;
+    destinationStatus.replaceChildren();
+  }
+
+  function renderDestinationChips() {
+    const fragment = document.createDocumentFragment();
+    destinationQueries.forEach((query, index) => {
+      const item = document.createElement("li");
+      item.className = "destination-chip";
+      const label = document.createElement("span");
+      label.textContent = query;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.dataset.destinationIndex = String(index);
+      remove.setAttribute("aria-label", `Remove ${query}`);
+      remove.textContent = "×";
+      item.append(label, remove);
+      fragment.append(item);
+    });
+    destinationChips.replaceChildren(fragment);
+    updateSubmitLabel();
+  }
+
+  function commitPendingDestination({ allowBlank = false } = {}) {
+    const query = destinationInput.value.trim();
+    clearDestinationValidation();
+    if (query === "") {
+      if (!allowBlank) {
+        showDestinationValidation("Enter a destination to add.");
+        return false;
+      }
+      return true;
+    }
+    if (destinationQueries.length >= maximumDestinations) {
+      showDestinationValidation("You can compare up to five destinations.");
+      return false;
+    }
+    if (destinationQueries.some((value) => value.toLowerCase() === query.toLowerCase())) {
+      showDestinationValidation("That destination is already included.");
+      return false;
+    }
+    destinationQueries.push(query);
+    destinationInput.value = "";
+    destinationStatus.textContent = `${query} added.`;
+    renderDestinationChips();
+    return true;
   }
 
   function showValidation(errors) {
@@ -159,7 +250,7 @@
   }
 
   function buildRecommendationRequest(targetForm) {
-    return {
+    const request = {
       travel_period: {
         start_date: targetForm.elements.namedItem("travel-start-date").value,
         end_date: targetForm.elements.namedItem("travel-end-date").value,
@@ -173,6 +264,10 @@
       },
       destination: null,
     };
+    if (destinationQueries.length > 0) {
+      request.destination_queries = [...destinationQueries];
+    }
+    return request;
   }
 
   function structuralValidationErrors(detail) {
@@ -184,6 +279,7 @@
     const mappings = [
       ["travel_period.start_date", "travel-start-date", "Enter a valid start date."],
       ["travel_period.end_date", "travel-end-date", "Enter a valid end date."],
+      ["destination_queries", "destination-input", "Review your destinations."],
       ["preferences.interests", "interests", "Review your interests."],
       ["preferences.preferred_pace", "preferred-pace", "Review your preferred pace."],
       [
@@ -237,6 +333,9 @@
         ),
       ];
     }
+    if (detail.message.includes("destination_queries")) {
+      return [validationError("destination-input", "Review your destinations.")];
+    }
     return [];
   }
 
@@ -264,6 +363,10 @@
       ...domainValidationErrors(detail),
       ...structuralValidationErrors(detail),
     ];
+    const responseMessage =
+      code === "destination_not_found" && typeof detail.message === "string"
+        ? detail.message
+        : null;
     return new RecommendationRequestError(
       "http",
       response.status,
@@ -271,6 +374,7 @@
       validationErrors,
       requestId,
       retryAfterSeconds,
+      responseMessage,
     );
   }
 
@@ -333,7 +437,8 @@
   function setLoadingState(loading) {
     requestInFlight = loading;
     submitButton.disabled = loading || cooldownActive;
-    submitButton.textContent = loading ? loadingSubmitLabel : idleSubmitLabel;
+    submitButton.textContent = loading ? loadingSubmitLabel : idleSubmitLabel();
+    destinationAddButton.disabled = loading;
     if (loading) {
       form.setAttribute("aria-busy", "true");
     } else {
@@ -366,7 +471,7 @@
       recommendation_service_unconfigured: {
         title: "Recommendations aren't available yet",
         message:
-          "This Solara preview is running without a configured recommendation service.",
+          "This Solara public alpha is running without a configured recommendation service.",
         retry: false,
       },
       provider_authentication_failed: {
@@ -405,16 +510,22 @@
           "Some trip details could not be accepted. Review the form and try again.",
         retry: false,
       },
+      destination_not_found: {
+        title: "Destination not found",
+        message:
+          "Solara couldn't find one of those destinations. Review your destination and try again.",
+        retry: false,
+      },
       recommendation_rate_limited: {
         title: "Solara is taking a short pause",
         message:
-          "This public preview has received several comparison requests. Please wait a little before trying again.",
+          "This public alpha has received several comparison requests. Please wait a little before trying again.",
         retry: true,
       },
       recommendation_budget_exhausted: {
-        title: "Solara has reached its current preview allowance",
+        title: "Solara has reached its current public-alpha allowance",
         message:
-          "Recommendation capacity for this public preview is temporarily exhausted. Please try again later.",
+          "Recommendation capacity for this public alpha is temporarily exhausted. Please try again later.",
         retry: true,
       },
       recommendation_capacity_reached: {
@@ -425,6 +536,9 @@
       },
     };
     if (error.code && knownCodes[error.code]) {
+      if (error.code === "destination_not_found" && error.responseMessage) {
+        return { ...knownCodes.destination_not_found, message: error.responseMessage };
+      }
       return knownCodes[error.code];
     }
     if (error.kind === "network") {
@@ -493,6 +607,10 @@
     }
 
     clearValidation();
+    if (!commitPendingDestination({ allowBlank: true })) {
+      destinationInput.focus();
+      return;
+    }
     const validationErrors = validateForm(form);
     if (validationErrors.length > 0) {
       showValidation(validationErrors);
@@ -503,6 +621,12 @@
     clearRequestReference();
     setLoadingState(true);
     setSubmissionStatus("Comparing destinations.");
+    window.clearTimeout(coldStartTimer);
+    coldStartTimer = window.setTimeout(() => {
+      setSubmissionStatus(
+        "Solara may be waking up. The public alpha can take up to a minute after being idle.",
+      );
+    }, coldStartThresholdMilliseconds);
     form.dispatchEvent(new CustomEvent("solara:recommendation-request-start"));
 
     let responseResult;
@@ -520,6 +644,7 @@
       showRequestError(controlledError);
       return;
     } finally {
+      window.clearTimeout(coldStartTimer);
       setLoadingState(false);
     }
 
@@ -550,9 +675,40 @@
     requestErrorMessage &&
     retryButton &&
     requestReference &&
-    requestReferenceValue
+    requestReferenceValue &&
+    destinationInput &&
+    destinationAddButton &&
+    destinationChips &&
+    destinationStatus
   ) {
+    renderDestinationChips();
     form.addEventListener("submit", handleSubmit);
     retryButton.addEventListener("click", () => form.requestSubmit());
+    destinationAddButton.addEventListener("click", () => {
+      if (!requestInFlight && commitPendingDestination()) {
+        destinationInput.focus();
+      }
+    });
+    destinationInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.isComposing) {
+        event.preventDefault();
+        if (!requestInFlight && commitPendingDestination()) {
+          destinationInput.focus();
+        }
+      }
+    });
+    destinationChips.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-destination-index]");
+      if (!button || requestInFlight) {
+        return;
+      }
+      const index = Number.parseInt(button.dataset.destinationIndex, 10);
+      if (Number.isInteger(index) && index >= 0 && index < destinationQueries.length) {
+        const [removed] = destinationQueries.splice(index, 1);
+        destinationStatus.textContent = `${removed} removed.`;
+        renderDestinationChips();
+        destinationInput.focus();
+      }
+    });
   }
 })();

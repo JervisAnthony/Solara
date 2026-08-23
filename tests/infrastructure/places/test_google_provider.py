@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.preferences import TravellerInterests, TravellerPreferences
 from solara_travel.domain.recommendation import RecommendationRequest
@@ -116,21 +116,24 @@ class FakeGooglePlacesClient:
         attraction_response: object = _MISSING,
         destination_error: Exception | None = None,
         attraction_error: Exception | None = None,
+        resolution_response: object = _MISSING,
+        resolution_error: Exception | None = None,
     ) -> None:
         self.destination_response = (
-            {"places": []}
-            if destination_response is _MISSING
-            else destination_response
+            {"places": []} if destination_response is _MISSING else destination_response
         )
         self.attraction_response = (
-            {"places": []}
-            if attraction_response is _MISSING
-            else attraction_response
+            {"places": []} if attraction_response is _MISSING else attraction_response
         )
         self.destination_error = destination_error
         self.attraction_error = attraction_error
+        self.resolution_response = (
+            {"places": []} if resolution_response is _MISSING else resolution_response
+        )
+        self.resolution_error = resolution_error
         self.destination_requests: list[RecommendationRequest] = []
         self.attraction_destinations: list[Destination] = []
+        self.resolution_queries: list[DestinationQuery] = []
 
     def search_destinations(
         self,
@@ -158,6 +161,12 @@ class FakeGooglePlacesClient:
 
         return self.attraction_response
 
+    def search_destination(self, query: DestinationQuery) -> object:
+        self.resolution_queries.append(query)
+        if self.resolution_error is not None:
+            raise self.resolution_error
+        return self.resolution_response
+
 
 def test_google_places_provider_satisfies_places_provider_contract() -> None:
     """The adapter should structurally implement Solara's combined places port."""
@@ -167,6 +176,87 @@ def test_google_places_provider_satisfies_places_provider_contract() -> None:
     )
 
     assert isinstance(provider, PlacesProvider)
+
+
+def test_resolve_destination_normalizes_first_match_and_preserves_unicode() -> None:
+    client = FakeGooglePlacesClient(
+        resolution_response={
+            "places": [_destination_place("Reykjavík", "Ísland", 64.1466, -21.9426)]
+        }
+    )
+    provider = GooglePlacesProvider(client)
+    query = DestinationQuery("Reykjavík, Ísland")
+
+    resolved = provider.resolve_destination(query)
+
+    assert resolved == Destination("Reykjavík", "Ísland", GeoCoordinates(64.1466, -21.9426))
+    assert client.resolution_queries == [query]
+
+
+@pytest.mark.parametrize("response", [{}, {"places": []}])
+def test_resolve_destination_returns_none_for_legitimate_no_match(response: object) -> None:
+    provider = GooglePlacesProvider(FakeGooglePlacesClient(resolution_response=response))
+
+    assert provider.resolve_destination(DestinationQuery("Atlantis")) is None
+
+
+@pytest.mark.parametrize(
+    ("place", "message"),
+    [
+        ({"location": {"latitude": 1.0, "longitude": 2.0}}, "displayName"),
+        (
+            {
+                "displayName": {"text": "Budapest"},
+                "location": {"latitude": "bad", "longitude": 19.0},
+                "addressComponents": [],
+            },
+            "coordinates",
+        ),
+        (
+            {
+                "displayName": {"text": "Budapest"},
+                "location": {"latitude": 47.5, "longitude": 19.0},
+                "addressComponents": [],
+            },
+            "country",
+        ),
+    ],
+)
+def test_resolve_destination_rejects_malformed_match(
+    place: dict[str, object], message: str
+) -> None:
+    provider = GooglePlacesProvider(FakeGooglePlacesClient(resolution_response={"places": [place]}))
+
+    with pytest.raises(ProviderResponseError, match=message):
+        provider.resolve_destination(DestinationQuery("Budapest"))
+
+
+def test_resolve_destination_propagates_provider_failures() -> None:
+    error = ProviderRateLimitError("quota")
+    provider = GooglePlacesProvider(FakeGooglePlacesClient(resolution_error=error))
+
+    with pytest.raises(ProviderRateLimitError) as exc_info:
+        provider.resolve_destination(DestinationQuery("Budapest"))
+
+    assert exc_info.value is error
+
+
+def test_resolve_destination_wraps_unexpected_client_failure() -> None:
+    provider = GooglePlacesProvider(
+        FakeGooglePlacesClient(resolution_error=TimeoutError("network"))
+    )
+
+    with pytest.raises(ProviderUnavailableError) as exc_info:
+        provider.resolve_destination(DestinationQuery("Budapest"))
+
+    assert isinstance(exc_info.value.__cause__, TimeoutError)
+
+
+def test_resolve_destination_requires_query_value() -> None:
+    provider = GooglePlacesProvider(FakeGooglePlacesClient())
+
+    with pytest.raises(TypeError, match="query must be a DestinationQuery"):
+        provider.resolve_destination("Budapest")  # type: ignore[arg-type]
 
 
 def test_discover_destinations_passes_request_to_client() -> None:

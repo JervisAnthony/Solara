@@ -61,13 +61,14 @@ def test_results_javascript_asset_exposes_authoritative_response_contract() -> N
         "recommendation.rank",
         "recommendation.score",
         "components",
-        "weighted_contribution",
         "evidence",
         "attractions",
         "seasonal_weather",
         "temperature_comfort",
         "narration",
         "recommendation_count",
+        "destination_mode",
+        "destination_queries",
         "replaceChildren",
     ):
         assert marker in script
@@ -79,9 +80,40 @@ def test_results_renderer_preserves_order_and_zero_scores() -> None:
     assert ".sort(" not in script
     assert ".reverse(" not in script
     assert "String(recommendation.rank)" in script
-    assert "String(recommendation.score)" in script
+    assert "formatPercentage(recommendation.score)" in script
     assert "if (recommendation.score)" not in script
     assert "index + 1" not in script
+
+
+def test_results_renderer_formats_seasonal_fit_without_exposing_weighting() -> None:
+    script = _client().get("/static/results.js").text
+
+    assert 'appendMetric(score, "Seasonal fit", formatPercentage(recommendation.score))' in script
+    assert "maximumFractionDigits" in script
+    assert "Number.EPSILON" in script
+    for forbidden_label in (
+        '"Suitability score"',
+        '"Weight"',
+        '"Weighted contribution"',
+    ):
+        assert forbidden_label not in script
+    assert "weighted_contribution" not in script
+
+
+def test_results_renderer_limits_attractions_with_an_accessible_local_toggle() -> None:
+    script = _client().get("/static/results.js").text
+
+    for marker in (
+        "index >= 6",
+        '"Show all attractions"',
+        '"Show fewer attractions"',
+        'toggle.type = "button"',
+        'toggle.setAttribute("aria-controls"',
+        'toggle.setAttribute("aria-expanded"',
+        'toggle.addEventListener("click"',
+    ):
+        assert marker in script
+    assert "fetch(" not in script
 
 
 def test_results_renderer_uses_safe_dom_apis_for_response_text() -> None:
@@ -125,3 +157,15 @@ def test_results_renderer_reveals_successful_empty_responses() -> None:
     assert "resultsSection.hidden = false" in script
     assert "emptyTitle.focus()" in script
     assert '"No recommendations returned this time"' not in script
+
+
+def test_results_renderer_uses_one_pipeline_with_mode_specific_copy() -> None:
+    script = _client().get("/static/results.js").text
+
+    for copy in (
+        "Recommended destinations",
+        "Destination for your trip",
+        "Your destination comparison",
+    ):
+        assert copy in script
+    assert script.count("function renderRecommendationResponse") == 1

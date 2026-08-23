@@ -644,9 +644,9 @@ python -m uvicorn solara_travel.presentation.api.app:app --reload
 Open `http://127.0.0.1:8000/` to view the Solara browser shell. Its HTML,
 stylesheet, scripts, and approved brand images are package-local and need no
 browser-side credentials.
-The form collects required start and end dates plus optional comma-separated
-interests, preferred pace, and preferred climate. It sends same-origin JSON to
-the recommendation API.
+The form collects up to five optional human-readable city/locality chips, required
+start and end dates, optional comma-separated interests, preferred pace, and
+preferred climate. It sends same-origin JSON to the recommendation API.
 
 The current browser and API surface is deliberately limited to:
 
@@ -693,18 +693,24 @@ A recommendation request uses this shape:
     "preferred_pace": "relaxed",
     "preferred_climate": "warm"
   },
-  "destination": null
+  "destination": null,
+  "destination_queries": ["Budapest, Hungary", "Vienna, Austria"]
 }
 ```
 
-The browser constructs this `application/json` shape with `destination: null`
-to use destination-discovery mode. It does not expose raw coordinate entry;
-preselected destinations remain available to programmatic API callers. Blank
-optional fields serialize as `null`.
+The browser omits `destination_queries` to use discovery mode, sends one entry
+for single-destination evaluation, and sends two to five entries for comparison.
+Pending destination text is committed on submit; commas remain part of a
+destination. Duplicate queries are rejected case-insensitively. The browser does
+not geocode, expose raw coordinate entry, or call providers. Pre-resolved
+structured destinations remain available to programmatic callers and cannot be
+combined with destination queries. Blank optional preference fields serialize
+as `null`.
 
 The form keeps native `required` semantics while using explicit accessible
-browser feedback. Submission validates that both dates exist, the end date is
-the same as or after the start date, comma-separated interests contain no blank
+browser feedback. Submission validates destination count and duplicates, that
+both dates exist, the end date is the same as or after the start date,
+comma-separated interests contain no blank
 items, and interests do not repeat after trimming and ordinary case-insensitive
 comparison. Valid interests preserve order and capitalization. Invalid input is
 not repaired and does not reach `fetch`; field messages and a focusable summary
@@ -744,25 +750,43 @@ The browser parses non-success JSON defensively and maps stable status/code
 values to fixed local product copy. Structural and domain `422` responses may
 be mapped to known fields; `502`, `503`, unexpected HTTP failures, malformed
 successful JSON, and network rejection use a dedicated request-error region.
-Raw server messages, provider details, and response bodies are not rendered.
+Provider details and arbitrary response bodies are not rendered. The one narrow
+exception is Solara's `destination_not_found` message, which safely returns the
+normalized city query to its submitting traveller through `textContent`; the
+same query is not added to logs.
 Retry is offered only for transient states and calls `form.requestSubmit()`, so
 it uses current values and the normal validation path. There is no automatic
 retry or backoff. The default unconfigured app therefore presents its safe
-`503` as a tester-friendly preview state rather than composing fixture
+`503` as a tester-friendly public-alpha state rather than composing fixture
 providers.
+
+The primary action reflects the current intent: `FIND DESTINATIONS`, bounded
+`EXPLORE <NAME>`, or `COMPARE DESTINATIONS`. One request may resolve multiple
+destinations but consumes one Solara recommendation admission and produces at
+most one grounded narration. While it is active, submit and destination-add
+controls are disabled. After ten seconds the status explains that a Render Free
+instance may be waking; the original request remains active and is never polled
+or duplicated. Destination chips survive every terminal error and retry state.
 
 After a successful submission, `app.js` dispatches
 `solara:recommendation-ready`; `results.js` renders the
 `RecommendationResponse` without another request. Recommendation order, ranks,
-scores, component values, and weighted contributions come directly from the
-response and are not recomputed in the browser. A configured empty offline
+scores, and component values come directly from the response and are not
+recomputed in the browser; score percentages are presentation formatting only.
+Technical weights and weighted contributions remain in the response but are not
+rendered to travellers. A configured empty offline
 service remains a successful `200` and produces a neutral empty-result state,
 not an error or fabricated recommendation.
 
-Each ranked card exposes selected attractions, historical seasonal aggregates,
-and server-configured temperature-comfort evidence through native disclosure
-controls. Optional narration appears separately only when supplied and is
-rendered as plain text; it does not determine ranking. These browser paths use
+Each ranked card presents the unchanged score as a seasonal-fit percentage and
+keeps technical weights and weighted contributions in the API rather than the
+traveller UI. Selected attractions, historical seasonal aggregates, and server-
+configured temperature-comfort evidence remain available through native
+disclosure controls. The first six attractions are shown initially, with a
+per-card accessible control for the full returned list. Optional narration
+appears separately only when supplied, is conservatively normalized to remove
+common Markdown display markers, and is rendered as plain text; it does not
+determine ranking. These browser paths use
 no live credentials, client persistence, or browser-side provider calls.
 
 ### Premium presentation and brand assets
@@ -911,8 +935,45 @@ its desired configuration. That deployment does not change the local workflow:
 ordinary development and the default test suite use `create_app()` and require
 neither Render access nor live provider credentials. Hosted composition tests
 use explicit fake configuration and make no provider requests. Live-network and
-provider-backed browser checks remain an explicit Commit 47 activity, not part
-of the default development test workflow.
+provider-backed browser checks remain manual and are never part of CI.
+
+Commit 47 hosted acceptance deployed exact feature SHA
+`10e3808622834f7f9a3b9fb64ba7b75dff0881b1` to the existing manually
+provisioned `solara-travel-mvp1` service. Single-city and three-city explicit
+destination flows, invalid-destination handling, provider-backed evidence,
+grounded narration, attraction disclosure, and tester feedback passed. Desktop
+and mobile were checked manually; tablet sizing was covered by deterministic
+Chromium validation at representative 1440, 768, and 390 pixel widths rather
+than a separate hosted tablet session.
+
+The tested real blank-discovery request completed without a provider/error-state
+failure but returned no recommendations, and the browser correctly rendered the
+empty state. Correcting real hosted blank/open discovery is a documented Commit
+48 follow-up. Automated tests must continue to avoid live provider calls.
+
+### Deterministic browser smoke
+
+Install the test-only browser extra and its Chromium binary:
+
+```powershell
+python -m pip install -e ".[browser,dev,web]"
+python -m playwright install chromium
+```
+
+Run the local fake-provider browser gate:
+
+```powershell
+python -m pytest tests/browser
+```
+
+The harness starts a local Solara ASGI server, uses only deterministic in-memory
+places and weather data, and covers discovery, single and comparison modes,
+chips, pending input, error preservation, cooldowns, cold-start messaging,
+repeated-submit protection, narration fallback, feedback, and 1440/768/390
+responsive behavior. It fails on unexpected console errors, page errors, failed
+requests, or broken local static assets. CI installs Chromium only in its
+dedicated `Browser Smoke / Chromium` job; Playwright is not a runtime dependency
+and browser binaries are not packaged.
 
 Tests should pass a deterministic mapping rather than mutate process state:
 

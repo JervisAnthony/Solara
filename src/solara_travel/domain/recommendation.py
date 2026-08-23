@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.preferences import TravellerPreferences
 from solara_travel.domain.travel import TravelPeriod
 
@@ -21,6 +21,7 @@ class RecommendationRequest:
     travel_period: TravelPeriod
     preferences: TravellerPreferences = field(default_factory=TravellerPreferences)
     destination: Destination | None = None
+    destination_queries: tuple[DestinationQuery, ...] = ()
 
     def __post_init__(self) -> None:
         """Validate recommendation-request domain values."""
@@ -36,3 +37,16 @@ class RecommendationRequest:
             Destination,
         ):
             raise TypeError("destination must be Destination or None")
+
+        if not isinstance(self.destination_queries, tuple):
+            raise TypeError("destination_queries must be a tuple")
+        if not all(isinstance(query, DestinationQuery) for query in self.destination_queries):
+            raise TypeError("every destination query must be a DestinationQuery")
+        if len(self.destination_queries) > 5:
+            raise ValueError("destination_queries must contain at most 5 values")
+        if self.destination is not None and self.destination_queries:
+            raise ValueError("destination and destination_queries are mutually exclusive")
+
+        normalized_queries = tuple(query.value.casefold() for query in self.destination_queries)
+        if len(normalized_queries) != len(set(normalized_queries)):
+            raise ValueError("destination_queries must not contain duplicates")

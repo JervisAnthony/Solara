@@ -5,7 +5,7 @@ from math import inf, nan
 
 import pytest
 
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.preferences import (
     TravellerInterests,
@@ -13,7 +13,7 @@ from solara_travel.domain.preferences import (
 )
 from solara_travel.domain.recommendation import RecommendationRequest
 from solara_travel.domain.travel import TravelPeriod
-from solara_travel.infrastructure.http import JsonHttpResponse
+from solara_travel.infrastructure.http import JsonHttpDecodeError, JsonHttpResponse
 from solara_travel.infrastructure.places.google import GooglePlacesHttpClient
 from solara_travel.ports.errors import (
     ProviderAuthenticationError,
@@ -25,18 +25,9 @@ from solara_travel.ports.errors import (
 _TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 _NEARBY_SEARCH_URL = "https://places.googleapis.com/v1/places:searchNearby"
 
-_DESTINATION_FIELD_MASK = (
-    "places.displayName,"
-    "places.location,"
-    "places.addressComponents"
-)
+_DESTINATION_FIELD_MASK = "places.displayName,places.location,places.addressComponents"
 
-_ATTRACTION_FIELD_MASK = (
-    "places.displayName,"
-    "places.location,"
-    "places.primaryType,"
-    "places.types"
-)
+_ATTRACTION_FIELD_MASK = "places.displayName,places.location,places.primaryType,places.types"
 
 _MISSING = object()
 
@@ -51,11 +42,7 @@ def _request(
 ) -> RecommendationRequest:
     """Return a representative destination-discovery request."""
 
-    traveller_interests = (
-        TravellerInterests(interests=interests)
-        if interests is not None
-        else None
-    )
+    traveller_interests = TravellerInterests(interests=interests) if interests is not None else None
 
     return RecommendationRequest(
         travel_period=TravelPeriod(
@@ -127,6 +114,78 @@ class FakeJsonHttpTransport:
 
         assert isinstance(self.response, JsonHttpResponse)
         return self.response
+
+
+def test_explicit_destination_search_uses_narrow_locality_payload_and_field_mask() -> None:
+    transport = FakeJsonHttpTransport()
+    client = GooglePlacesHttpClient("test-api-key", transport)
+
+    client.search_destination(DestinationQuery("Budapest, Hungary"))
+
+    assert transport.requests == [
+        {
+            "url": _TEXT_SEARCH_URL,
+            "headers": {
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": "test-api-key",
+                "X-Goog-FieldMask": _DESTINATION_FIELD_MASK,
+            },
+            "payload": {
+                "textQuery": "Budapest, Hungary",
+                "includedType": "locality",
+                "strictTypeFiltering": True,
+                "languageCode": "en",
+                "pageSize": 1,
+            },
+            "timeout_seconds": 10.0,
+        }
+    ]
+
+
+def test_explicit_destination_search_requires_destination_query() -> None:
+    client = GooglePlacesHttpClient("test-api-key", FakeJsonHttpTransport())
+
+    with pytest.raises(TypeError, match="query must be a DestinationQuery"):
+        client.search_destination("Budapest")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("status_code", "error_type"),
+    [
+        (401, ProviderAuthenticationError),
+        (403, ProviderAuthenticationError),
+        (429, ProviderRateLimitError),
+        (400, ProviderResponseError),
+        (500, ProviderUnavailableError),
+    ],
+)
+def test_explicit_destination_search_translates_google_http_failures(
+    status_code: int, error_type: type[Exception]
+) -> None:
+    transport = FakeJsonHttpTransport(
+        response=JsonHttpResponse(status_code=status_code, payload={})
+    )
+
+    with pytest.raises(error_type):
+        GooglePlacesHttpClient("test-api-key", transport).search_destination(
+            DestinationQuery("Budapest")
+        )
+
+
+@pytest.mark.parametrize(
+    ("error", "error_type"),
+    [
+        (JsonHttpDecodeError("bad json"), ProviderResponseError),
+        (TimeoutError("network"), ProviderUnavailableError),
+    ],
+)
+def test_explicit_destination_search_translates_transport_failures(
+    error: Exception, error_type: type[Exception]
+) -> None:
+    with pytest.raises(error_type):
+        GooglePlacesHttpClient(
+            "test-api-key", FakeJsonHttpTransport(error=error)
+        ).search_destination(DestinationQuery("Budapest"))
 
 
 def test_google_places_http_client_accepts_valid_configuration() -> None:
@@ -517,10 +576,7 @@ def test_search_destinations_strips_interest_whitespace() -> None:
         )
     )
 
-    assert (
-        transport.requests[0]["payload"]["textQuery"]
-        == "travel destinations for history, food"
-    )
+    assert transport.requests[0]["payload"]["textQuery"] == "travel destinations for history, food"
 
 
 def test_search_destinations_uses_generic_query_without_interests() -> None:
@@ -536,10 +592,7 @@ def test_search_destinations_uses_generic_query_without_interests() -> None:
         _request(interests=None),
     )
 
-    assert (
-        transport.requests[0]["payload"]["textQuery"]
-        == "travel destinations"
-    )
+    assert transport.requests[0]["payload"]["textQuery"] == "travel destinations"
 
 
 def test_search_destinations_passes_configured_page_size() -> None:
@@ -863,9 +916,7 @@ def test_search_attractions_passes_configured_radius() -> None:
 
     client.search_attractions(_destination())
 
-    location_restriction = transport.requests[0]["payload"][
-        "locationRestriction"
-    ]
+    location_restriction = transport.requests[0]["payload"]["locationRestriction"]
     assert isinstance(location_restriction, dict)
 
     circle = location_restriction["circle"]

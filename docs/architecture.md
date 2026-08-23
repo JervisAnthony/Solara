@@ -676,9 +676,27 @@ POST /api/v1/recommendations
 ```
 
 The script is presentation-only and calls the same-origin recommendation API;
-provider calls remain server-side. The browser uses destination-discovery mode
-with `destination: null` rather than asking travellers for raw coordinates. The
-programmatic API continues to support a preselected destination.
+provider calls remain server-side. The browser omits `destination_queries` for
+discovery, sends one query for a named-destination evaluation, or sends two to
+five queries for comparison. A `DestinationQuery` is an immutable,
+provider-independent domain value. `DestinationResolutionPort` resolves each
+explicit query to a normalized `Destination`; Google implements that operation
+as a narrow locality Text Search requesting only display name, coordinates, and
+country. The programmatic API continues to support a pre-resolved structured
+destination, which is mutually exclusive with destination queries.
+
+Explicit browser input is therefore a city/locality contract, not country-wide
+recommendation. Traveller cards label the unchanged deterministic value as
+seasonal fit and omit technical weights and weighted contributions; those audit
+fields remain available in the API and domain. Interests, pace, and preferred-
+climate words remain context and are not independent numeric score components.
+
+Candidate precedence is pre-resolved destination, explicit query resolution,
+then discovery. After selection, every mode uses the same attraction, historical
+weather, seasonal profile, comfort, deterministic score, rank, and optional
+single-narration pipeline. A legitimate no-match becomes the Solara-owned
+`destination_not_found` HTTP `422`; provider failures retain their established
+translations. Submitted destination text is not added to operational logs.
 
 Current deterministic scoring is season-led. Interests, preferred pace, and
 preferred climate travel through the request but are not yet separate score
@@ -686,7 +704,9 @@ components. Browser validation supplements the authoritative domain validation:
 it reports known date and interest problems but never silently repairs malformed
 input. After validation, `app.js` owns busy state, fetching, safe status/code
 classification, and fixed local error copy. Raw backend error text never reaches
-the DOM.
+the DOM except for the application-owned `destination_not_found` explanation.
+That explanation echoes only the normalized query submitted by the same caller,
+is inserted through `textContent`, and is never added to operational logs.
 
 `app.js` dispatches `solara:recommendation-request-start` only when a real
 network request begins. `results.js` uses that event to clear stale results, so
@@ -701,8 +721,11 @@ rendering.
 Result cards present deterministic and provider-derived evidence. Optional
 grounded narration is separate enrichment and never controls ranking. All
 response text is inserted through safe DOM text APIs rather than interpreted as
-HTML or Markdown. `app.js` also reads the server-owned `X-Request-ID` response
-header before consuming a recommendation response. A handled HTTP outcome shows
+HTML or Markdown. Application-level normalization conservatively removes common
+Markdown presentation delimiters from generated narration before serialization,
+while the browser continues to insert the result only as text. `app.js` also
+reads the server-owned `X-Request-ID` response header before consuming a
+recommendation response. A handled HTTP outcome shows
 that opaque UUID as a request reference and stores it only in the recommendation
 form's transient dataset for `feedback.js`; local validation and network failure
 never fabricate a reference, and no browser persistence is used.
@@ -778,8 +801,13 @@ GitHub main -> CI checks -> Render Docker web service
 The live service uses Render's Singapore region and Free plan. It keeps the
 browser and API same-origin in one service and adds no database, cache, worker,
 custom domain, or trusted proxy-header boundary. Root, health, and disabled-docs
-behavior are verified; provider-backed recommendation, feedback, responsive,
-and broader browser validation remain Commit 47.
+behavior are verified; provider-backed recommendation, feedback, and live
+responsive-browser validation completed for Commit 47's explicit-destination
+public-alpha flow. Deterministic local Chromium coverage continues to use fake
+providers with no live network dependency. A tested hosted blank-discovery
+request completed with an empty result; investigation of real open-discovery
+provider semantics is deferred to Commit 48 without changing deterministic
+scoring and ranking authority.
 
 The service was manually configured before `render.yaml` existed remotely. The
 repository Blueprint now represents the desired topology but does not yet manage

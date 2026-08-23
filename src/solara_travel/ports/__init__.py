@@ -11,6 +11,7 @@ from solara_travel.ports.narration import NarrationPrompt, NarrationProvider
 from solara_travel.ports.places import (
     AttractionDiscoveryPort,
     DestinationDiscoveryPort,
+    DestinationResolutionPort,
     PlacesProvider,
 )
 from solara_travel.ports.weather import HistoricalWeatherProvider
@@ -18,6 +19,7 @@ from solara_travel.ports.weather import HistoricalWeatherProvider
 __all__ = [
     "AttractionDiscoveryPort",
     "DestinationDiscoveryPort",
+    "DestinationResolutionPort",
     "HistoricalWeatherProvider",
     "NarrationPrompt",
     "NarrationProvider",

@@ -3,7 +3,7 @@
 from datetime import date
 
 from solara_travel.domain.attraction import Attraction
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.preferences import (
     TravellerInterests,
@@ -14,6 +14,7 @@ from solara_travel.domain.travel import TravelPeriod
 from solara_travel.ports.places import (
     AttractionDiscoveryPort,
     DestinationDiscoveryPort,
+    DestinationResolutionPort,
     PlacesProvider,
 )
 
@@ -77,6 +78,15 @@ class StubAttractionDiscovery:
         )
 
 
+class StubDestinationResolution:
+    """Minimal structurally compatible named-destination resolver."""
+
+    def resolve_destination(self, query: DestinationQuery) -> Destination | None:
+        if query.value == "Budapest":
+            return Destination("Budapest", "Hungary", GeoCoordinates(47.5, 19.0))
+        return None
+
+
 class StubPlacesProvider:
     """Minimal provider implementing both place-discovery capabilities."""
 
@@ -131,6 +141,14 @@ def test_attraction_discovery_port_supports_structural_typing() -> None:
     provider = StubAttractionDiscovery()
 
     assert isinstance(provider, AttractionDiscoveryPort)
+
+
+def test_destination_resolution_port_supports_structural_typing() -> None:
+    provider = StubDestinationResolution()
+
+    assert isinstance(provider, DestinationResolutionPort)
+    assert provider.resolve_destination(DestinationQuery("Budapest")) is not None
+    assert provider.resolve_destination(DestinationQuery("Atlantis")) is None
 
 
 def test_places_provider_combines_destination_and_attraction_discovery() -> None:

@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from solara_travel.application import DestinationNotFoundError
 from solara_travel.domain import RecommendationRequest
 from solara_travel.ports import (
     ProviderAuthenticationError,
@@ -59,6 +60,10 @@ def _configured_dependencies(request: Request) -> ApiDependencies:
     response_model=RecommendationResponse,
     status_code=status.HTTP_200_OK,
     responses={
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "model": ApiErrorResponse,
+            "description": "The request is invalid or an explicit destination was not found.",
+        },
         status.HTTP_429_TOO_MANY_REQUESTS: {
             "model": ApiErrorResponse,
             "description": "A process-local public-alpha safeguard rejected the request.",
@@ -116,6 +121,23 @@ def _run_recommendation(
     recommendation_started_at = perf_counter()
     try:
         result = recommendation_service.recommend(domain_request)
+    except DestinationNotFoundError as exc:
+        emit_event(
+            "recommendation.failed",
+            request_id=request_id_from_request(request),
+            code="destination_not_found",
+            stage="destination_resolution",
+            duration_ms=elapsed_milliseconds(recommendation_started_at),
+            destination_count=len(domain_request.destination_queries),
+        )
+        raise _api_error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "destination_not_found",
+            (
+                f'Solara couldn\'t resolve "{exc.query.value}" as a city or locality. '
+                "Enter a city and, if helpful, its country — for example, Budapest, Hungary."
+            ),
+        ) from exc
     except ProviderAuthenticationError as exc:
         _emit_recommendation_failure(
             request, "provider_authentication_failed", recommendation_started_at

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from solara_travel.domain.attraction import Attraction
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.recommendation import RecommendationRequest
 from solara_travel.domain.travel import TravelPeriod
 from solara_travel.domain.weather import WeatherObservation
@@ -47,6 +47,22 @@ class OfflinePlacesProvider:
                 return fixture.attractions
 
         return ()
+
+    def resolve_destination(self, query: DestinationQuery) -> Destination | None:
+        """Resolve a fixture destination by its name or name-and-country label."""
+
+        if not isinstance(query, DestinationQuery):
+            raise TypeError("query must be a DestinationQuery")
+
+        normalized = query.value.casefold()
+        for fixture in self.dataset.fixtures:
+            destination = fixture.destination
+            if normalized in {
+                destination.name.casefold(),
+                f"{destination.name}, {destination.country}".casefold(),
+            }:
+                return destination
+        return None
 
 
 @dataclass(frozen=True, slots=True)

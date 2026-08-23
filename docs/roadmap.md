@@ -867,8 +867,8 @@ Commit 43 - premium UI/GUI redesign
 Commit 44 - public-alpha safeguards and rate and cost controls
 Commit 45 - deployment configuration
 Commit 46 - hosted MVP1 deployment
-Commit 47 - public-alpha integration, smoke, and browser testing
-Commit 48 - MVP1 release documentation
+Commit 47 - public-alpha integration, smoke, and browser testing (complete)
+Commit 48 - next public-alpha experience iteration and MVP1 release documentation
 ```
 
 This sequence is intentionally more granular than the original prototype.
@@ -1196,10 +1196,32 @@ service rather than create another one.
 
 ## Commits 47-48 - MVP1 integration and release
 
-The remaining MVP1 sequence is exactly:
+The remaining MVP1 sequence is:
 
-- Commit 47 - public-alpha integration, smoke, and browser testing;
-- Commit 48 - MVP1 release documentation.
+- Commit 47 - public-alpha integration, smoke, and browser testing (complete);
+- Commit 48 - next public-alpha experience iteration and MVP1 release
+  documentation (pending).
+
+Commit 47 is complete. Phase 1 added
+provider-independent destination queries, explicit server-side locality
+resolution, discovery/single/comparison browser modes, cold-start and repeated-
+submit UX, and a local fake-provider Chromium CI gate. Initial provider-backed
+hosted testing proved the real pipeline and identified presentation corrections
+for city wording, seasonal-fit clarity, narration formatting, compact cards, and
+attraction disclosure. Corrected feature-SHA hosted acceptance then passed for
+the explicit-destination public-alpha flow, including single-city and bounded
+multi-city recommendations, invalid-destination handling, real evidence,
+grounded narration, feedback, failure states, and responsive validation.
+
+Known deferred limitation: a real hosted blank/open discovery request completed
+successfully but returned no recommendations. Commit 48 will investigate and
+correct real hosted blank/open discovery so a traveller who supplies dates and
+preferences but no city can receive useful destination recommendations. That
+investigation includes Google discovery-query semantics, bounded candidate cost,
+preference-informed query generation without LLM-owned ranking, empty-provider-
+result semantics, and graceful fallback behavior. Commit 48 remains pending and
+also carries the next public-alpha visual travel-experience iteration and MVP1
+release documentation.
 
 ## Release milestones
 

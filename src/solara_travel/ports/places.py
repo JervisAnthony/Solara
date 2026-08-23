@@ -3,7 +3,7 @@
 from typing import Protocol, runtime_checkable
 
 from solara_travel.domain.attraction import Attraction
-from solara_travel.domain.destination import Destination
+from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.recommendation import RecommendationRequest
 
 
@@ -32,9 +32,18 @@ class AttractionDiscoveryPort(Protocol):
 
 
 @runtime_checkable
+class DestinationResolutionPort(Protocol):
+    """Contract for resolving an explicit human-entered destination."""
+
+    def resolve_destination(self, query: DestinationQuery) -> Destination | None:
+        """Return one normalized destination, or ``None`` for no match."""
+        ...
+
+
+@runtime_checkable
 class PlacesProvider(
     DestinationDiscoveryPort,
     AttractionDiscoveryPort,
     Protocol,
 ):
-    """Combined contract for providers supporting place discovery."""
+    """Combined backwards-compatible contract for place discovery."""
