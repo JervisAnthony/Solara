@@ -145,9 +145,11 @@ The hosted MVP1 deployment is live at
 It runs on Render Free in Singapore as one Docker web service, one instance, and
 one Uvicorn worker. `GET /health` is the health check; hosted API documentation
 is disabled. Idle spin-down can cause cold starts. The public-alpha form now
-supports blank discovery, one explicit destination, or a comparison of up to
-five destinations. Provider-backed integration and live hosted browser
-validation remain the Commit 47 Phase 2 gate.
+supports blank discovery, one explicit city/locality, or a comparison of up to
+five cities. Public result cards present the current seasonal-temperature score
+as a readable seasonal-fit percentage; interests and travel-style preferences
+are request context, not yet independent numeric ranking factors. Provider-
+backed corrected live acceptance remains the Commit 47 Phase 2 gate.
 
 See the [deployment guide](docs/deployment.md) for local, container, and hosted
 operational details.

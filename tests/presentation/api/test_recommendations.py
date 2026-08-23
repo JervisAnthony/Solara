@@ -291,7 +291,7 @@ def test_structured_destination_and_queries_are_mutually_exclusive() -> None:
     assert "mutually exclusive" in response.text
 
 
-def test_destination_not_found_maps_to_safe_422_without_query_logging(
+def test_destination_not_found_maps_to_safe_specific_422_without_query_logging(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     events: list[dict[str, object]] = []
@@ -300,7 +300,7 @@ def test_destination_not_found_maps_to_safe_422_without_query_logging(
         "emit_event",
         lambda event, **fields: events.append({"event": event, **fields}),
     )
-    payload = _valid_payload() | {"destination_queries": ["Atlantis"]}
+    payload = _valid_payload() | {"destination_queries": ["  Morocco  "]}
 
     response = _configured_client().post("/api/v1/recommendations", json=payload)
 
@@ -308,14 +308,27 @@ def test_destination_not_found_maps_to_safe_422_without_query_logging(
     assert response.json()["detail"] == {
         "code": "destination_not_found",
         "message": (
-            "One requested destination could not be found. Review the destination and try again."
+            'Solara couldn\'t resolve "Morocco" as a city or locality. Enter a city and, '
+            "if helpful, its country — for example, Budapest, Hungary."
         ),
     }
     failure = next(event for event in events if event["event"] == "recommendation.failed")
     assert failure["code"] == "destination_not_found"
     assert failure["stage"] == "destination_resolution"
     assert failure["destination_count"] == 1
-    assert "Atlantis" not in repr(events)
+    assert "Morocco" not in repr(events)
+
+
+def test_destination_not_found_returns_hostile_query_only_as_json_text() -> None:
+    hostile = "<svg onload=alert(1)>"
+    payload = _valid_payload() | {"destination_queries": [hostile]}
+
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "destination_not_found"
+    assert hostile in response.json()["detail"]["message"]
+    assert response.headers["content-type"].startswith("application/json")
 
 
 def test_empty_recommendation_result_is_a_valid_success() -> None:

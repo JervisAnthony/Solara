@@ -877,7 +877,7 @@ h4 {
 }
 
 .component-section {
-  padding: 0 clamp(1.5rem, 4vw, 2.5rem) 2.5rem;
+  padding: 0 clamp(1.5rem, 4vw, 2.5rem) clamp(1.5rem, 3vw, 2rem);
 }
 
 .evidence-heading {
@@ -890,8 +890,9 @@ h4 {
 
 .component-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   gap: 0.8rem;
+  align-items: start;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -905,9 +906,16 @@ h4 {
 }
 
 .component-name {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
   color: var(--color-ink);
   font-weight: 700;
+}
+
+.component-fit {
+  margin-bottom: 0;
+  color: var(--color-accent-strong);
+  font-size: 0.9rem;
+  font-weight: 750;
 }
 
 .metric-grid {
@@ -1029,6 +1037,22 @@ h4 {
   text-transform: uppercase;
 }
 
+.attraction-toggle {
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--color-line-warm);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.attraction-toggle:hover {
+  border-color: var(--color-accent);
+  background: var(--color-canvas-soft);
+}
+
 .recommendation-empty,
 .recommendation-narration {
   padding: clamp(1.5rem, 4vw, 2.5rem);
@@ -1060,6 +1084,7 @@ h4 {
   font-size: 1.2rem;
   line-height: 1.7;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .tester-feedback {
@@ -1284,10 +1309,6 @@ h4 {
 
   .workspace-shell {
     grid-template-columns: minmax(16rem, 0.65fr) minmax(28rem, 1.35fr);
-  }
-
-  .component-list {
-    grid-template-columns: 1fr;
   }
 }
 

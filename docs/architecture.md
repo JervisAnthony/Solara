@@ -685,6 +685,12 @@ as a narrow locality Text Search requesting only display name, coordinates, and
 country. The programmatic API continues to support a pre-resolved structured
 destination, which is mutually exclusive with destination queries.
 
+Explicit browser input is therefore a city/locality contract, not country-wide
+recommendation. Traveller cards label the unchanged deterministic value as
+seasonal fit and omit technical weights and weighted contributions; those audit
+fields remain available in the API and domain. Interests, pace, and preferred-
+climate words remain context and are not independent numeric score components.
+
 Candidate precedence is pre-resolved destination, explicit query resolution,
 then discovery. After selection, every mode uses the same attraction, historical
 weather, seasonal profile, comfort, deterministic score, rank, and optional
@@ -698,7 +704,9 @@ components. Browser validation supplements the authoritative domain validation:
 it reports known date and interest problems but never silently repairs malformed
 input. After validation, `app.js` owns busy state, fetching, safe status/code
 classification, and fixed local error copy. Raw backend error text never reaches
-the DOM.
+the DOM except for the application-owned `destination_not_found` explanation.
+That explanation echoes only the normalized query submitted by the same caller,
+is inserted through `textContent`, and is never added to operational logs.
 
 `app.js` dispatches `solara:recommendation-request-start` only when a real
 network request begins. `results.js` uses that event to clear stale results, so
@@ -713,8 +721,11 @@ rendering.
 Result cards present deterministic and provider-derived evidence. Optional
 grounded narration is separate enrichment and never controls ranking. All
 response text is inserted through safe DOM text APIs rather than interpreted as
-HTML or Markdown. `app.js` also reads the server-owned `X-Request-ID` response
-header before consuming a recommendation response. A handled HTTP outcome shows
+HTML or Markdown. Application-level normalization conservatively removes common
+Markdown presentation delimiters from generated narration before serialization,
+while the browser continues to insert the result only as text. `app.js` also
+reads the server-owned `X-Request-ID` response header before consuming a
+recommendation response. A handled HTTP outcome shows
 that opaque UUID as a request reference and stores it only in the recommendation
 form's transient dataset for `feedback.js`; local validation and network failure
 never fabricate a reference, and no browser persistence is used.

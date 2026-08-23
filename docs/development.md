@@ -644,7 +644,7 @@ python -m uvicorn solara_travel.presentation.api.app:app --reload
 Open `http://127.0.0.1:8000/` to view the Solara browser shell. Its HTML,
 stylesheet, scripts, and approved brand images are package-local and need no
 browser-side credentials.
-The form collects up to five optional human-readable destination chips, required
+The form collects up to five optional human-readable city/locality chips, required
 start and end dates, optional comma-separated interests, preferred pace, and
 preferred climate. It sends same-origin JSON to the recommendation API.
 
@@ -750,11 +750,14 @@ The browser parses non-success JSON defensively and maps stable status/code
 values to fixed local product copy. Structural and domain `422` responses may
 be mapped to known fields; `502`, `503`, unexpected HTTP failures, malformed
 successful JSON, and network rejection use a dedicated request-error region.
-Raw server messages, provider details, and response bodies are not rendered.
+Provider details and arbitrary response bodies are not rendered. The one narrow
+exception is Solara's `destination_not_found` message, which safely returns the
+normalized city query to its submitting traveller through `textContent`; the
+same query is not added to logs.
 Retry is offered only for transient states and calls `form.requestSubmit()`, so
 it uses current values and the normal validation path. There is no automatic
 retry or backoff. The default unconfigured app therefore presents its safe
-`503` as a tester-friendly preview state rather than composing fixture
+`503` as a tester-friendly public-alpha state rather than composing fixture
 providers.
 
 The primary action reflects the current intent: `FIND DESTINATIONS`, bounded
@@ -768,15 +771,22 @@ or duplicated. Destination chips survive every terminal error and retry state.
 After a successful submission, `app.js` dispatches
 `solara:recommendation-ready`; `results.js` renders the
 `RecommendationResponse` without another request. Recommendation order, ranks,
-scores, component values, and weighted contributions come directly from the
-response and are not recomputed in the browser. A configured empty offline
+scores, and component values come directly from the response and are not
+recomputed in the browser; score percentages are presentation formatting only.
+Technical weights and weighted contributions remain in the response but are not
+rendered to travellers. A configured empty offline
 service remains a successful `200` and produces a neutral empty-result state,
 not an error or fabricated recommendation.
 
-Each ranked card exposes selected attractions, historical seasonal aggregates,
-and server-configured temperature-comfort evidence through native disclosure
-controls. Optional narration appears separately only when supplied and is
-rendered as plain text; it does not determine ranking. These browser paths use
+Each ranked card presents the unchanged score as a seasonal-fit percentage and
+keeps technical weights and weighted contributions in the API rather than the
+traveller UI. Selected attractions, historical seasonal aggregates, and server-
+configured temperature-comfort evidence remain available through native
+disclosure controls. The first six attractions are shown initially, with a
+per-card accessible control for the full returned list. Optional narration
+appears separately only when supplied, is conservatively normalized to remove
+common Markdown display markers, and is rendered as plain text; it does not
+determine ranking. These browser paths use
 no live credentials, client persistence, or browser-side provider calls.
 
 ### Premium presentation and brand assets
@@ -927,6 +937,10 @@ neither Render access nor live provider credentials. Hosted composition tests
 use explicit fake configuration and make no provider requests. Live-network and
 provider-backed browser checks remain the manual Commit 47 Phase 2 gate and are
 never part of CI.
+
+The corrective Phase 2 build still requires hosted acceptance after its exact
+signed feature SHA is published and redeployed. Commit 47 remains in progress
+until that corrected live gate passes.
 
 ### Deterministic browser smoke
 

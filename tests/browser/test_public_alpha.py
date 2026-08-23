@@ -13,7 +13,7 @@ from urllib.request import urlopen
 import pytest
 import uvicorn
 
-from solara_travel.application import RecommendationService
+from solara_travel.application import RecommendationNarrationService, RecommendationService
 from solara_travel.domain import (
     Attraction,
     Destination,
@@ -24,6 +24,7 @@ from solara_travel.domain import (
     TravelPeriod,
     WeatherObservation,
 )
+from solara_travel.ports import NarrationPrompt, ProviderUnavailableError
 from solara_travel.presentation.api import ApiDependencies, create_app
 
 playwright = pytest.importorskip("playwright.sync_api")
@@ -47,6 +48,8 @@ class BrowserPlacesProvider:
             time.sleep(10.5)
             return self.destinations[0]
         normalized = query.value.split(",", 1)[0].strip().casefold()
+        if normalized == "markdownville":
+            return self.destinations[0]
         return next(
             (
                 destination
@@ -57,13 +60,22 @@ class BrowserPlacesProvider:
         )
 
     def discover_attractions(self, destination: Destination) -> tuple[Attraction, ...]:
-        return (
+        return tuple(
             Attraction(
-                f"{destination.name} Museum",
-                "museum",
+                f"{destination.name} attraction {index}",
+                "landmark",
                 destination.coordinates,
-            ),
+            )
+            for index in range(1, 9)
         )
+
+
+@dataclass(frozen=True)
+class BrowserNarrationProvider:
+    def generate(self, prompt: NarrationPrompt) -> str:
+        if "Markdownville" not in prompt.input_text:
+            raise ProviderUnavailableError("deterministic narration fallback")
+        return "## Overall\n\n**Seasonal fit**\n\n### Rankings\n\n`Budapest`"
 
 
 @dataclass(frozen=True)
@@ -97,7 +109,12 @@ def local_public_alpha() -> Iterator[tuple[str, BrowserPlacesProvider]]:
         TravelPeriod(date(2020, 1, 1), date(2024, 12, 31)),
         TemperatureComfortRange(18.0, 28.0, 10.0),
     )
-    application = create_app(dependencies=ApiDependencies(service))
+    application = create_app(
+        dependencies=ApiDependencies(
+            service,
+            RecommendationNarrationService(BrowserNarrationProvider()),
+        )
+    )
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
@@ -146,6 +163,12 @@ def page(chromium_browser: object) -> Iterator[object]:
             else None
         ),
     )
+
+    def handle_dialog(dialog: object) -> None:
+        failures.append(f"dialog: {dialog}")
+        dialog.dismiss()
+
+    browser_page.on("dialog", handle_dialog)
     browser_page.on("pageerror", lambda error: failures.append(f"pageerror: {error}"))
     browser_page.on(
         "requestfailed",
@@ -178,6 +201,65 @@ def _add(page: object, query: str) -> None:
     page.locator("#destination-add").click()
 
 
+def _synthetic_response(scores: list[float]) -> dict[str, object]:
+    recommendations = []
+    for rank, score in enumerate(scores, start=1):
+        recommendations.append(
+            {
+                "rank": rank,
+                "destination": {"name": f"City {rank}", "country": "Example"},
+                "score": score,
+                "components": [
+                    {
+                        "name": "seasonal_temperature_comfort",
+                        "score": score,
+                        "weight": 1.0,
+                        "weighted_contribution": score,
+                    }
+                ],
+                "evidence": {
+                    "attractions": [],
+                    "seasonal_weather": {
+                        "target_period": {
+                            "start_date": "2027-04-10",
+                            "end_date": "2027-04-12",
+                        },
+                        "historical_years": [2020],
+                        "historical_year_count": 1,
+                        "observation_count": 3,
+                        "mean_temperature_celsius": 22.1234,
+                        "minimum_temperature_celsius": 20.9876,
+                        "maximum_temperature_celsius": 23.4567,
+                        "mean_relative_humidity_percent": 55.555,
+                        "mean_daily_precipitation_mm": 1.2345,
+                    },
+                    "temperature_comfort": {
+                        "score": score,
+                        "comfort_range": {
+                            "minimum_celsius": 18.0,
+                            "maximum_celsius": 28.0,
+                            "tolerance_celsius": 10.0,
+                        },
+                        "within_preferred_fraction": score,
+                        "mean_deviation_celsius": 1.234,
+                    },
+                },
+            }
+        )
+    return {
+        "request": {
+            "destination_mode": "discovery",
+            "destination_queries": [],
+            "travel_period": {"start_date": "2027-04-10", "end_date": "2027-04-12"},
+        },
+        "recommendation_count": len(recommendations),
+        "has_recommendations": True,
+        "recommendations": recommendations,
+        "has_narration": False,
+        "narration": None,
+    }
+
+
 def test_discovery_mode_submits_and_renders_fake_ranked_results(
     page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
 ) -> None:
@@ -191,6 +273,35 @@ def test_discovery_mode_submits_and_renders_fake_ranked_results(
     page.locator(".recommendation-card").first.wait_for()
     assert page.locator(".recommendation-card").count() == 3
     assert page.locator("#results-title").inner_text() == "Recommended destinations"
+
+
+def test_score_percentage_and_evidence_number_formatting(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    _open(page, base_url)
+    response = _synthetic_response([1.0, 0.99825, 0.7495, 0.6815, 0.0])
+
+    page.evaluate(
+        """response => document.querySelector('#recommendation-form').dispatchEvent(
+          new CustomEvent('solara:recommendation-ready', {detail: response})
+        )""",
+        response,
+    )
+
+    assert page.locator(".suitability-score .metric-value").all_inner_texts() == [
+        "100%",
+        "99.8%",
+        "75%",
+        "68.2%",
+        "0%",
+    ]
+    page.locator(".recommendation-card").first.locator(".evidence-summary").click()
+    evidence = page.locator(".recommendation-card").first.locator(".evidence-content")
+    assert "22.1 °C" in evidence.inner_text()
+    assert "21 °C — 23.5 °C" in evidence.inner_text()
+    assert "55.6%" in evidence.inner_text()
+    assert "1.23 mm" in evidence.inner_text()
 
 
 def test_single_destination_chip_cta_request_and_result(
@@ -304,13 +415,16 @@ def test_server_failures_preserve_destination_state(
     assert page.locator(".destination-chip").count() == 1
 
 
-def test_destination_not_found_preserves_chip_and_pending_input(
+def test_destination_not_found_identifies_city_contract_and_preserves_form(
     page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
 ) -> None:
     base_url, _ = local_public_alpha
     _open(page, base_url)
     _fill_dates(page)
-    _add(page, "Atlantis")
+    page.locator("#interests").fill("history")
+    page.locator("#preferred-pace").fill("balanced")
+    _add(page, "Budapest")
+    _add(page, "Morocco")
 
     page.locator("#recommendation-submit").click()
 
@@ -318,7 +432,102 @@ def test_destination_not_found_preserves_chip_and_pending_input(
     assert (
         page.locator("#recommendation-request-error-title").inner_text() == "Destination not found"
     )
-    assert page.locator(".destination-chip").inner_text().startswith("Atlantis")
+    message = page.locator("#recommendation-request-error-message").inner_text()
+    assert 'couldn\'t resolve "Morocco" as a city or locality' in message
+    assert "Budapest, Hungary" in message
+    assert page.locator(".destination-chip").count() == 2
+    assert page.locator("#travel-start-date").input_value() == "2027-04-10"
+    assert page.locator("#travel-end-date").input_value() == "2027-04-12"
+    assert page.locator("#interests").input_value() == "history"
+    assert page.locator("#preferred-pace").input_value() == "balanced"
+
+
+def test_hostile_destination_is_rendered_only_as_text(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    _open(page, base_url)
+    _fill_dates(page)
+    hostile = "<svg onload=alert(1)>"
+    _add(page, hostile)
+
+    page.locator("#recommendation-submit").click()
+
+    message = page.locator("#recommendation-request-error-message")
+    message.wait_for()
+    assert hostile in message.inner_text()
+    assert message.locator("svg").count() == 0
+
+
+def test_markdown_narration_is_clean_plain_text(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    _open(page, base_url)
+    _fill_dates(page)
+    _add(page, "Markdownville")
+
+    page.locator("#recommendation-submit").click()
+
+    narration = page.locator("#recommendation-narration-text")
+    narration.wait_for()
+    assert narration.inner_text() == "Overall\n\nSeasonal fit\n\nRankings\n\nBudapest"
+    assert narration.locator("*").count() == 0
+
+
+def test_seasonal_fit_cards_are_compact_and_attractions_expand_independently(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    _open(page, base_url)
+    _fill_dates(page)
+    requests: list[object] = []
+    page.on(
+        "request",
+        lambda request: (
+            requests.append(request) if request.url.endswith("/recommendations") else None
+        ),
+    )
+
+    page.locator("#recommendation-submit").click()
+    page.locator(".recommendation-card").first.wait_for()
+
+    cards = page.locator(".recommendation-card")
+    assert cards.count() == 3
+    assert cards.locator(".suitability-score .metric-label").all_inner_texts() == [
+        "SEASONAL FIT",
+        "SEASONAL FIT",
+        "SEASONAL FIT",
+    ]
+    traveller_text = "\n".join(cards.all_inner_texts())
+    assert "WEIGHT" not in traveller_text
+    assert "WEIGHTED CONTRIBUTION" not in traveller_text
+    assert "SUITABILITY SCORE" not in traveller_text
+    assert cards.locator(".suitability-score .metric-value").all_inner_texts() == [
+        "100%",
+        "100%",
+        "70%",
+    ]
+    component = cards.first.locator(".component-section").bounding_box()
+    evidence = cards.first.locator(".evidence-summary").bounding_box()
+    assert component is not None and evidence is not None
+    assert evidence["y"] - (component["y"] + component["height"]) < 2
+
+    assert cards.locator(".attraction-toggle").count() == 3
+    cards.nth(0).locator(".evidence-summary").click()
+    cards.nth(1).locator(".evidence-summary").click()
+    toggles = cards.get_by_role("button", name="Show all attractions")
+    assert toggles.count() == 2
+    assert cards.nth(0).locator(".attraction-list li:visible").count() == 6
+    assert cards.nth(1).locator(".attraction-list li:visible").count() == 6
+    toggles.nth(0).focus()
+    toggles.nth(0).press("Enter")
+    assert cards.nth(0).locator(".attraction-list li:visible").count() == 8
+    assert cards.nth(1).locator(".attraction-list li:visible").count() == 6
+    assert cards.nth(0).get_by_role("button", name="Show fewer attractions").is_visible()
+    cards.nth(0).get_by_role("button", name="Show fewer attractions").press("Enter")
+    assert cards.nth(0).locator(".attraction-list li:visible").count() == 6
+    assert len(requests) == 1
 
 
 def test_cold_start_message_and_repeated_submit_protection(

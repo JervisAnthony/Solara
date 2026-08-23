@@ -70,6 +70,7 @@
       validationErrors = [],
       requestId = null,
       retryAfterSeconds = null,
+      responseMessage = null,
     ) {
       super("Recommendation request failed.");
       this.name = "RecommendationRequestError";
@@ -79,6 +80,7 @@
       this.validationErrors = validationErrors;
       this.requestId = requestId;
       this.retryAfterSeconds = retryAfterSeconds;
+      this.responseMessage = responseMessage;
     }
   }
 
@@ -361,6 +363,10 @@
       ...domainValidationErrors(detail),
       ...structuralValidationErrors(detail),
     ];
+    const responseMessage =
+      code === "destination_not_found" && typeof detail.message === "string"
+        ? detail.message
+        : null;
     return new RecommendationRequestError(
       "http",
       response.status,
@@ -368,6 +374,7 @@
       validationErrors,
       requestId,
       retryAfterSeconds,
+      responseMessage,
     );
   }
 
@@ -464,7 +471,7 @@
       recommendation_service_unconfigured: {
         title: "Recommendations aren't available yet",
         message:
-          "This Solara preview is running without a configured recommendation service.",
+          "This Solara public alpha is running without a configured recommendation service.",
         retry: false,
       },
       provider_authentication_failed: {
@@ -512,13 +519,13 @@
       recommendation_rate_limited: {
         title: "Solara is taking a short pause",
         message:
-          "This public preview has received several comparison requests. Please wait a little before trying again.",
+          "This public alpha has received several comparison requests. Please wait a little before trying again.",
         retry: true,
       },
       recommendation_budget_exhausted: {
-        title: "Solara has reached its current preview allowance",
+        title: "Solara has reached its current public-alpha allowance",
         message:
-          "Recommendation capacity for this public preview is temporarily exhausted. Please try again later.",
+          "Recommendation capacity for this public alpha is temporarily exhausted. Please try again later.",
         retry: true,
       },
       recommendation_capacity_reached: {
@@ -529,6 +536,9 @@
       },
     };
     if (error.code && knownCodes[error.code]) {
+      if (error.code === "destination_not_found" && error.responseMessage) {
+        return { ...knownCodes.destination_not_found, message: error.responseMessage };
+      }
       return knownCodes[error.code];
     }
     if (error.kind === "network") {

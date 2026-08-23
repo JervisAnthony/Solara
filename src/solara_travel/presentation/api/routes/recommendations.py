@@ -133,7 +133,10 @@ def _run_recommendation(
         raise _api_error(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             "destination_not_found",
-            "One requested destination could not be found. Review the destination and try again.",
+            (
+                f'Solara couldn\'t resolve "{exc.query.value}" as a city or locality. '
+                "Enter a city and, if helpful, its country — for example, Budapest, Hungary."
+            ),
         ) from exc
     except ProviderAuthenticationError as exc:
         _emit_recommendation_failure(

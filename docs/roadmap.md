@@ -1201,12 +1201,15 @@ The remaining MVP1 sequence is exactly:
 - Commit 47 - public-alpha integration, smoke, and browser testing;
 - Commit 48 - MVP1 release documentation.
 
-Commit 47 Phase 1 is in progress. Its deterministic implementation adds
+Commit 47 remains in progress. Phase 1 added
 provider-independent destination queries, explicit server-side locality
 resolution, discovery/single/comparison browser modes, cold-start and repeated-
-submit UX, and a local fake-provider Chromium CI gate. Provider-backed hosted
-recommendations, real feedback smoke, and live responsive-browser validation
-remain Phase 2 gates; Commit 47 is not complete until those gates pass.
+submit UX, and a local fake-provider Chromium CI gate. Initial provider-backed
+hosted testing proved the real pipeline and identified presentation corrections
+for city wording, seasonal-fit clarity, narration formatting, compact cards, and
+attraction disclosure. Corrected feature-SHA hosted acceptance remains the Phase
+2 gate; Commit 47 is not complete until that gate passes. Commit 48 remains
+pending.
 
 ## Release milestones
 

@@ -26,8 +26,9 @@ Solara is intended for travellers who:
 ### Destination discovery
 
 A traveller may leave destination input blank and ask where to go, supply one
-human-readable destination for evaluation, or supply two to five destinations
-for a bounded comparison. Solara resolves explicit names server-side, then uses
+human-readable city/locality for evaluation, or supply two to five cities for a
+bounded comparison. Country-wide recommendation is not part of MVP1. Solara
+resolves explicit locality names server-side, then uses
 the same evidence, deterministic scoring, and ranking pipeline in every mode.
 
 ### Attraction discovery
@@ -55,7 +56,7 @@ duration, pace, interests, and known constraints.
 The first usable version should support:
 
 - structured destination-recommendation requests;
-- discovery, single-destination evaluation, and small destination comparisons;
+- discovery, single-city evaluation, and small city comparisons;
 - traveller interests and trip-style preferences;
 - destination and attraction representations;
 - normalized weather and seasonal observations;
@@ -98,6 +99,11 @@ A recommendation should eventually include:
 - uncertainty or missing-data notices;
 - a concise recommendation explanation;
 - optional itinerary suggestions.
+
+For the current public alpha, the traveller-facing numeric result is seasonal
+fit derived from seasonal temperature comfort. Technical component weights stay
+available to engineering/API consumers. Interests and pace are accepted as
+context but are not yet independent deterministic ranking factors.
 
 ## Product principles
 

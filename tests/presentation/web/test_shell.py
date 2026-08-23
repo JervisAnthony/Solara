@@ -47,6 +47,8 @@ def test_root_returns_semantic_solara_html_shell() -> None:
     assert "Solara" in html
     assert "Public alpha" in html
     assert "Development preview" not in html
+    assert "Current preview scoring" not in html
+    assert "Current scoring focuses on seasonal fit" in html
     assert "Season-smart travel intelligence" in html
     assert "Travel that fits the season &mdash; and you." in html
     assert "A clearer starting point" in html

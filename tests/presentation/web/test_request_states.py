@@ -128,7 +128,7 @@ def test_app_script_maps_stable_api_errors_to_local_copy() -> None:
         "Can't reach Solara right now",
         "Something went wrong",
         "Solara is taking a short pause",
-        "Solara has reached its current preview allowance",
+        "Solara has reached its current public-alpha allowance",
         "Solara is busy right now",
     ):
         assert safe_copy in script
@@ -156,7 +156,10 @@ def test_app_script_applies_a_safe_bounded_429_cooldown_without_auto_retry() -> 
     assert "form.requestSubmit()" in script
     assert "setTimeout(() => form.requestSubmit" not in script
     assert "setInterval" not in script
-    assert "detail.message" not in script[script.index("function classifyRequestError") :]
+    classifier = script[script.index("function classifyRequestError") :]
+    assert "error.responseMessage" in classifier
+    assert 'error.code === "destination_not_found"' in classifier
+    assert "innerHTML" not in script
 
 
 def test_destination_script_preserves_state_and_prevents_duplicate_requests() -> None:
