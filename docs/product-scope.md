@@ -35,6 +35,13 @@ public alpha, however, the tested real blank-discovery request completed with an
 empty result rather than useful destination candidates; correction is deferred
 to the next public-alpha experience iteration in Commit 48.
 
+Commit 48's visual travel experience begins with a photography-led homepage,
+curated Popular Escapes, and a compact trip planner. Popular Escapes is static
+editorial inspiration: choosing a card only adds that city/locality to the
+planner and does not influence ranking or spend provider quota. Country scope
+and locality discovery within a country remain future Commit 49 capabilities,
+not part of this visual phase.
+
 ### Attraction discovery
 
 A traveller selects a destination. Solara identifies relevant attractions and

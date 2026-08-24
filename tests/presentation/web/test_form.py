@@ -60,8 +60,8 @@ def test_form_has_accessible_optional_destination_chip_controls_above_dates() ->
     assert 'id="destination-status"' in html
     assert 'aria-live="polite"' in html
     assert "Add cities you want Solara to evaluate" in html
-    assert "leave blank to discover" in html
-    assert "destinations. Up to five cities" in html
+    assert "You can compare up to five" in html
+    assert "leave blank to discover" not in html
     assert "Add places you want Solara to evaluate" not in html
 
 

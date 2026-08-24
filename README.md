@@ -154,6 +154,12 @@ Blank discovery remains structurally available, but the tested real hosted
 request returned no recommendations; correcting that limitation is deferred to
 Commit 48.
 
+Commit 48 is in progress as a three-phase visual travel-experience redesign.
+Phase 1 introduces an editorial travel homepage, locally bundled destination
+photography, curated Popular Escapes inspiration, and a more compact planner.
+The inspiration cards are static editorial starting points and do not affect
+recommendation ranking or call providers when the page opens.
+
 See the [deployment guide](docs/deployment.md) for local, container, and hosted
 operational details.
 

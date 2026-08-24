@@ -14,6 +14,7 @@
       type="image/png"
       href="/static/branding/solara-mark-gold.png"
     >
+    <script src="/static/inspiration.js" defer></script>
     <script src="/static/app.js" defer></script>
     <script src="/static/results.js" defer></script>
     <script src="/static/feedback.js" defer></script>
@@ -35,7 +36,12 @@
             height="724"
           >
         </a>
-        <div class="header-meta">
+        <nav class="site-navigation" aria-label="Primary navigation">
+          <a href="#how-it-works">How it works</a>
+          <a href="#popular-escapes">Popular escapes</a>
+          <a href="#recommendation-workspace">Plan a trip</a>
+        </nav>
+        <div class="header-meta" aria-label="Release status">
           <span class="preview-dot" aria-hidden="true"></span>
           <span class="preview-label">Public alpha</span>
         </div>
@@ -48,48 +54,137 @@
           <p class="eyebrow">Season-smart travel intelligence</p>
           <h1 id="hero-title">Travel that fits the season &mdash; and you.</h1>
           <p class="hero-summary">
-            Compare destinations through the lens of your travel dates. Solara turns
-            historical seasonal evidence into calm, clear recommendations you can
-            understand.
+            Tell Solara when you want to travel and what you love doing. We'll help
+            you compare places that make sense for the season &mdash; with enough
+            context to choose with confidence.
           </p>
           <div class="hero-actions">
-            <a class="primary-link" href="#recommendation-workspace">
-              Plan with Solara
+            <a
+              class="primary-link"
+              href="#recommendation-workspace"
+              data-scroll-target="recommendation-workspace"
+            >
+              Start planning
               <span aria-hidden="true">&rarr;</span>
             </a>
-            <p>Deterministic ranking. Visible evidence.</p>
+            <a class="secondary-link" href="#how-it-works">See how it works</a>
           </div>
         </div>
 
-        <div class="hero-visual" aria-hidden="true">
-          <span class="hero-orbit hero-orbit-outer"></span>
-          <span class="hero-orbit hero-orbit-inner"></span>
+        <figure class="hero-visual">
           <img
-            class="hero-brand-art"
-            src="/static/branding/solara-logo-stacked.png"
-            alt=""
-            width="1254"
-            height="1254"
+            class="hero-travel-image"
+            src="/static/travel/cape-town.webp"
+            alt="Camps Bay and the Atlantic coast viewed from Table Mountain in Cape Town"
+            width="1280"
+            height="720"
+            fetchpriority="high"
+            decoding="async"
           >
-        </div>
-
-        <aside class="hero-note" aria-label="What guides a Solara recommendation">
-          <div class="note-mark" aria-hidden="true">
+          <figcaption>
             <img
               src="/static/branding/solara-mark-gold.png"
               alt=""
               width="1254"
               height="1254"
             >
-          </div>
+            <span>Camps Bay, Cape Town</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section
+        id="popular-escapes"
+        class="popular-escapes"
+        aria-labelledby="popular-escapes-title"
+      >
+        <div class="shell escapes-heading">
           <div>
-            <span class="note-kicker">A clearer starting point</span>
+            <p class="section-label">Curated inspiration</p>
+            <h2 id="popular-escapes-title">Popular escapes</h2>
             <p>
-              Dates shape the seasonal context. Preferences travel with your request.
-              Evidence makes the reasoning visible.
+              A few places to spark the next conversation. Choose one to add it to
+              your planner &mdash; Solara won't run a search until you ask.
             </p>
           </div>
-        </aside>
+          <div class="carousel-controls" aria-label="Popular escapes carousel controls">
+            <button
+              id="popular-escapes-previous"
+              class="carousel-control"
+              type="button"
+              aria-controls="popular-escapes-track"
+              aria-label="Previous popular escapes"
+            >
+              <span aria-hidden="true">&larr;</span>
+            </button>
+            <button
+              id="popular-escapes-next"
+              class="carousel-control"
+              type="button"
+              aria-controls="popular-escapes-track"
+              aria-label="Next popular escapes"
+            >
+              <span aria-hidden="true">&rarr;</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="popular-escapes-track"
+          class="escapes-track"
+          role="region"
+          aria-label="Curated destination inspiration"
+          tabindex="0"
+        >
+          <article class="escape-card">
+            <img src="/static/travel/budapest.webp" alt="Budapest illuminated beside the Danube at night" width="1280" height="831" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Budapest, Hungary</p>
+              <p>Grand architecture, thermal baths, and evenings along the Danube.</p>
+              <button type="button" data-escape-destination="Budapest, Hungary">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/kyoto.webp" alt="The hillside Kiyomizu-dera temple in Kyoto" width="1280" height="823" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Kyoto, Japan</p>
+              <p>Temples, gardens, quiet lanes, and a slower rhythm between seasons.</p>
+              <button type="button" data-escape-destination="Kyoto, Japan">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/cape-town.webp" alt="Camps Bay and the Atlantic coast from Table Mountain" width="1280" height="720" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Cape Town, South Africa</p>
+              <p>Mountains, ocean drives, vineyards, and days made for exploring.</p>
+              <button type="button" data-escape-destination="Cape Town, South Africa">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/bali.webp" alt="Green rice terraces across the hills of Bali" width="1280" height="853" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Bali, Indonesia</p>
+              <p>Rice terraces, surf, temples, and tropical days at an easy pace.</p>
+              <button type="button" data-escape-destination="Bali, Indonesia">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/cebu.webp" alt="A quiet tropical beach in Cebu" width="1280" height="960" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Cebu, Philippines</p>
+              <p>Island-hopping, dive days, waterfalls, and a gateway to the Visayas.</p>
+              <button type="button" data-escape-destination="Cebu, Philippines">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/istanbul.webp" alt="Istanbul's historic peninsula and skyline beside the Bosphorus" width="1280" height="618" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Istanbul, T&uuml;rkiye</p>
+              <p>Mosques, markets, ferry rides, and two continents in one afternoon.</p>
+              <button type="button" data-escape-destination="Istanbul, T&uuml;rkiye">Plan this escape</button>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section
@@ -99,12 +194,11 @@
       >
         <div class="shell workspace-shell">
           <div class="workspace-heading">
-            <p class="section-label">The journey begins here</p>
-            <h2 id="workspace-title">Shape your seasonal escape</h2>
+            <p class="section-label">Plan your trip</p>
+            <h2 id="workspace-title">A few details are enough to get started.</h2>
             <p class="workspace-summary">
-              Choose your dates and share the travel preferences that matter to you.
-              Solara will compare the available destinations with the same transparent
-              seasonal-fit method every time.
+              Add cities you're considering, then choose your dates and travel
+              preferences. Solara will help you compare their seasonal fit.
             </p>
             <div class="workspace-assurance" aria-label="Planner qualities">
               <span>Season-led</span>
@@ -124,11 +218,6 @@
             aria-labelledby="workspace-title"
             novalidate
           >
-            <div class="form-header" aria-hidden="true">
-              <span>Travel profile</span>
-              <span>01</span>
-            </div>
-
             <section
               id="recommendation-validation-summary"
               class="validation-summary"
@@ -159,8 +248,8 @@
                   <button id="destination-add" type="button">Add destination</button>
                 </div>
                 <p id="destination-help" class="field-help">
-                  Add cities you want Solara to evaluate, or leave blank to discover
-                  destinations. Up to five cities.
+                  Add cities you want Solara to evaluate. You can compare up to five
+                  cities.
                 </p>
                 <p id="destination-error" class="field-error" hidden></p>
                 <p
@@ -178,7 +267,7 @@
               </div>
             </fieldset>
 
-            <fieldset>
+            <fieldset class="dates-fieldset">
               <legend>Travel dates</legend>
               <p class="fieldset-help">Both dates are required.</p>
               <div class="form-grid form-grid-dates">
@@ -207,7 +296,7 @@
               </div>
             </fieldset>
 
-            <fieldset>
+            <fieldset class="preferences-fieldset">
               <legend>
                 Travel preferences <span class="optional-label">Optional</span>
               </legend>
@@ -415,7 +504,7 @@
         </div>
       </section>
 
-      <section class="principles" aria-labelledby="principles-title">
+      <section id="how-it-works" class="principles" aria-labelledby="principles-title">
         <div class="section-introduction">
           <p class="section-label">Designed for thoughtful discovery</p>
           <h2 id="principles-title">Useful intelligence, clearly explained</h2>

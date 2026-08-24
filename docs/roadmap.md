@@ -868,7 +868,9 @@ Commit 44 - public-alpha safeguards and rate and cost controls
 Commit 45 - deployment configuration
 Commit 46 - hosted MVP1 deployment
 Commit 47 - public-alpha integration, smoke, and browser testing (complete)
-Commit 48 - next public-alpha experience iteration and MVP1 release documentation
+Commit 48 - visual travel experience (in progress)
+Commit 49 - country and journey discovery
+Commit 50 - MVP1 release documentation and launch readiness
 ```
 
 This sequence is intentionally more granular than the original prototype.
@@ -1194,13 +1196,14 @@ The service was manually configured before the Blueprint existed remotely, so
 Blueprint adoption remains an operational follow-up and must reuse the existing
 service rather than create another one.
 
-## Commits 47-48 - MVP1 integration and release
+## Commits 47-50 - MVP1 integration, experience, and release
 
 The remaining MVP1 sequence is:
 
 - Commit 47 - public-alpha integration, smoke, and browser testing (complete);
-- Commit 48 - next public-alpha experience iteration and MVP1 release
-  documentation (pending).
+- Commit 48 - visual travel experience (in progress);
+- Commit 49 - country and journey discovery (pending);
+- Commit 50 - MVP1 release documentation and launch readiness (pending).
 
 Commit 47 is complete. Phase 1 added
 provider-independent destination queries, explicit server-side locality
@@ -1219,9 +1222,20 @@ correct real hosted blank/open discovery so a traveller who supplies dates and
 preferences but no city can receive useful destination recommendations. That
 investigation includes Google discovery-query semantics, bounded candidate cost,
 preference-informed query generation without LLM-owned ranking, empty-provider-
-result semantics, and graceful fallback behavior. Commit 48 remains pending and
-also carries the next public-alpha visual travel-experience iteration and MVP1
-release documentation.
+result semantics, and graceful fallback behavior.
+
+Commit 48 is split into three controlled phases on one feature branch:
+
+- Phase 1 - homepage, editorial hero, curated Popular Escapes, and compact planner;
+- Phase 2 - image-led recommendations, Postcards, The Wayfinder, and traveller-first
+  destination storytelling;
+- Phase 3 - trust and responsive polish, blank/open discovery correction, and full
+  hosted acceptance.
+
+Commit 49 will investigate country scopes, locality discovery within countries,
+and appropriate multi-country trip legs. Commit 50 remains the release-
+documentation and launch-readiness milestone. Commits 48, 49, and 50 are not
+complete.
 
 ## Release milestones
 

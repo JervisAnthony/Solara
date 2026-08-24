@@ -260,6 +260,110 @@ def _synthetic_response(scores: list[float]) -> dict[str, object]:
     }
 
 
+def test_editorial_homepage_is_travel_led_before_any_request(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    recommendation_requests: list[object] = []
+    page.on(
+        "request",
+        lambda request: (
+            recommendation_requests.append(request)
+            if request.url.endswith("/recommendations")
+            else None
+        ),
+    )
+
+    _open(page, base_url)
+
+    assert page.get_by_role("navigation", name="Primary navigation").is_visible()
+    assert page.get_by_role("heading", name="Popular escapes").is_visible()
+    assert page.locator(".escape-card").count() == 6
+    hero_image = page.locator(".hero-travel-image")
+    assert hero_image.is_visible()
+    assert hero_image.evaluate("image => image.complete && image.naturalWidth === 1280")
+    assert hero_image.get_attribute("src") == "/static/travel/cape-town.webp"
+    assert recommendation_requests == []
+
+    page.get_by_role("link", name="Start planning", exact=False).click()
+    page.wait_for_function(
+        "document.querySelector('#recommendation-workspace').getBoundingClientRect().top "
+        "< window.innerHeight"
+    )
+    assert page.locator("#recommendation-workspace").evaluate(
+        "element => element.getBoundingClientRect().top < window.innerHeight"
+    )
+    page.get_by_role("link", name="See how it works").click()
+    page.wait_for_function(
+        "document.querySelector('#how-it-works').getBoundingClientRect().top < window.innerHeight"
+    )
+    assert page.locator("#how-it-works").evaluate(
+        "element => element.getBoundingClientRect().top < window.innerHeight"
+    )
+
+
+def test_popular_escapes_carousel_has_manual_native_scrolling(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    _open(page, base_url)
+    track = page.locator("#popular-escapes-track")
+
+    assert (
+        track.evaluate("element => getComputedStyle(element).scrollSnapType") == "inline mandatory"
+    )
+    assert track.evaluate("element => element.scrollLeft") == 0
+    page.get_by_role("button", name="Next popular escapes").click()
+    page.wait_for_function(
+        "element => element.scrollLeft > 0",
+        arg=track.element_handle(),
+    )
+    page.wait_for_timeout(500)
+    moved = track.evaluate("element => element.scrollLeft")
+    page.wait_for_timeout(500)
+    assert track.evaluate("element => element.scrollLeft") == pytest.approx(moved, abs=1)
+    page.get_by_role("button", name="Previous popular escapes").click()
+    page.wait_for_timeout(500)
+    assert track.evaluate("element => element.scrollLeft") < moved
+
+
+def test_escape_prefill_reuses_destination_state_without_request(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    recommendation_requests: list[object] = []
+    page.on(
+        "request",
+        lambda request: (
+            recommendation_requests.append(request)
+            if request.url.endswith("/recommendations")
+            else None
+        ),
+    )
+    _open(page, base_url)
+    actions = page.get_by_role("button", name="Plan this escape")
+
+    actions.nth(0).click()
+    assert page.locator(".destination-chip").all_inner_texts()[0].startswith("Budapest, Hungary")
+    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE BUDAPEST →"
+    assert page.locator("#destination-input").evaluate(
+        "element => element === document.activeElement"
+    )
+    assert recommendation_requests == []
+
+    actions.nth(0).click()
+    assert page.locator(".destination-chip").count() == 1
+    assert "already included" in page.locator("#destination-error").inner_text()
+
+    for index in range(1, 5):
+        actions.nth(index).click()
+    assert page.locator(".destination-chip").count() == 5
+    actions.nth(5).click()
+    assert page.locator(".destination-chip").count() == 5
+    assert "up to five" in page.locator("#destination-error").inner_text()
+    assert recommendation_requests == []
+
+
 def test_discovery_mode_submits_and_renders_fake_ranked_results(
     page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
 ) -> None:
@@ -577,7 +681,7 @@ def test_narration_fallback_and_feedback_remain_usable(
     assert page.locator("#feedback-comment").input_value() == "Keep this feedback"
 
 
-@pytest.mark.parametrize("width", [1440, 768, 390])
+@pytest.mark.parametrize("width", [1440, 1024, 768, 390])
 def test_responsive_destination_and_results_smoke(
     page: object,
     local_public_alpha: tuple[str, BrowserPlacesProvider],
@@ -596,6 +700,7 @@ def test_responsive_destination_and_results_smoke(
     overflowing = page.locator("*").evaluate_all(
         """elements => elements
           .filter(element => !element.closest('[aria-hidden="true"]'))
+          .filter(element => !element.closest('#popular-escapes-track'))
           .filter(element => element.getBoundingClientRect().right > window.innerWidth + 1)
           .map(element => ({tag: element.tagName, id: element.id, className: element.className,
                             right: element.getBoundingClientRect().right}))"""

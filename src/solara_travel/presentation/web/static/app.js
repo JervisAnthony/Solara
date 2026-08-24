@@ -157,6 +157,32 @@
     updateSubmitLabel();
   }
 
+  function addDestinationQuery(query) {
+    const normalizedQuery = query.trim();
+    clearDestinationValidation();
+    if (normalizedQuery === "") {
+      showDestinationValidation("Enter a destination to add.");
+      return false;
+    }
+    if (destinationQueries.length >= maximumDestinations) {
+      showDestinationValidation("You can compare up to five destinations.");
+      return false;
+    }
+    if (
+      destinationQueries.some(
+        (value) => value.toLowerCase() === normalizedQuery.toLowerCase(),
+      )
+    ) {
+      showDestinationValidation("That destination is already included.");
+      return false;
+    }
+    destinationQueries.push(normalizedQuery);
+    destinationInput.value = "";
+    destinationStatus.textContent = `${normalizedQuery} added.`;
+    renderDestinationChips();
+    return true;
+  }
+
   function commitPendingDestination({ allowBlank = false } = {}) {
     const query = destinationInput.value.trim();
     clearDestinationValidation();
@@ -167,19 +193,7 @@
       }
       return true;
     }
-    if (destinationQueries.length >= maximumDestinations) {
-      showDestinationValidation("You can compare up to five destinations.");
-      return false;
-    }
-    if (destinationQueries.some((value) => value.toLowerCase() === query.toLowerCase())) {
-      showDestinationValidation("That destination is already included.");
-      return false;
-    }
-    destinationQueries.push(query);
-    destinationInput.value = "";
-    destinationStatus.textContent = `${query} added.`;
-    renderDestinationChips();
-    return true;
+    return addDestinationQuery(query);
   }
 
   function showValidation(errors) {
@@ -684,6 +698,12 @@
     renderDestinationChips();
     form.addEventListener("submit", handleSubmit);
     retryButton.addEventListener("click", () => form.requestSubmit());
+    form.addEventListener("solara:add-destination", (event) => {
+      const query = event.detail?.query;
+      if (!requestInFlight && typeof query === "string") {
+        addDestinationQuery(query);
+      }
+    });
     destinationAddButton.addEventListener("click", () => {
       if (!requestInFlight && commitPendingDestination()) {
         destinationInput.focus();
