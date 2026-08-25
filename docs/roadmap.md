@@ -806,12 +806,11 @@ state, and responsibilities.
 The existence of LangGraph or other agent frameworks is not itself a reason to
 create agents.
 
-## Retrieval-augmented generation
+## MVP2 - Destination Knowledge + RAG Grounding
 
-A vector database or RAG pipeline is not part of the current deterministic
-recommendation system. Commit 48 Phase 3 now plans a provider-independent
-destination knowledge base and retrieval layer for grounded editorial and
-itinerary context. It may support information such as:
+Destination Knowledge + RAG Grounding is deferred entirely to MVP2. It is not
+part of Commit 49 or the remaining MVP1 implementation sequence. MVP2 may support
+information such as:
 
 - destination guides;
 - travel documentation;
@@ -819,19 +818,32 @@ itinerary context. It may support information such as:
 - traveller notes;
 - structured trip resources.
 
+The MVP2 capability may include a curated/verifiable destination corpus, source
+provenance, ingestion, normalization/chunking, embeddings, vector or hybrid
+retrieval, metadata and geographic filtering, freshness metadata,
+destination/admin-area linking, grounded destination facts, grounded Good to
+Know, richer grounded Wayfinder storytelling, grounded itinerary enrichment, and
+elegant source attribution through concepts such as Sources, Learn more, and Why
+Solara says this.
+
 Each indexed unit must retain source URL, publisher, destination, country,
 administrative area, retrieval date, publication/update date when available,
-content type, and licence/use boundaries where relevant. Retrieval must support
-geographic and other metadata filtering and preserve provenance for future
-Sources, Learn more, or Why Solara says this experiences. Pinecone, Weaviate,
+content type, and licence/use boundaries where relevant. Pinecone, Weaviate,
 Qdrant, pgvector, Elasticsearch, or another vector/hybrid provider must be
-evaluated later for cost, latency, filtering, operations, scale, lock-in, and
-developer ergonomics; none is an architectural dependency yet.
+evaluated during MVP2 for cost, latency, metadata and geographic filtering,
+hybrid retrieval, operational burden, scale, lock-in, and developer ergonomics;
+none is selected or an architectural dependency yet.
 
-RAG may ground Good to Know, destination character, practical/cultural/activity
-context, Wayfinder storytelling, and itineraries. It must not silently replace
-provider-backed geographic validation, historical weather evidence,
-deterministic seasonal scoring, or rank authority.
+For MVP1, deterministic seasonal evidence, provider-backed geography, and
+provider-backed places remain authoritative. Wayfinder may use only currently
+trusted request and result context. Good to Know is omitted when trustworthy
+non-seasonal grounding is insufficient, and unsupported destination facts must
+not be generated merely to improve prose.
+
+For MVP2, RAG may ground destination facts, cultural or practical context,
+destination character, Good to Know, Wayfinder, and itinerary enrichment. It
+must not silently replace geographic validation, historical weather evidence,
+deterministic seasonal scoring, or ranking authority.
 
 ## Deliberately deferred technologies
 
@@ -879,10 +891,15 @@ Commit 44 - public-alpha safeguards and rate and cost controls
 Commit 45 - deployment configuration
 Commit 46 - hosted MVP1 deployment
 Commit 47 - public-alpha integration, smoke, and browser testing (complete)
-Commit 48 - visual travel experience (in progress)
-Commit 49 - partner and journey capabilities
-Commit 50 - MVP1 release documentation and launch readiness
+Commit 48 - visual travel experience (complete)
+Commit 49 - itinerary studio / Build This Trip (pending)
+Commit 50 - partner + journey capabilities (pending)
+Commit 51 - MVP1 release documentation + launch readiness (pending)
 ```
+
+Completing Commit 51 closes MVP1.
+
+Destination Knowledge + RAG Grounding begins only as a future MVP2 capability.
 
 This sequence is intentionally more granular than the original prototype.
 
@@ -1207,14 +1224,19 @@ The service was manually configured before the Blueprint existed remotely, so
 Blueprint adoption remains an operational follow-up and must reuse the existing
 service rather than create another one.
 
-## Commits 47-50 - MVP1 integration, experience, and release
+## Commits 47-51 - MVP1 integration, experience, and release
 
 The active MVP1 sequence is:
 
 - Commit 47 - public-alpha integration, smoke, and browser testing (complete);
-- Commit 48 - visual travel experience (in progress);
-- Commit 49 - partner and journey capabilities (pending);
-- Commit 50 - MVP1 release documentation and launch readiness (pending).
+- Commit 48 - visual travel experience (complete);
+- Commit 49 - Itinerary Studio / Build This Trip (pending);
+- Commit 50 - Partner + Journey Capabilities (pending);
+- Commit 51 - MVP1 Release Documentation + Launch Readiness (pending).
+
+Completing Commit 51 closes MVP1.
+
+MVP2 then reserves Destination Knowledge + RAG Grounding as future work.
 
 Commit 47 is complete. Phase 1 added
 provider-independent destination queries, explicit server-side locality
@@ -1227,20 +1249,32 @@ the explicit-destination public-alpha flow, including single-city and bounded
 multi-city recommendations, invalid-destination handling, real evidence,
 grounded narration, feedback, failure states, and responsive validation.
 
-Commit 48 is split into three controlled phases on one feature branch:
+Commit 48 is complete. The exact hosted build at
+`c9d698ad5e926beb4e6cad1c291f6d4a786c479c` was manually reviewed and accepted
+after deployment. It was delivered through these completed phases on one feature
+branch:
 
 - Phase 1 - homepage, editorial hero, curated Popular Escapes, and compact planner
-  (implemented);
+  (complete);
 - Phase 2A - Intelligent Planner and Geographic Discovery: guided intent, Google-
   assisted scope input, country/region locality discovery, and blank/global
-  candidate discovery without AI-owned ranking (implemented);
+  candidate discovery without AI-owned ranking (complete);
 - Phase 2B - Postcards, The Wayfinder, and the image-led recommendation experience
-  (implemented / hosted-acceptance refinement in progress: twelve credited Popular
+  (complete: twelve credited Popular
   Escapes, three-second accessible motion, premium planner controls, transient
   attributed photography, structured editorial storytelling, mixed geographic
   discovery, and non-technical destination stories);
-- Phase 3 - Itinerary Studio / Build This Trip plus Destination Knowledge Base +
-  RAG Grounding and the final hosted experience (pending).
+- Hosted-Acceptance Refinement - Mixed-Scope Discovery + Editorial Wayfinder
+  Refinement (complete).
+
+The manually accepted hosted experience includes the premium editorial homepage;
+twelve-destination hero rotation and twelve Popular Escapes with three-second,
+pauseable, reduced-motion-aware movement; premium pace and climate selectors; the
+full-width travel composer; traveller-facing How Solara Works guidance; city,
+country, region, province, archipelago, mixed-scope, and blank-worldwide
+discovery; Postcards; Wayfinder; traveller-first Seasonal Fit and Seasonal Feel;
+grounded-or-omitted Good to Know; Places to See; one global historical note; and
+responsive desktop, tablet, and mobile presentation.
 
 The Phase 2B refinement accepts up to 15 selected geographic scopes in mixed
 combinations while globally bounding deterministic evaluation to 15 concrete
@@ -1252,19 +1286,22 @@ editorial qualification instead of repetitive historical templates. Good to
 Know uses trusted non-seasonal grounding or is omitted, and the generic
 historical disclaimer appears once per result experience.
 
-Phase 3 Itinerary Studio planning includes a day-by-day builder with morning,
-afternoon, and evening structure; add/remove/reorder activity controls;
-accommodation suggestions; transport-leg representation; and a grounded
-Wayfinder itinerary narrative. The companion knowledge capability includes a
-curated/verifiable corpus, source provenance, ingestion, normalization/chunking,
-embedding/indexing, metadata-filtered vector or hybrid retrieval, grounded Good
-to Know and destination storytelling, and source-aware itinerary context. It
-does not add fake booking inventory.
+Commit 49 owns Itinerary Studio / Build This Trip only. Its roadmap includes
+day-by-day construction; morning, afternoon, and evening organization;
+add/remove/reorder/replace controls; destination sequencing; allocation of days
+across destinations; accommodation suggestions; transport-leg representation;
+an itinerary summary; Wayfinder itinerary narration; and an initial session-based
+experience without accounts. It contains no destination corpus, ingestion,
+embeddings, retrieval infrastructure, provenance pipeline, or vector database.
 
-Commit 49 is reserved for partner and journey capabilities such as dated multi-
-country legs, embed/white-label boundaries, sharing/export, persistence
-architecture, and deeper agency integration. Commit 50 remains MVP1 release
-documentation and launch readiness. Future phases are not complete.
+Commit 50 plans multi-country dated journeys, journey legs, partner/agency
+integration boundaries, embedded or white-label deployment boundaries,
+share/export, persistence architecture, and future booking-provider integration
+boundaries. Commit 51 plans MVP1 release documentation and launch readiness,
+including the final production-readiness checklist, hosted acceptance record,
+operational limitations, deployment and tester guidance, known limitations,
+security/privacy summary, and launch checklist. These future commits are not
+implemented.
 
 ## Release milestones
 

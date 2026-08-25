@@ -378,10 +378,10 @@ port, not OpenAI. OpenAI infrastructure depends on that port and the shared JSON
 HTTP transport. Domain and analytics code have no dependency on narration
 infrastructure.
 
-### Future destination-knowledge and retrieval boundary
+### MVP2 destination-knowledge and retrieval boundary
 
-Commit 48 Phase 3 plans a provider-independent destination knowledge capability;
-it is not implemented in the current refinement:
+Destination Knowledge + RAG Grounding is deferred entirely to MVP2 and is not
+part of the remaining MVP1 implementation sequence:
 
 ```text
 curated/verifiable sources
@@ -404,14 +404,21 @@ links, retrieval date, publication/update date where available, content type,
 and relevant licence/use boundaries. A future retrieval port must allow provider
 selection based on cost, latency, geographic and hybrid filtering, operations,
 scale, lock-in, and developer ergonomics. Pinecone or another vector store may
-be evaluated later; no implementation is selected or depended on now.
+be evaluated during MVP2; no implementation is selected or depended on now.
 
-Retrieved knowledge may ground Good to Know, destination character, practical,
-cultural, or activity context, Wayfinder stories, and itinerary content. It may
-not silently replace provider-backed geography, historical weather evidence,
-deterministic seasonal scoring, or rank authority. The presentation contract
-reserves future source-aware experiences such as Sources, Learn more, and Why
-Solara says this without exposing technical retrieval diagnostics.
+Throughout MVP1, provider-backed geography and places plus deterministic seasonal
+evidence remain authoritative. Wayfinder may use only currently trusted request
+and result context; Good to Know is omitted when trustworthy non-seasonal
+grounding is insufficient, and unsupported destination facts must not be
+generated merely to improve prose.
+
+In MVP2, retrieved knowledge may ground destination facts, Good to Know,
+destination character, practical, cultural, or activity context, Wayfinder
+stories, and itinerary enrichment. It may not silently replace provider-backed
+geography, historical weather evidence, deterministic seasonal scoring, or rank
+authority. The presentation contract reserves future source-aware experiences
+such as Sources, Learn more, and Why Solara says this without exposing technical
+retrieval diagnostics.
 
 ### Postcards photo-enrichment boundary
 
@@ -927,11 +934,13 @@ browser and API same-origin in one service and adds no database, cache, worker,
 custom domain, or trusted proxy-header boundary. Root, health, and disabled-docs
 behavior are verified; provider-backed recommendation, feedback, and live
 responsive-browser validation completed for Commit 47's explicit-destination
-public-alpha flow. Commit 48 Phase 2A adds the candidate-proposal and validation
-architecture that corrects the blank-discovery limitation after deployment;
-deterministic local Chromium and adapter coverage uses only fake providers. Live
-hosted acceptance remains a later user-controlled step and does not change
-deterministic scoring and ranking authority.
+public-alpha flow. Commit 48 added candidate proposal and validation for blank and
+broad discovery, mixed-scope planning, Postcards, Wayfinder, and the final visual
+travel experience. The exact hosted build at
+`c9d698ad5e926beb4e6cad1c291f6d4a786c479c` was manually reviewed and accepted
+after deployment. That acceptance does not change deterministic scoring and
+ranking authority. Automated Chromium and adapter coverage continues to use only
+fake providers.
 
 The service was manually configured before `render.yaml` existed remotely. The
 repository Blueprint now represents the desired topology but does not yet manage

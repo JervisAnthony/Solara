@@ -178,35 +178,53 @@ automatic movement under reduced-motion preferences. Premium pace/climate menus
 and the vacation-description composer preserve stable API values and traveller
 text without claiming those preferences are independent numeric score factors.
 
-### Phase 3 destination knowledge and itinerary boundary
+### Commit 49 itinerary boundary
 
-Phase 3 remains pending and includes both Itinerary Studio / Build This Trip and
-a provenance-aware destination knowledge base with vector or hybrid retrieval.
-The future itinerary experience may organize morning, afternoon, and evening;
-add, remove, and reorder activities; represent accommodation suggestions and
-transport legs; and generate a grounded Wayfinder itinerary. It must not invent
-booking inventory.
+Commit 48's public-alpha traveller experience is complete: intent collection,
+mixed geographic discovery, deterministic seasonal ranking, Postcards,
+Wayfinder, and traveller-first recommendation stories are implemented. Commit 49
+remains pending and contains only Itinerary Studio / Build This Trip. The future
+itinerary experience may organize morning, afternoon, and evening; add, remove,
+replace, and reorder activities; sequence destinations and allocate trip days;
+represent accommodation suggestions and transport legs; summarize the itinerary;
+and generate Wayfinder itinerary narration. Its initial implementation may be
+session-based without accounts. It must not invent booking inventory.
+
+### MVP2 destination knowledge and RAG boundary
+
+Destination Knowledge + RAG Grounding is deferred entirely to MVP2. A future
+curated or verifiable corpus may use ingestion, normalization/chunking,
+embeddings, vector or hybrid retrieval, metadata and geographic filtering,
+freshness metadata, and destination/admin-area linking to ground destination
+facts, Good to Know, destination character, cultural or practical context,
+Wayfinder stories, and itinerary enrichment.
 
 The knowledge corpus must use authoritative or verifiable sources and retain
-source, destination/country/admin links, freshness, content type, and relevant
-licence metadata. Retrieval may support grounded Good to Know, destination
-character, practical/cultural/activity context, and itinerary storytelling with
-future source links. It must not replace geographic validation, historical
-weather evidence, deterministic seasonal scoring, or rank authority. No vector
-provider is selected or installed in the current phase.
+source URL, publisher/source, destination, country, relevant administrative area,
+retrieval date, publication/update date when available, content type, and
+relevant licence/use boundaries. Retrieval may support grounded Good to Know,
+destination character, practical/cultural/activity context, and itinerary
+storytelling with future source links. It must not replace geographic validation,
+historical weather evidence, deterministic seasonal scoring, or rank authority.
+No vector provider is selected; vector and hybrid retrieval technology will be
+evaluated during MVP2.
 
-## Out of scope for the initial milestones
+## Out of scope for the current public alpha
 
-The initial implementation will not:
+The current public-alpha implementation does not:
 
 - book flights, hotels, activities, or transport;
 - process payments;
+- construct itineraries or multi-country dated journeys;
+- persist trips or provide traveller accounts;
+- provide partner booking inventory or booking-provider integrations;
+- operate the MVP2 destination corpus, RAG, or vector-retrieval layer;
 - guarantee prices or availability;
 - replace official visa, immigration, health, or safety advice;
 - provide real-time emergency guidance;
 - operate as an autonomous travel agent;
 - scrape websites in violation of their terms;
-- require a vector database before there is a demonstrated product need;
+- introduce a vector database or RAG pipeline during MVP1;
 - introduce multi-agent orchestration merely for architectural novelty.
 
 ## Future possibilities

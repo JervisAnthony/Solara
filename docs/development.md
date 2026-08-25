@@ -1418,7 +1418,8 @@ Significant architectural changes should answer:
 - What complexity is being introduced?
 - Is there a simpler solution?
 
-Do not introduce technologies such as:
+Do not introduce technologies such as the following without a demonstrated
+product requirement:
 
 - vector databases;
 - RAG;
@@ -1429,16 +1430,15 @@ Do not introduce technologies such as:
 - distributed event systems;
 - complex databases;
 
-This prohibition applies to the current Phase 2B refinement. Phase 3 explicitly
-plans a destination knowledge base behind provider-independent retrieval ports,
-but implementation must wait for corpus, provenance, freshness, licensing,
-geographic metadata-filtering, cost, latency, and operations requirements. Do not
-add Pinecone, Weaviate, Qdrant, pgvector, Elasticsearch, or another vector
-dependency until that evaluation is reviewed. Retrieval may ground Wayfinder,
-Good to Know, and itinerary content; it must remain outside deterministic
-geographic validation, weather evidence, seasonal scoring, and rank authority.
-
-without a demonstrated product requirement.
+These technologies remain absent from the completed Commit 48 implementation.
+Destination Knowledge + RAG Grounding is deferred entirely to MVP2. Do not add
+Pinecone, Weaviate, Qdrant, pgvector, Elasticsearch, or another vector dependency
+during MVP1. MVP2 must evaluate corpus provenance, freshness, licensing,
+geographic metadata filtering, cost, latency, operational burden, scale, lock-in,
+and developer ergonomics before choosing a vector or hybrid retrieval provider.
+Retrieval may later ground Wayfinder, Good to Know, and itinerary enrichment; it
+must remain outside deterministic geographic validation, weather evidence,
+seasonal scoring, and rank authority.
 
 ## Provider selection
 
