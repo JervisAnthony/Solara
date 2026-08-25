@@ -149,6 +149,27 @@ places, mapping, search, or AI provider.
 Useful deterministic results should remain available when optional AI generation
 or an external provider is unavailable.
 
+### Phase 2B traveller experience boundary
+
+Postcards are optional visual enrichment from current provider-backed photo
+metadata. The Wayfinder is optional structured explanation and storytelling.
+Neither is evidence, neither selects or orders destinations, and neither can
+change Seasonal Fit. Photo, handle, media, narration, or schema failure leaves the
+same deterministic recommendation usable.
+
+The ordinary traveller UI is intentionally non-technical: it prioritizes imagery,
+destination identity, Seasonal Fit, concise stories, Places to see, Seasonal feel,
+Good to know, and shortlist comparison. Components, weights, weighted
+contributions, configured comfort values, raw aggregates, and audit keys remain
+available internally and through the additive typed API for engineering and
+compatible consumers; hiding them in the browser does not delete them.
+
+The homepage catalogue contains exactly twelve locally bundled, credited Popular
+Escapes and uses three-second motion with pause/resume, hidden-tab pausing, and no
+automatic movement under reduced-motion preferences. Premium pace/climate menus
+and the vacation-description composer preserve stable API values and traveller
+text without claiming those preferences are independent numeric score factors.
+
 ## Out of scope for the initial milestones
 
 The initial implementation will not:

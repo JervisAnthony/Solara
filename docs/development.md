@@ -596,7 +596,7 @@ result = service.recommend(
 )
 ```
 
-## Grounded AI narration
+## The Wayfinder structured narration
 
 Narration runs after `RecommendationService` has produced its authoritative
 deterministic result. The model receives only structured Solara-owned grounding
@@ -606,7 +606,11 @@ instructions require the model to ignore instructions found there and prohibit
 presenting historical seasonal evidence as current weather or a forecast.
 
 The OpenAI adapter uses the Responses API with an explicitly selected model,
-`store=false`, a bounded output size, and no tools or conversation state. The
+`store=false`, a bounded output size, no tools or conversation state, and a
+strict JSON schema for `WayfinderNarrative`. The application validates bounded
+plain-text fields, exact destination identity, and trusted grounding, then
+re-associates every note with deterministic rank order. One comparison request
+uses one Wayfinder call rather than one call per destination. The
 following is manual caller code; `gpt-5.6` is an example compatible model, not an
 architectural constant:
 
@@ -655,8 +659,11 @@ manual destination entry do not call a provider.
 
 Guided interest checkboxes are the primary interest input; a custom field keeps
 ordered free-form interests and case-insensitive duplicate prevention. Pace and
-climate are accessible selects with stable canonical values. The optional
-`trip_description` textarea trims blank input to `null`, caps content at 1,000
+climate use custom accessible combobox/listbox controls with stable hidden
+canonical values. They support Enter, Space, ArrowUp/ArrowDown, Home, End,
+Escape, and Tab without a framework or accidental submission. The optional
+full-width `trip_description` composer provides five visible lines, a character
+counter, and non-destructive prompt starters; it trims blank input to `null`, caps content at 1,000
 characters, accepts ordinary Unicode and punctuation, and rejects control
 characters at the domain boundary.
 
@@ -799,15 +806,16 @@ rendered to travellers. A configured empty offline
 service remains a successful `200` and produces a neutral empty-result state,
 not an error or fabricated recommendation.
 
-Each ranked card presents the unchanged score as a seasonal-fit percentage and
-keeps technical weights and weighted contributions in the API rather than the
-traveller UI. Selected attractions, historical seasonal aggregates, and server-
-configured temperature-comfort evidence remain available through native
-disclosure controls. The first six attractions are shown initially, with a
-per-card accessible control for the full returned list. Optional narration
-appears separately only when supplied, is conservatively normalized to remove
-common Markdown display markers, and is rendered as plain text; it does not
-determine ranking. These browser paths use
+Each destination story presents the unchanged score as a de-emphasized Seasonal
+Fit percentage and keeps components, technical weights, configured comfort
+values, observation counts, and raw audit data in the API rather than the
+traveller UI. The first six provider-backed attractions appear as Places to see,
+with a per-card accessible local expansion control. Historical evidence becomes
+careful Seasonal feel and Good to know language, never a forecast. Structured
+Wayfinder notes appear only when supplied and are rendered through text-only DOM
+APIs; they do not determine ranking. Postcards show up to four attributed photos,
+load only the first immediately, lazy-load later slides on interaction, never
+autoplay, and fall back without failing the result. These browser paths use
 no live credentials, client persistence, or browser-side provider calls.
 
 ### Geographic discovery development
@@ -836,11 +844,29 @@ Run the main focused areas with:
 ```
 
 The hero and Popular Escapes timers remain in `inspiration.js`. Both use an
-approximately five-second interval, pause while the document is hidden, expose
+exact three-second interval, pause while the document is hidden, expose
 pause/resume controls, and do not start when reduced motion is requested. The
 carousel also yields during hover, focus, and pointer interaction. Browser tests
 use reduced-motion emulation and local images; they do not depend on animation
 pixels or external assets.
+
+### Google Places Photos development and policy boundary
+
+`GooglePostcardMetadataProvider`, `SignedPhotoHandleCodec`, and
+`GooglePhotoMediaProvider` are tested only with deterministic transports. Never
+use a live Google request in the suite. Metadata discovery is bounded to four
+distinct photos per destination. A signed handle expires within five minutes and
+contains a current Google photo resource name but no credential. The proxy asks
+Place Photos (New) for at most 1600 by 1200 pixels, uses
+`skipHttpRedirect=true`, accepts only bounded JPEG/PNG/WebP media from approved
+Google media hosts, and returns `no-store` response headers.
+
+Do not add persistent or long-lived caching for photo names or media. Render the
+current author attribution when supplied, a direct Google Maps source link, and
+Google Maps attribution with the image. Re-review the official
+[Place Photos (New) guide](https://developers.google.com/maps/documentation/places/web-service/place-photos)
+and [Places API policies](https://developers.google.com/maps/documentation/places/web-service/policies)
+before changing retrieval, caching, attribution, or source-link behavior.
 
 ### Premium presentation and brand assets
 

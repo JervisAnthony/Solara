@@ -307,9 +307,11 @@
       },
       preferences: {
         interests: selectedInterests(targetForm),
-        preferred_pace: optionalText(targetForm.elements.namedItem("preferred-pace").value),
+        preferred_pace: optionalText(
+          targetForm.querySelector('input[name="preferred-pace"]').value,
+        ),
         preferred_climate: optionalText(
-          targetForm.elements.namedItem("preferred-climate").value,
+          targetForm.querySelector('input[name="preferred-climate"]').value,
         ),
         trip_description: optionalText(
           targetForm.elements.namedItem("trip-description").value,
@@ -510,7 +512,7 @@
     submitButton.disabled = loading || cooldownActive;
     submitButton.textContent = loading ? loadingSubmitLabel : idleSubmitLabel();
     destinationAddButton.disabled = loading;
-    form.querySelectorAll("input, select, textarea").forEach((control) => {
+    form.querySelectorAll("input, select, textarea, .premium-select-trigger, .prompt-starter").forEach((control) => {
       control.disabled = loading;
     });
     if (loading) {

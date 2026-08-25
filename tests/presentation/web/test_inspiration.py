@@ -14,6 +14,12 @@ TRAVEL_FILES = (
     "cebu.webp",
     "istanbul.webp",
     "kyoto.webp",
+    "barcelona.webp",
+    "hoi-an.webp",
+    "marrakesh.webp",
+    "phuket.webp",
+    "queenstown.webp",
+    "rio.webp",
 )
 
 
@@ -59,6 +65,12 @@ def test_popular_escapes_are_curated_actions_not_popularity_claims() -> None:
         "Bali, Indonesia",
         "Cebu, Philippines",
         "Istanbul, T&uuml;rkiye",
+        "Marrakesh, Morocco",
+        "Barcelona, Spain",
+        "Hoi An, Vietnam",
+        "Phuket, Thailand",
+        "Queenstown, New Zealand",
+        "Rio de Janeiro, Brazil",
     ):
         assert destination in html
     assert html.count("Plan this escape") == len(TRAVEL_FILES)

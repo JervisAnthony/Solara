@@ -10,6 +10,14 @@ from solara_travel.application.narration import (
     RecommendationNarration,
     RecommendationNarrationService,
 )
+from solara_travel.application.postcards import (
+    DestinationPostcards,
+    InvalidPhotoHandleError,
+    PhotoDeliveryService,
+    PostcardCollection,
+    PostcardEnrichmentService,
+    PostcardPhoto,
+)
 from solara_travel.application.recommendation_service import (
     RecommendationPlan,
     RecommendationService,
@@ -20,6 +28,11 @@ from solara_travel.application.results import (
     RecommendationResult,
 )
 from solara_travel.application.travel_scopes import TravelScopeSuggestionService
+from solara_travel.application.wayfinder import (
+    WayfinderDestinationNote,
+    WayfinderNarrative,
+    parse_wayfinder_narrative,
+)
 
 __all__ = [
     "DestinationRecommendation",
@@ -27,6 +40,12 @@ __all__ = [
     "DestinationNotFoundError",
     "BroadScopeCombinationError",
     "NarratedRecommendationResult",
+    "DestinationPostcards",
+    "InvalidPhotoHandleError",
+    "PhotoDeliveryService",
+    "PostcardCollection",
+    "PostcardEnrichmentService",
+    "PostcardPhoto",
     "RecommendationEvidence",
     "RecommendationNarration",
     "RecommendationNarrationService",
@@ -34,4 +53,7 @@ __all__ = [
     "RecommendationPlan",
     "RecommendationService",
     "TravelScopeSuggestionService",
+    "WayfinderDestinationNote",
+    "WayfinderNarrative",
+    "parse_wayfinder_narrative",
 ]

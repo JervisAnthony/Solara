@@ -9,6 +9,14 @@ from solara_travel.ports.errors import (
     ProviderUnavailableError,
 )
 from solara_travel.ports.narration import NarrationPrompt, NarrationProvider
+from solara_travel.ports.photos import (
+    PhotoAuthorAttribution,
+    PhotoHandleCodec,
+    PhotoMedia,
+    PhotoMediaProvider,
+    PostcardMetadataProvider,
+    PostcardPhotoCandidate,
+)
 from solara_travel.ports.places import (
     AttractionDiscoveryPort,
     DestinationDiscoveryPort,
@@ -27,6 +35,10 @@ __all__ = [
     "HistoricalWeatherProvider",
     "NarrationPrompt",
     "NarrationProvider",
+    "PhotoAuthorAttribution",
+    "PhotoHandleCodec",
+    "PhotoMedia",
+    "PhotoMediaProvider",
     "PlacesProvider",
     "TravelScopeResolutionPort",
     "TravelScopeSuggestionPort",
@@ -35,4 +47,6 @@ __all__ = [
     "ProviderRateLimitError",
     "ProviderResponseError",
     "ProviderUnavailableError",
+    "PostcardMetadataProvider",
+    "PostcardPhotoCandidate",
 ]

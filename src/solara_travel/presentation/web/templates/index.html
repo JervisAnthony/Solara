@@ -16,6 +16,7 @@
     >
     <script src="/static/travel-scopes.js" defer></script>
     <script src="/static/inspiration.js" defer></script>
+    <script src="/static/selects.js" defer></script>
     <script src="/static/app.js" defer></script>
     <script src="/static/results.js" defer></script>
     <script src="/static/feedback.js" defer></script>
@@ -87,6 +88,12 @@
           <img class="hero-travel-image hero-slide" data-src="/static/travel/bali.webp" alt="Green rice terraces across the hills of Bali" width="1280" height="853" decoding="async">
           <img class="hero-travel-image hero-slide" data-src="/static/travel/istanbul.webp" alt="Istanbul's historic peninsula and skyline beside the Bosphorus" width="1280" height="618" decoding="async">
           <img class="hero-travel-image hero-slide" data-src="/static/travel/budapest.webp" alt="Budapest illuminated beside the Danube at night" width="1280" height="831" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/barcelona.webp" alt="Barcelona skyline viewed from Park G&uuml;ell" width="1280" height="507" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/marrakesh.webp" alt="Street life in Marrakesh, Morocco" width="1280" height="1280" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/phuket.webp" alt="A tropical beach in Phuket, Thailand" width="1280" height="880" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/queenstown.webp" alt="Lake Wakatipu and the mountains near Queenstown" width="1280" height="853" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/hoi-an.webp" alt="Lantern-lit streets in Hoi An Ancient Town" width="1280" height="720" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/rio.webp" alt="Botafogo and Sugarloaf Mountain in Rio de Janeiro" width="1280" height="960" decoding="async">
           <figcaption>
             <img
               src="/static/branding/solara-mark-gold.png"
@@ -163,6 +170,54 @@
               <p class="escape-location">Budapest, Hungary</p>
               <p>Grand architecture, thermal baths, and evenings along the Danube.</p>
               <button type="button" data-escape-destination="Budapest, Hungary">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/marrakesh.webp" alt="Street life in Marrakesh, Morocco" width="1280" height="1280" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Marrakesh, Morocco</p>
+              <p>Courtyards, gardens, old-city lanes, and an absorbing change of pace.</p>
+              <button type="button" data-escape-destination="Marrakesh, Morocco">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/barcelona.webp" alt="Barcelona skyline viewed from Park G&uuml;ell" width="1280" height="507" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Barcelona, Spain</p>
+              <p>Bold architecture, neighbourhood tables, beaches, and Mediterranean light.</p>
+              <button type="button" data-escape-destination="Barcelona, Spain">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/hoi-an.webp" alt="Lantern-lit streets in Hoi An Ancient Town" width="1280" height="720" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Hoi An, Vietnam</p>
+              <p>Riverside lanes, historic shophouses, lanterns, and unhurried evenings.</p>
+              <button type="button" data-escape-destination="Hoi An, Vietnam">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/phuket.webp" alt="A tropical beach in Phuket, Thailand" width="1280" height="880" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Phuket, Thailand</p>
+              <p>Beach days, island horizons, and an easy base for exploring the Andaman coast.</p>
+              <button type="button" data-escape-destination="Phuket, Thailand">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/queenstown.webp" alt="Lake Wakatipu and the mountains near Queenstown" width="1280" height="853" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Queenstown, New Zealand</p>
+              <p>Alpine landscapes, lake views, and adventurous days in the Southern Alps.</p>
+              <button type="button" data-escape-destination="Queenstown, New Zealand">Plan this escape</button>
+            </div>
+          </article>
+          <article class="escape-card">
+            <img src="/static/travel/rio.webp" alt="Botafogo and Sugarloaf Mountain in Rio de Janeiro" width="1280" height="960" loading="lazy" decoding="async">
+            <div class="escape-card-copy">
+              <p class="escape-location">Rio de Janeiro, Brazil</p>
+              <p>Mountain-framed bays, sweeping viewpoints, and days that move outdoors.</p>
+              <button type="button" data-escape-destination="Rio de Janeiro, Brazil">Plan this escape</button>
             </div>
           </article>
           <article class="escape-card">
@@ -381,55 +436,89 @@
 
               <div class="form-grid form-grid-preferences">
                 <div class="form-field">
-                  <label for="preferred-pace">Preferred pace</label>
-                  <select
-                    id="preferred-pace"
-                    name="preferred-pace"
-                    aria-describedby="preferred-pace-help preferred-pace-error"
-                  >
-                    <option value="">No preference</option>
-                    <option value="slow">Slow</option>
-                    <option value="relaxed">Relaxed</option>
-                    <option value="balanced">Balanced</option>
-                    <option value="active">Active</option>
-                    <option value="fast_paced">Fast-paced</option>
-                  </select>
+                  <label for="preferred-pace" id="preferred-pace-label">Preferred pace</label>
+                  <div class="premium-select" data-premium-select>
+                    <button
+                      type="button"
+                      class="premium-select-trigger"
+                      id="preferred-pace"
+                      role="combobox"
+                      aria-haspopup="listbox"
+                      aria-expanded="false"
+                      aria-controls="preferred-pace-listbox"
+                      aria-labelledby="preferred-pace-label preferred-pace-selected"
+                      aria-describedby="preferred-pace-help preferred-pace-error"
+                    >
+                      <span id="preferred-pace-selected" data-select-label>No preference</span>
+                      <span class="select-chevron" aria-hidden="true"></span>
+                    </button>
+                    <input type="hidden" name="preferred-pace" value="" data-select-value>
+                    <div id="preferred-pace-listbox" class="premium-select-menu" role="listbox" aria-labelledby="preferred-pace-label" hidden>
+                      <div id="preferred-pace-option-none" class="premium-select-option" role="option" aria-selected="true" data-value=""><strong>No preference</strong></div>
+                      <div id="preferred-pace-option-slow" class="premium-select-option" role="option" aria-selected="false" data-value="slow"><strong>Slow &amp; easy</strong><span>Generous downtime and room to wander.</span></div>
+                      <div id="preferred-pace-option-relaxed" class="premium-select-option" role="option" aria-selected="false" data-value="relaxed"><strong>Relaxed</strong><span>One or two main plans each day.</span></div>
+                      <div id="preferred-pace-option-balanced" class="premium-select-option" role="option" aria-selected="false" data-value="balanced"><strong>Balanced</strong><span>A comfortable mix of activity and downtime.</span></div>
+                      <div id="preferred-pace-option-active" class="premium-select-option" role="option" aria-selected="false" data-value="active"><strong>Active</strong><span>Full days with regular breaks.</span></div>
+                      <div id="preferred-pace-option-fast" class="premium-select-option" role="option" aria-selected="false" data-value="fast_paced"><strong>Fast-paced</strong><span>Make the most of every day.</span></div>
+                    </div>
+                  </div>
                   <p id="preferred-pace-help" class="field-help">
                     For example relaxed, balanced, or fast-paced.
                   </p>
                   <p id="preferred-pace-error" class="field-error" hidden></p>
                 </div>
                 <div class="form-field">
-                  <label for="preferred-climate">Preferred climate</label>
-                  <select
-                    id="preferred-climate"
-                    name="preferred-climate"
-                    aria-describedby="preferred-climate-help preferred-climate-error"
-                  >
-                    <option value="">No preference</option>
-                    <option value="hot_tropical">Hot and tropical</option>
-                    <option value="warm_sunny">Warm and sunny</option>
-                    <option value="warm_dry">Warm and dry</option>
-                    <option value="mild">Mild</option>
-                    <option value="cool">Cool</option>
-                    <option value="cold_snowy">Cold and snowy</option>
-                  </select>
+                  <label for="preferred-climate" id="preferred-climate-label">Preferred climate</label>
+                  <div class="premium-select" data-premium-select>
+                    <button
+                      type="button"
+                      class="premium-select-trigger"
+                      id="preferred-climate"
+                      role="combobox"
+                      aria-haspopup="listbox"
+                      aria-expanded="false"
+                      aria-controls="preferred-climate-listbox"
+                      aria-labelledby="preferred-climate-label preferred-climate-selected"
+                      aria-describedby="preferred-climate-help preferred-climate-error"
+                    >
+                      <span id="preferred-climate-selected" data-select-label>No preference</span>
+                      <span class="select-chevron" aria-hidden="true"></span>
+                    </button>
+                    <input type="hidden" name="preferred-climate" value="" data-select-value>
+                    <div id="preferred-climate-listbox" class="premium-select-menu" role="listbox" aria-labelledby="preferred-climate-label" hidden>
+                      <div id="preferred-climate-option-none" class="premium-select-option" role="option" aria-selected="true" data-value=""><strong>No preference</strong></div>
+                      <div id="preferred-climate-option-hot" class="premium-select-option" role="option" aria-selected="false" data-value="hot_tropical"><strong>Hot &amp; tropical</strong><span>Warm weather, lush landscapes and tropical conditions.</span></div>
+                      <div id="preferred-climate-option-sunny" class="premium-select-option" role="option" aria-selected="false" data-value="warm_sunny"><strong>Warm &amp; sunny</strong><span>Warm days with plenty of sunshine.</span></div>
+                      <div id="preferred-climate-option-dry" class="premium-select-option" role="option" aria-selected="false" data-value="warm_dry"><strong>Warm &amp; dry</strong><span>Warm weather with lower humidity.</span></div>
+                      <div id="preferred-climate-option-mild" class="premium-select-option" role="option" aria-selected="false" data-value="mild"><strong>Mild &amp; comfortable</strong><span>Easy daytime temperatures and light layers.</span></div>
+                      <div id="preferred-climate-option-cool" class="premium-select-option" role="option" aria-selected="false" data-value="cool"><strong>Cool &amp; crisp</strong><span>Fresh air and cooler days.</span></div>
+                      <div id="preferred-climate-option-cold" class="premium-select-option" role="option" aria-selected="false" data-value="cold_snowy"><strong>Cold &amp; snowy</strong><span>Winter conditions and snow where seasonally appropriate.</span></div>
+                    </div>
+                  </div>
                   <p id="preferred-climate-help" class="field-help">
                     For example warm, mild, or cool.
                   </p>
                   <p id="preferred-climate-error" class="field-error" hidden></p>
                 </div>
               </div>
-              <div class="form-field trip-description-field">
+            </fieldset>
+
+            <div class="form-field trip-description-field">
                 <label for="trip-description">Describe where you're looking to vacation</label>
-                <textarea id="trip-description" name="trip-description" maxlength="1000" rows="4" aria-describedby="trip-description-help trip-description-error" placeholder="Warm islands, beaches and diving. Less city, more outdoors, with local food and adventurous activities."></textarea>
+                <p class="composer-invitation">Tell Solara what you're dreaming about.</p>
+                <textarea id="trip-description" name="trip-description" maxlength="1000" rows="5" aria-describedby="trip-description-help trip-description-error" placeholder="Warm islands, beaches and diving. Less city, more outdoors. I'd love island hopping, local food and adventurous activities."></textarea>
+                <div class="prompt-starters" aria-label="Optional description starters">
+                  <button type="button" class="prompt-starter" data-prompt-starter="Island escape">Island escape</button>
+                  <button type="button" class="prompt-starter" data-prompt-starter="Food and culture">Food &amp; culture</button>
+                  <button type="button" class="prompt-starter" data-prompt-starter="Outdoor adventure">Outdoor adventure</button>
+                  <button type="button" class="prompt-starter" data-prompt-starter="Slow and scenic">Slow &amp; scenic</button>
+                </div>
                 <div class="field-help-row">
-                  <p id="trip-description-help" class="field-help">Optional. Share the mood, occasion, accessibility needs, or trade-offs that matter.</p>
+                  <p id="trip-description-help" class="field-help">Write it the way you'd describe the trip to a friend. Optional.</p>
                   <span><span id="trip-description-count">0</span>/1000</span>
                 </div>
                 <p id="trip-description-error" class="field-error" hidden></p>
-              </div>
-            </fieldset>
+            </div>
 
             <div class="form-actions">
               <button id="recommendation-submit" type="submit">
@@ -481,8 +570,7 @@
           <p class="section-label">Your considered shortlist</p>
           <h2 id="results-title" tabindex="-1">Your seasonal matches</h2>
           <p>
-            Ranked using Solara's current deterministic seasonal-fit analysis.
-            Explore the evidence behind each recommendation below.
+            A visual, season-led shortlist to help you imagine the trip and weigh your options.
           </p>
           <p id="recommendation-results-summary" class="results-summary"></p>
         </header>
@@ -500,20 +588,6 @@
 
         <ol id="recommendation-list" class="recommendation-list"></ol>
 
-        <aside
-          id="recommendation-narration"
-          class="recommendation-narration"
-          aria-labelledby="narration-title"
-          hidden
-        >
-          <p class="section-label">Optional context</p>
-          <h3 id="narration-title">AI-assisted explanation</h3>
-          <p>
-            This grounded explanation summarizes the recommendation evidence. It does
-            not set destination rankings or scores.
-          </p>
-          <p id="recommendation-narration-text" class="narration-text"></p>
-        </aside>
       </section>
 
       <section

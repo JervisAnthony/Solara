@@ -1,6 +1,8 @@
 """Infrastructure building blocks exposed by Solara."""
 
 from solara_travel.infrastructure.http import (
+    BinaryHttpGetTransport,
+    BinaryHttpResponse,
     JsonHttpDecodeError,
     JsonHttpGetTransport,
     JsonHttpResponse,
@@ -9,6 +11,8 @@ from solara_travel.infrastructure.http import (
 )
 
 __all__ = [
+    "BinaryHttpGetTransport",
+    "BinaryHttpResponse",
     "JsonHttpDecodeError",
     "JsonHttpGetTransport",
     "JsonHttpResponse",

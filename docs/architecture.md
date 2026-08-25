@@ -336,7 +336,7 @@ narration is applied.
 
 Solara should remain useful when the AI provider is unavailable.
 
-### Grounded narration boundary
+### The Wayfinder structured narration boundary
 
 Grounded narration is application enrichment applied only after deterministic
 recommendation work is complete:
@@ -359,14 +359,45 @@ OpenAIResponsesNarrationProvider
 
 `RecommendationResult` remains authoritative. The narration service creates a
 deterministic, structured grounding payload from that result and asks a provider
-for traveller-friendly prose. Provider failures are recoverable: the exact
-result remains available with no narration. Generated prose never flows back
+for one strict `WayfinderNarrative`: an opening, rank-aligned destination notes,
+and an optional comparison note. Each note owns `why_it_fits`, `seasonal_feel`,
+`good_to_know`, and optional provider-backed highlights. Provider failures or
+invalid structured output are recoverable: the exact result remains available
+with no Wayfinder. The application restores authoritative result order even if a
+provider returns notes out of order. Generated prose never flows back
 into eligibility, evidence, scoring, or ranking.
 
 The application layer depends on the vendor-independent `NarrationProvider`
 port, not OpenAI. OpenAI infrastructure depends on that port and the shared JSON
 HTTP transport. Domain and analytics code have no dependency on narration
 infrastructure.
+
+### Postcards photo-enrichment boundary
+
+Postcards are transient visual enrichment, never recommendation evidence. After
+ranking, `PostcardEnrichmentService` asks a provider-independent metadata port
+for at most four current photos per destination. The hosted Google adapter makes
+one bounded Places Text Search per result destination, deduplicates photo/place
+identity, and returns current photo dimensions, Google Maps source links, and any
+author attributions. Failure yields an empty gallery and a premium Solara fallback;
+it cannot fail, reorder, or rescore the recommendation.
+
+Google photo names are not persisted. A startup-random HMAC secret signs each
+fresh resource name into a tamper-resistant five-minute browser handle. The
+browser receives only `/api/v1/postcards/{handle}`. The same-origin delivery
+route verifies expiry, calls Place Photos (New) with bounded dimensions and
+`skipHttpRedirect=true`, then retrieves the credential-free Google media URI.
+It returns supported image bytes with `private, no-store, max-age=0`; neither the
+resource name nor image content is written to a database, filesystem, Redis, or
+browser cache. The Google API key stays in server headers and never enters HTML,
+JavaScript, or an image URL.
+
+The gallery associates author names/profile links with each image, links directly
+to the source photo on Google Maps, and displays Google Maps attribution. This
+design follows the current official [Place Photos (New)](https://developers.google.com/maps/documentation/places/web-service/place-photos)
+and [Places API policies](https://developers.google.com/maps/documentation/places/web-service/policies)
+reviewed for Phase 2B. The browser sends no cookies, analytics identifiers, user
+IP forwarding, User-Agent forwarding, or direct third-party image request.
 
 ## Provider normalization
 
@@ -748,11 +779,16 @@ consumes the parsed response without fetching independently, preserves response
 array order and rank, never rescores, and owns both ranked and successful-empty
 rendering.
 
-Result cards present deterministic and provider-derived evidence. Optional
-grounded narration is separate enrichment and never controls ranking. All
+Traveller-facing destination stories preserve deterministic order while showing
+Postcards, destination identity, a de-emphasized Seasonal Fit percentage, The
+Wayfinder when present, Places to see, natural historical Seasonal feel, Good to
+know, and a compact multi-destination overview. Technical components, weights,
+configured comfort values, observation counts, and audit keys remain typed in the
+API and internal model but are intentionally absent from the ordinary UI. Optional
+structured Wayfinder narration is separate enrichment and never controls ranking. All
 response text is inserted through safe DOM text APIs rather than interpreted as
 HTML or Markdown. Application-level normalization conservatively removes common
-Markdown presentation delimiters from generated narration before serialization,
+structured strings are validated as bounded plain text before serialization,
 while the browser continues to insert the result only as text. `app.js` also
 reads the server-owned `X-Request-ID` response header before consuming a
 recommendation response. A handled HTTP outcome shows

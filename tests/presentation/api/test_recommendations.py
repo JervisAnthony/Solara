@@ -1,5 +1,6 @@
 """HTTP tests for the versioned recommendation API."""
 
+import json
 from datetime import date
 from threading import Event, Thread
 
@@ -92,6 +93,26 @@ class FakeNarrationProvider:
         if isinstance(self.outcome, BaseException):
             raise self.outcome
         return self.outcome
+
+
+def _wayfinder_json() -> str:
+    names = ("Sunspire Bay", "Mistral Hollow", "Frostglass Vale")
+    return json.dumps(
+        {
+            "opening": "A grounded seasonal shortlist.",
+            "destination_notes": [
+                {
+                    "destination": name,
+                    "why_it_fits": f"{name} is worth considering for these dates.",
+                    "seasonal_feel": "Historically, this is a distinct seasonal window.",
+                    "good_to_know": "Use this as historical context, not a forecast.",
+                    "signature_highlights": [],
+                }
+                for name in names
+            ],
+            "comparison_note": "Compare all three before choosing.",
+        }
+    )
 
 
 class ErrorPlacesProvider:
@@ -361,11 +382,12 @@ def test_empty_recommendation_result_is_a_valid_success() -> None:
         "recommendations": [],
         "has_narration": False,
         "narration": None,
+        "wayfinder": None,
     }
 
 
 def test_successful_narration_enriches_without_changing_deterministic_result() -> None:
-    provider = FakeNarrationProvider("Fixed grounded narration")
+    provider = FakeNarrationProvider(_wayfinder_json())
     recommendation_service = _offline_service()
     client = _configured_client(
         recommendation_service,
@@ -383,7 +405,8 @@ def test_successful_narration_enriches_without_changing_deterministic_result() -
     assert body["recommendations"] == baseline["recommendations"]
     assert body["request"] == baseline["request"]
     assert body["has_narration"] is True
-    assert body["narration"] == "Fixed grounded narration"
+    assert body["wayfinder"]["opening"] == "A grounded seasonal shortlist."
+    assert body["narration"].startswith("A grounded seasonal shortlist.")
     assert len(provider.prompts) == 1
 
 
@@ -747,7 +770,7 @@ def test_narration_budget_skips_enrichment_then_expires(
 ) -> None:
     now = [0.0]
     events: list[dict[str, object]] = []
-    provider = FakeNarrationProvider("Fixed grounded narration")
+    provider = FakeNarrationProvider(_wayfinder_json())
     settings = ApiSettings(
         public_alpha_safeguards=PublicAlphaSafeguardSettings(
             recommendation_rate_limit=10,

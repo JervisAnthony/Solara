@@ -1,6 +1,11 @@
 """Pure mappings between recommendation HTTP schemas and Solara values."""
 
-from solara_travel.application import RecommendationNarration, RecommendationResult
+from solara_travel.application import (
+    PostcardCollection,
+    RecommendationNarration,
+    RecommendationResult,
+    WayfinderNarrative,
+)
 from solara_travel.domain import (
     Attraction,
     Destination,
@@ -17,6 +22,8 @@ from solara_travel.presentation.api.recommendation_schemas import (
     CoordinatesResponse,
     DestinationRecommendationResponse,
     DestinationResponse,
+    PhotoAuthorAttributionResponse,
+    PostcardPhotoResponse,
     RecommendationEvidenceResponse,
     RecommendationRequestBody,
     RecommendationRequestResponse,
@@ -28,6 +35,8 @@ from solara_travel.presentation.api.recommendation_schemas import (
     TravellerPreferencesResponse,
     TravelPeriodResponse,
     TravelScopeResponse,
+    WayfinderDestinationNoteResponse,
+    WayfinderNarrativeResponse,
 )
 
 
@@ -75,6 +84,9 @@ def to_domain_recommendation_request(
 def recommendation_result_to_response(
     result: RecommendationResult,
     narration: RecommendationNarration | None,
+    *,
+    wayfinder: WayfinderNarrative | None = None,
+    postcards: PostcardCollection | None = None,
 ) -> RecommendationResponse:
     """Serialize selected authoritative values without rescoring or reordering."""
 
@@ -145,6 +157,7 @@ def recommendation_result_to_response(
                     ),
                 ),
             ),
+            postcards=_postcard_responses(postcards, recommendation.destination),
         )
         for rank, recommendation in enumerate(result.recommendations, start=1)
     ]
@@ -159,7 +172,51 @@ def recommendation_result_to_response(
         recommendations=recommendations,
         has_narration=narration is not None,
         narration=None if narration is None else narration.text,
+        wayfinder=(
+            None
+            if wayfinder is None
+            else WayfinderNarrativeResponse(
+                opening=wayfinder.opening,
+                destination_notes=[
+                    WayfinderDestinationNoteResponse(
+                        destination=note.destination,
+                        why_it_fits=note.why_it_fits,
+                        seasonal_feel=note.seasonal_feel,
+                        good_to_know=note.good_to_know,
+                        signature_highlights=list(note.signature_highlights),
+                    )
+                    for note in wayfinder.destination_notes
+                ],
+                comparison_note=wayfinder.comparison_note,
+            )
+        ),
     )
+
+
+def _postcard_responses(
+    postcards: PostcardCollection | None,
+    destination: Destination,
+) -> list[PostcardPhotoResponse]:
+    destination_postcards = None if postcards is None else postcards.for_destination(destination)
+    if destination_postcards is None:
+        return []
+    return [
+        PostcardPhotoResponse(
+            image_path=photo.image_path,
+            place_name=photo.place_name,
+            width_px=photo.width_px,
+            height_px=photo.height_px,
+            google_maps_uri=photo.google_maps_uri,
+            author_attributions=[
+                PhotoAuthorAttributionResponse(
+                    display_name=attribution.display_name,
+                    profile_uri=attribution.profile_uri,
+                )
+                for attribution in photo.author_attributions
+            ],
+        )
+        for photo in destination_postcards.photos
+    ]
 
 
 def _request_response(

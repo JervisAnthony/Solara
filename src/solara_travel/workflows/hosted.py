@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 
 from solara_travel.application import (
+    PhotoDeliveryService,
+    PostcardEnrichmentService,
     RecommendationNarrationService,
     RecommendationService,
     TravelScopeSuggestionService,
@@ -13,8 +15,11 @@ from solara_travel.domain.travel import TravelPeriod
 from solara_travel.infrastructure.discovery import OpenAIDestinationCandidateProposalProvider
 from solara_travel.infrastructure.http import UrllibJsonHttpTransport
 from solara_travel.infrastructure.places import (
+    GooglePhotoMediaProvider,
     GooglePlacesHttpClient,
     GooglePlacesProvider,
+    GooglePostcardMetadataProvider,
+    SignedPhotoHandleCodec,
 )
 from solara_travel.infrastructure.weather import (
     OpenMeteoHistoricalWeatherHttpClient,
@@ -32,6 +37,8 @@ class HostedServices:
     recommendation_service: RecommendationService
     narration_service: RecommendationNarrationService
     travel_scope_suggestion_service: TravelScopeSuggestionService
+    postcard_enrichment_service: PostcardEnrichmentService
+    photo_delivery_service: PhotoDeliveryService
 
 
 def build_hosted_services(settings: DeploymentSettings) -> HostedServices:
@@ -90,8 +97,22 @@ def build_hosted_services(settings: DeploymentSettings) -> HostedServices:
         max_output_tokens=narration.max_output_tokens,
         transport=transport,
     )
+    photo_handle_codec = SignedPhotoHandleCodec()
+    photo_metadata_provider = GooglePostcardMetadataProvider(
+        api_key=google.api_key,
+        transport=transport,
+        timeout_seconds=google.timeout_seconds,
+    )
+    photo_media_provider = GooglePhotoMediaProvider(
+        api_key=google.api_key,
+        json_transport=transport,
+        binary_transport=transport,
+        timeout_seconds=google.timeout_seconds,
+    )
     return HostedServices(
         recommendation_service,
         narration_service,
         TravelScopeSuggestionService(places_provider),
+        PostcardEnrichmentService(photo_metadata_provider, photo_handle_codec),
+        PhotoDeliveryService(photo_handle_codec, photo_media_provider),
     )

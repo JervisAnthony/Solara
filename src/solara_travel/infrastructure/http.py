@@ -17,6 +17,15 @@ class JsonHttpResponse:
     payload: object
 
 
+@dataclass(frozen=True, slots=True)
+class BinaryHttpResponse:
+    """Immutable HTTP response containing transient binary media."""
+
+    status_code: int
+    body: bytes
+    content_type: str | None
+
+
 class JsonHttpDecodeError(ValueError):
     """Raised when an HTTP response body cannot be decoded as valid JSON."""
 
@@ -53,6 +62,21 @@ class JsonHttpGetTransport(Protocol):
         ...
 
 
+class BinaryHttpGetTransport(Protocol):
+    """Transport contract for synchronous binary GET requests."""
+
+    def get_bytes(
+        self,
+        *,
+        url: str,
+        headers: dict[str, str],
+        timeout_seconds: float,
+    ) -> BinaryHttpResponse:
+        """Send a binary GET request without exposing its URL to callers."""
+
+        ...
+
+
 class UrlResponse(Protocol):
     """Minimal response behavior required from an urllib-compatible opener."""
 
@@ -78,6 +102,11 @@ class UrlResponse(Protocol):
 
     def read(self) -> bytes:
         """Read the complete response body."""
+
+        ...
+
+    def getheader(self, name: str, default: str | None = None) -> str | None:
+        """Return one response header."""
 
         ...
 
@@ -158,6 +187,30 @@ class UrllibJsonHttpTransport:
             timeout_seconds=timeout_seconds,
         )
 
+    def get_bytes(
+        self,
+        *,
+        url: str,
+        headers: dict[str, str],
+        timeout_seconds: float,
+    ) -> BinaryHttpResponse:
+        """GET transient binary media without following a browser-visible redirect."""
+
+        request = Request(url=url, headers=headers, method="GET")
+        try:
+            with self.opener(request, timeout=timeout_seconds) as response:
+                return BinaryHttpResponse(
+                    status_code=response.getcode(),
+                    body=response.read(),
+                    content_type=response.getheader("Content-Type"),
+                )
+        except HTTPError as exc:
+            return BinaryHttpResponse(
+                status_code=exc.code,
+                body=exc.read(),
+                content_type=(None if exc.headers is None else exc.headers.get("Content-Type")),
+            )
+
 
 def _url_with_query(
     url: str,
@@ -167,9 +220,7 @@ def _url_with_query(
 
     scheme, netloc, path, existing_query, fragment = urlsplit(url)
     encoded_query = urlencode(query)
-    combined_query = "&".join(
-        part for part in (existing_query, encoded_query) if part
-    )
+    combined_query = "&".join(part for part in (existing_query, encoded_query) if part)
     return urlunsplit((scheme, netloc, path, combined_query, fragment))
 
 
@@ -205,6 +256,4 @@ def _decode_json_body(body: bytes) -> object:
         text = body.decode("utf-8")
         return json.loads(text)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise JsonHttpDecodeError(
-            "HTTP response did not contain valid JSON"
-        ) from exc
+        raise JsonHttpDecodeError("HTTP response did not contain valid JSON") from exc

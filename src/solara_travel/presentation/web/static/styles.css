@@ -1556,6 +1556,7 @@ h4 {
 
 .recommendation-form .validation-summary,
 .recommendation-form .destination-fieldset,
+.recommendation-form .trip-description-field,
 .recommendation-form .form-actions,
 .recommendation-form .request-error,
 .recommendation-form .request-reference {
@@ -1998,6 +1999,473 @@ h4 {
   .hero-slide,
   .escape-card > img {
     transition: none;
+  }
+}
+
+/* Phase 2B premium planner controls and traveller-first destination stories. */
+.premium-select {
+  position: relative;
+}
+
+.premium-select-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 3.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(40, 70, 57, 0.25);
+  border-radius: 0.9rem;
+  background: #fffdf8;
+  color: var(--color-ink-deep);
+  font-weight: 700;
+  text-align: left;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.premium-select-trigger:hover,
+.premium-select-trigger[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  background: #fff;
+}
+
+.premium-select-trigger:focus-visible {
+  border-color: var(--color-accent);
+  outline: 0;
+  box-shadow: 0 0 0 0.22rem rgba(201, 140, 47, 0.18);
+}
+
+.select-chevron {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: 0 0 auto;
+  transform: translateY(-0.18rem) rotate(45deg);
+  border-right: 2px solid var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
+}
+
+.premium-select-trigger[aria-expanded="true"] .select-chevron {
+  transform: translateY(0.18rem) rotate(225deg);
+}
+
+.premium-select-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  left: 0;
+  max-height: 22rem;
+  padding: 0.45rem;
+  overflow-y: auto;
+  border: 1px solid var(--color-line-warm);
+  border-radius: 1rem;
+  background: #fffdf8;
+  box-shadow: 0 1.4rem 3.4rem rgba(22, 56, 45, 0.2);
+}
+
+.premium-select-option {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.72rem 0.8rem;
+  border-radius: 0.7rem;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.premium-select-option span {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+}
+
+.premium-select-option.is-active,
+.premium-select-option[aria-selected="true"] {
+  background: var(--color-accent-soft);
+}
+
+.trip-description-field {
+  margin-top: 1.35rem;
+}
+
+.composer-invitation {
+  margin: -0.1rem 0 0.65rem;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.trip-description-field textarea {
+  display: block;
+  width: 100%;
+  min-height: 10rem;
+  resize: vertical;
+  padding: 1.15rem 1.2rem;
+  border: 1px solid rgba(40, 70, 57, 0.25);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #fffefb, #fbf3e4);
+  color: var(--color-ink-deep);
+  line-height: 1.65;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.trip-description-field textarea:focus {
+  border-color: var(--color-accent);
+  outline: 0;
+  background: #fff;
+  box-shadow: 0 0 0 0.25rem rgba(201, 140, 47, 0.16);
+}
+
+.prompt-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.prompt-starter,
+.places-toggle {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--color-line-warm);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.8);
+  color: var(--color-ink);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.prompt-starter:hover,
+.prompt-starter:focus-visible,
+.places-toggle:hover,
+.places-toggle:focus-visible {
+  border-color: var(--color-accent);
+  outline: 0;
+  background: var(--color-accent-soft);
+}
+
+.destination-story,
+.shortlist-overview {
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.shortlist-overview {
+  padding: clamp(1.4rem, 3vw, 2.25rem);
+  background: linear-gradient(135deg, #fffdf8, #f1e5ce);
+}
+
+.shortlist-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shortlist-links a {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  height: 100%;
+  padding: 0.9rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.8rem;
+  text-decoration: none;
+}
+
+.shortlist-links a:hover,
+.shortlist-links a:focus-visible {
+  border-color: var(--color-accent);
+  outline: 0;
+  background: rgba(255, 253, 248, 0.8);
+}
+
+.shortlist-links small {
+  display: -webkit-box;
+  grid-column: 2 / -1;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.overview-rank,
+.card-kicker {
+  color: var(--color-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.wayfinder-opening,
+.comparison-note {
+  max-width: 56rem;
+  margin: 1.25rem 0 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+}
+
+.postcards {
+  position: relative;
+  background: var(--color-ink-deep);
+}
+
+.postcards > .card-kicker {
+  position: absolute;
+  z-index: 3;
+  top: 1rem;
+  left: 1rem;
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(13, 42, 33, 0.82);
+  color: #f4d18d;
+}
+
+.postcard-frame,
+.postcard-track,
+.postcard-slide,
+.postcard-fallback {
+  min-height: clamp(19rem, 42vw, 33rem);
+}
+
+.postcard-slide {
+  position: relative;
+  margin: 0;
+}
+
+.postcard-slide > img {
+  width: 100%;
+  height: clamp(19rem, 42vw, 33rem);
+  object-fit: cover;
+}
+
+.postcard-slide::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 42%;
+  background: linear-gradient(transparent, rgba(5, 20, 15, 0.84));
+  content: "";
+  pointer-events: none;
+}
+
+.postcard-slide figcaption {
+  position: absolute;
+  z-index: 2;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.7rem;
+}
+
+.postcard-slide figcaption a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18rem;
+}
+
+.postcard-place {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.google-attribution {
+  padding-left: 0.85rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.42);
+  font-family: var(--font-interface);
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: normal;
+  white-space: nowrap;
+}
+
+.postcard-controls {
+  position: absolute;
+  z-index: 4;
+  right: 1rem;
+  top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.postcard-arrow,
+.postcard-index {
+  display: grid;
+  min-width: 2.4rem;
+  min-height: 2.4rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 999px;
+  background: rgba(13, 42, 33, 0.82);
+  color: #fff;
+}
+
+.postcard-index {
+  padding-inline: 0.7rem;
+  font-size: 0.7rem;
+}
+
+.postcard-fallback {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  background: radial-gradient(circle at 60% 20%, #7b6330, transparent 26%),
+    linear-gradient(135deg, #183b30, #0a241c);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.postcard-fallback img {
+  width: 4.5rem;
+  margin-bottom: 1rem;
+}
+
+.postcard-fallback strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 400;
+}
+
+.destination-story-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: center;
+  padding: clamp(1.5rem, 4vw, 2.6rem);
+}
+
+.seasonal-fit {
+  display: grid;
+  justify-items: end;
+  color: var(--color-muted);
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seasonal-fit strong {
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.wayfinder-section {
+  margin: 0 clamp(1.5rem, 4vw, 2.6rem);
+  padding: clamp(1.2rem, 3vw, 2rem);
+  border-block: 1px solid var(--color-line-warm);
+}
+
+.wayfinder-copy {
+  max-width: 62rem;
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.12rem, 2.2vw, 1.45rem);
+  line-height: 1.65;
+}
+
+.story-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 1.5rem;
+  background: var(--color-line);
+  border-top: 1px solid var(--color-line);
+}
+
+.story-section {
+  min-width: 0;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  background: var(--color-canvas-soft);
+}
+
+.story-heading {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.story-section p {
+  margin-bottom: 0;
+}
+
+.places-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.places-list li {
+  padding: 0.36rem 0.62rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: #fffdf8;
+  color: var(--color-ink);
+  font-size: 0.78rem;
+}
+
+.places-toggle {
+  margin-top: 0.8rem;
+}
+
+@media (max-width: 60rem) {
+  .story-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .story-section + .story-section {
+    border-top: 1px solid var(--color-line);
+  }
+}
+
+@media (max-width: 36rem) {
+  .premium-select-menu {
+    position: fixed;
+    z-index: 40;
+    top: auto;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    max-height: min(70vh, 30rem);
+  }
+
+  .destination-story-header {
+    grid-template-columns: 1fr;
+  }
+
+  .seasonal-fit {
+    justify-items: start;
+  }
+
+  .postcard-slide figcaption {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .google-attribution {
+    padding-left: 0;
+    border-left: 0;
   }
 }
 

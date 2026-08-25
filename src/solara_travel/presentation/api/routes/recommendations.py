@@ -226,6 +226,12 @@ def _run_recommendation(
 
     recommendation_duration_ms = elapsed_milliseconds(recommendation_started_at)
     narration = None
+    wayfinder = None
+    postcards = (
+        None
+        if dependencies.postcard_enrichment_service is None
+        else dependencies.postcard_enrichment_service.enrich(result)
+    )
     narration_duration_ms = None
     narration_attempted = (
         dependencies.narration_service is not None and safeguards.admit_narration()
@@ -237,6 +243,7 @@ def _run_recommendation(
         narration_duration_ms = elapsed_milliseconds(narration_started_at)
         result = narrated.recommendation_result
         narration = narrated.narration
+        wayfinder = narrated.wayfinder
     elif dependencies.narration_service is not None:
         emit_event(
             "narration.skipped",
@@ -245,7 +252,12 @@ def _run_recommendation(
             stage="safeguard",
         )
 
-    response = recommendation_result_to_response(result, narration)
+    response = recommendation_result_to_response(
+        result,
+        narration,
+        wayfinder=wayfinder,
+        postcards=postcards,
+    )
     emit_event(
         "recommendation.completed",
         request_id=request_id_from_request(request),

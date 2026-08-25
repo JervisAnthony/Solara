@@ -1222,10 +1222,11 @@ Commit 48 is split into three controlled phases on one feature branch:
   (implemented);
 - Phase 2A - Intelligent Planner and Geographic Discovery: guided intent, Google-
   assisted scope input, country/region locality discovery, and blank/global
-  candidate discovery without AI-owned ranking (implemented by the current staged
-  change; hosted acceptance remains pending);
+  candidate discovery without AI-owned ranking (implemented);
 - Phase 2B - Postcards, The Wayfinder, and the image-led recommendation experience
-  (pending);
+  (implemented by this staged change: twelve credited Popular Escapes, three-second
+  accessible motion, premium planner controls, transient attributed photography,
+  structured editorial storytelling, and non-technical destination stories);
 - Phase 3 - Itinerary Studio and final hosted experience (pending).
 
 Commit 49 is reserved for partner and journey capabilities such as dated multi-

@@ -15,6 +15,42 @@ from solara_travel.ports.errors import (
 from solara_travel.ports.narration import NarrationPrompt
 
 _RESPONSES_URL = "https://api.openai.com/v1/responses"
+_WAYFINDER_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "opening": {"type": "string", "minLength": 1},
+        "destination_notes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "destination": {"type": "string", "minLength": 1},
+                    "why_it_fits": {"type": "string", "minLength": 1},
+                    "seasonal_feel": {"type": "string", "minLength": 1},
+                    "good_to_know": {"type": "string", "minLength": 1},
+                    "signature_highlights": {
+                        "type": "array",
+                        "items": {"type": "string", "minLength": 1},
+                        "maxItems": 4,
+                    },
+                },
+                "required": [
+                    "destination",
+                    "why_it_fits",
+                    "seasonal_feel",
+                    "good_to_know",
+                    "signature_highlights",
+                ],
+            },
+        },
+        "comparison_note": {"type": ["string", "null"]},
+    },
+    "required": ["opening", "destination_notes", "comparison_note"],
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +105,16 @@ class OpenAIResponsesNarrationProvider:
                     "model": self.model,
                     "instructions": prompt.instructions,
                     "input": prompt.input_text,
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
+                            "name": "wayfinder_narrative",
+                            "strict": True,
+                            "schema": _WAYFINDER_SCHEMA,
+                        }
+                    },
+                    "tools": [],
+                    "tool_choice": "none",
                     "max_output_tokens": self.max_output_tokens,
                     "store": False,
                 },

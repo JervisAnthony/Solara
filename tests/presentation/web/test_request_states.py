@@ -39,8 +39,8 @@ def test_form_exposes_initially_hidden_accessible_validation_feedback() -> None:
         ("input", "travel-end-date", "travel-end-date-error"),
         ("input", "destination-input", "destination-error"),
         ("input", "interests", "interests-error"),
-        ("select", "preferred-pace", "preferred-pace-error"),
-        ("select", "preferred-climate", "preferred-climate-error"),
+        ("button", "preferred-pace", "preferred-pace-error"),
+        ("button", "preferred-climate", "preferred-climate-error"),
         ("textarea", "trip-description", "trip-description-error"),
     ):
         field = _tag_with_id(html, tag, field_id)

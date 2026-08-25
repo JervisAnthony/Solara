@@ -193,6 +193,43 @@ class DestinationRecommendationResponse(BaseModel):
     score: float
     components: list[ScoreComponentResponse]
     evidence: RecommendationEvidenceResponse
+    postcards: list["PostcardPhotoResponse"] = Field(default_factory=list)
+
+
+class PhotoAuthorAttributionResponse(BaseModel):
+    """Current author attribution accompanying one transient provider photo."""
+
+    display_name: str
+    profile_uri: str | None
+
+
+class PostcardPhotoResponse(BaseModel):
+    """Browser-safe Postcards metadata with a same-origin media path."""
+
+    image_path: str
+    place_name: str
+    width_px: int
+    height_px: int
+    google_maps_uri: str
+    author_attributions: list[PhotoAuthorAttributionResponse]
+
+
+class WayfinderDestinationNoteResponse(BaseModel):
+    """Traveller-facing structured editorial note for one destination."""
+
+    destination: str
+    why_it_fits: str
+    seasonal_feel: str
+    good_to_know: str
+    signature_highlights: list[str]
+
+
+class WayfinderNarrativeResponse(BaseModel):
+    """Structured Wayfinder response aligned to deterministic rank order."""
+
+    opening: str
+    destination_notes: list[WayfinderDestinationNoteResponse]
+    comparison_note: str | None
 
 
 class RecommendationResponse(BaseModel):
@@ -204,3 +241,4 @@ class RecommendationResponse(BaseModel):
     recommendations: list[DestinationRecommendationResponse]
     has_narration: bool
     narration: str | None
+    wayfinder: WayfinderNarrativeResponse | None = None

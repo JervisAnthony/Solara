@@ -74,7 +74,7 @@ def test_guided_interests_pace_climate_and_trip_context_are_explicit() -> None:
     ):
         assert f'name="guided-interest" value="{value}"' in html
     for value in ("slow", "relaxed", "balanced", "active", "fast_paced"):
-        assert f'<option value="{value}">' in html
+        assert f'data-value="{value}"' in html
     for value in (
         "hot_tropical",
         "warm_sunny",
@@ -83,11 +83,15 @@ def test_guided_interests_pace_climate_and_trip_context_are_explicit() -> None:
         "cool",
         "cold_snowy",
     ):
-        assert f'<option value="{value}">' in html
+        assert f'data-value="{value}"' in html
     assert "Describe where you're looking to vacation" in html
     assert 'id="trip-description"' in html
     assert 'maxlength="1000"' in html
     assert 'id="trip-description-count"' in html
+    assert 'rows="5"' in html
+    assert 'role="combobox"' in html
+    assert 'role="option"' in html
+    assert '<script src="/static/selects.js" defer></script>' in html
 
 
 def test_how_solara_works_is_a_dedicated_four_step_traveller_section() -> None:
@@ -110,7 +114,7 @@ def test_motion_scripts_are_isolated_from_recommendation_logic() -> None:
     inspiration = _asset("/static/inspiration.js")
     planner = _asset("/static/app.js")
 
-    assert "intervalMilliseconds = 5000" in inspiration
+    assert "intervalMilliseconds = 3000" in inspiration
     assert "visibilitychange" in inspiration
     assert "prefers-reduced-motion" in inspiration
     assert "Pause slideshow" in inspiration

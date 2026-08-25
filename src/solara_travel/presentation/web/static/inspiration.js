@@ -12,7 +12,7 @@
   const heroMotionButton = document.querySelector("[data-hero-motion-control]");
   const heroCaption = document.querySelector("[data-hero-caption]");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const intervalMilliseconds = 5000;
+  const intervalMilliseconds = 3000;
   const heroCaptions = [
     "Camps Bay, Cape Town",
     "Cebu, Philippines",
@@ -20,6 +20,12 @@
     "Bali, Indonesia",
     "Istanbul, Türkiye",
     "Budapest, Hungary",
+    "Barcelona, Spain",
+    "Marrakesh, Morocco",
+    "Phuket, Thailand",
+    "Queenstown, New Zealand",
+    "Hoi An, Vietnam",
+    "Rio de Janeiro, Brazil",
   ];
   let carouselTimer = null;
   let heroTimer = null;

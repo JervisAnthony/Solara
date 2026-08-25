@@ -160,9 +160,16 @@ same-origin geographic suggestions, and beta-stage locality discovery within
 one selected country or region. AI may propose a bounded candidate pool for
 broad or blank discovery, but Google must validate every locality and Solara's
 existing deterministic seasonal evidence still owns final scores and ranking.
-Explicit-city comparisons do not call candidate-proposal AI. The later
-Wayfinder, Postcards, Itinerary Studio, bookings, accounts, and multi-country
-journeys are not implemented.
+Explicit-city comparisons do not call candidate-proposal AI. The Phase 2B
+experience expands the local hero and Popular Escapes catalogue to
+exactly twelve credited destinations with three-second, reduced-motion-aware
+movement. The planner now uses accessible premium pace and climate listboxes and
+a full-width natural-language composer. Results are traveller-first destination
+stories: transient Google Places Photos (New) imagery appears as Postcards;
+strict structured narration appears as The Wayfinder; and the UI prioritizes
+Seasonal Fit, Places to see, Seasonal feel, and Good to know. Neither enrichment
+can rank or rescore, and either may fail without losing the deterministic result.
+Itinerary Studio, bookings, accounts, and multi-country journeys remain pending.
 
 See the [deployment guide](docs/deployment.md) for local, container, and hosted
 operational details.

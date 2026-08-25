@@ -112,23 +112,23 @@ def test_generate_sends_exact_stateless_responses_request() -> None:
     )
 
     assert provider.generate(prompt) == "First\nsecond"
-    assert transport.calls == [
-        {
-            "url": "https://api.openai.com/v1/responses",
-            "headers": {
-                "Authorization": "Bearer fake-openai-key-for-tests",
-                "Content-Type": "application/json",
-            },
-            "payload": {
-                "model": "caller-model",
-                "instructions": "Trusted instructions",
-                "input": '{"grounded":true}',
-                "max_output_tokens": 321,
-                "store": False,
-            },
-            "timeout_seconds": 7.5,
-        }
-    ]
+    call = transport.calls[0]
+    assert call["url"] == "https://api.openai.com/v1/responses"
+    assert call["headers"] == {
+        "Authorization": "Bearer fake-openai-key-for-tests",
+        "Content-Type": "application/json",
+    }
+    payload = call["payload"]
+    assert payload["model"] == "caller-model"
+    assert payload["instructions"] == "Trusted instructions"
+    assert payload["input"] == '{"grounded":true}'
+    assert payload["max_output_tokens"] == 321
+    assert payload["store"] is False
+    assert payload["tools"] == []
+    assert payload["tool_choice"] == "none"
+    assert payload["text"]["format"]["type"] == "json_schema"
+    assert payload["text"]["format"]["strict"] is True
+    assert call["timeout_seconds"] == 7.5
 
 
 def test_generate_requires_narration_prompt() -> None:
