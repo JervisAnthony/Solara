@@ -85,6 +85,7 @@ def test_openapi_exposes_health_recommendation_and_feedback_contracts() -> None:
         "/health",
         "/api/v1/recommendations",
         "/api/v1/feedback",
+        "/api/v1/travel-scope-suggestions",
     }
     assert "get" in schema["paths"]["/health"]
     recommendation = schema["paths"]["/api/v1/recommendations"]["post"]

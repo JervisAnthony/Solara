@@ -530,6 +530,12 @@ HTTP response mapper
 RecommendationResponse
 ```
 
+Autocomplete has independent short-window, long-window, and concurrency
+admission before Google is called. Broad/open recommendation plans consume a
+separate discovery-AI budget immediately before candidate proposal; explicit
+locality and multi-city plans do not consume it. These limits share no identity
+key and remain distinct from upstream Google/OpenAI `429` translation.
+
 `ApiDependencies` injects application services when each FastAPI instance is
 created. The default module-level app remains credential-free; it serves health
 normally and returns a safe `503` for recommendation calls until a
@@ -611,6 +617,8 @@ Web presentation
     |
     +----> packaged result renderer at /static/results.js
     |
+    +----> packaged geographic typeahead at /static/travel-scopes.js
+    |
     +----> packaged tester feedback at /static/feedback.js
     |
     +----> approved brand assets at /static/branding/*.png
@@ -675,28 +683,50 @@ POST /api/v1/recommendations
               +----> successful empty state
 ```
 
-The script is presentation-only and calls the same-origin recommendation API;
-provider calls remain server-side. The browser omits `destination_queries` for
-discovery, sends one query for a named-destination evaluation, or sends two to
-five queries for comparison. A `DestinationQuery` is an immutable,
-provider-independent domain value. `DestinationResolutionPort` resolves each
-explicit query to a normalized `Destination`; Google implements that operation
-as a narrow locality Text Search requesting only display name, coordinates, and
-country. The programmatic API continues to support a pre-resolved structured
-destination, which is mutually exclusive with destination queries.
+The browser is presentation-only and calls same-origin Solara APIs; provider
+calls remain server-side. `travel-scopes.js` debounces destination text, aborts
+stale requests, and uses an accessible listbox backed by
+`POST /api/v1/travel-scope-suggestions`. The response contains only canonical
+display text and Solara's `locality`, `region`, or `country` hint. It contains no
+Google identifier or raw payload. Prediction display includes the exact
+space-constrained text attribution `Google Maps`, marked `translate="no"` and
+visually separated below the predictions, following the current
+[Places API policy](https://developers.google.com/maps/documentation/places/web-service/policies).
+No invented or hotlinked Google logo is used. The canonical text is resolved
+again on intentional recommendation submit.
 
-Explicit browser input is therefore a city/locality contract, not country-wide
-recommendation. Traveller cards label the unchanged deterministic value as
-seasonal fit and omit technical weights and weighted contributions; those audit
-fields remain available in the API and domain. Interests, pace, and preferred-
-climate words remain context and are not independent numeric score components.
+`TravelScope` and `TravelScopeKind` are provider-independent domain values.
+Google Text Search normalizes locality, country, administrative-region, and
+archipelago responses behind `TravelScopeResolutionPort`; unfamiliar or business
+types are rejected rather than guessed. A locality carries the normalized name,
+coordinates, and country needed to become a scoreable `Destination`. A broad
+scope carries country/region containment evidence but never becomes a
+`Destination` and is never scored.
 
-Candidate precedence is pre-resolved destination, explicit query resolution,
-then discovery. After selection, every mode uses the same attraction, historical
-weather, seasonal profile, comfort, deterministic score, rank, and optional
-single-narration pipeline. A legitimate no-match becomes the Solara-owned
-`destination_not_found` HTTP `422`; provider failures retain their established
-translations. Submitted destination text is not added to operational logs.
+```text
+pre-resolved Destination ------------------------------+
+                                                        |
+one or more LOCALITY scopes -> Google normalization ----+-> evidence -> deterministic rank
+                                                        |
+one COUNTRY/REGION -> candidate proposal -> Google -----+
+blank/global -------> candidate proposal -> Google -----+
+```
+
+`DestinationCandidateProposalPort` is the only AI-assisted candidate boundary.
+The hosted OpenAI Responses adapter uses strict structured output for five to
+eight proposed locality names, treats traveller text as untrusted data, grants
+no tools, and stores no response. Every proposed name is then resolved by Google;
+non-localities, out-of-scope results, ambiguous results, and duplicates are
+discarded. At most five validated localities continue to attraction, historical
+weather, seasonal profile, comfort, deterministic scoring, and ranking.
+Explicit-city and bounded multi-city requests short-circuit proposal AI entirely.
+
+Interests, pace, climate, and `trip_description` may influence candidate proposal
+for broad/open discovery and remain narration context. They are not independent
+numeric score components. `destination_not_found` may carry bounded Google-backed
+correction suggestions, but the traveller must select a correction and submit
+again; no silent rewrite occurs. Submitted geography, preferences, description,
+proposals, and raw model output are excluded from operational logs.
 
 Current deterministic scoring is season-led. Interests, preferred pace, and
 preferred climate travel through the request but are not yet separate score
@@ -793,8 +823,9 @@ The deployed MVP1 topology is operationally narrow:
 GitHub main -> CI checks -> Render Docker web service
     -> single Uvicorn process -> create_deployment_app()
     -> RecommendationService
-        -> Google Places
+        -> Google Places resolution, suggestions, attractions
         -> Open-Meteo
+        -> bounded OpenAI candidate proposal for broad/open discovery
         -> optional OpenAI narration
 ```
 
@@ -803,11 +834,11 @@ browser and API same-origin in one service and adds no database, cache, worker,
 custom domain, or trusted proxy-header boundary. Root, health, and disabled-docs
 behavior are verified; provider-backed recommendation, feedback, and live
 responsive-browser validation completed for Commit 47's explicit-destination
-public-alpha flow. Deterministic local Chromium coverage continues to use fake
-providers with no live network dependency. A tested hosted blank-discovery
-request completed with an empty result; investigation of real open-discovery
-provider semantics is deferred to Commit 48 without changing deterministic
-scoring and ranking authority.
+public-alpha flow. Commit 48 Phase 2A adds the candidate-proposal and validation
+architecture that corrects the blank-discovery limitation after deployment;
+deterministic local Chromium and adapter coverage uses only fake providers. Live
+hosted acceptance remains a later user-controlled step and does not change
+deterministic scoring and ranking authority.
 
 The service was manually configured before `render.yaml` existed remotely. The
 repository Blueprint now represents the desired topology but does not yet manage

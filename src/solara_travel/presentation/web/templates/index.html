@@ -14,6 +14,7 @@
       type="image/png"
       href="/static/branding/solara-mark-gold.png"
     >
+    <script src="/static/travel-scopes.js" defer></script>
     <script src="/static/inspiration.js" defer></script>
     <script src="/static/app.js" defer></script>
     <script src="/static/results.js" defer></script>
@@ -37,7 +38,7 @@
           >
         </a>
         <nav class="site-navigation" aria-label="Primary navigation">
-          <a href="#how-it-works">How it works</a>
+          <a href="#how-solara-works">How it works</a>
           <a href="#popular-escapes">Popular escapes</a>
           <a href="#recommendation-workspace">Plan a trip</a>
         </nav>
@@ -67,13 +68,13 @@
               Start planning
               <span aria-hidden="true">&rarr;</span>
             </a>
-            <a class="secondary-link" href="#how-it-works">See how it works</a>
+            <a class="secondary-link" href="#how-solara-works">See how it works</a>
           </div>
         </div>
 
-        <figure class="hero-visual">
+        <figure class="hero-visual" data-hero-slideshow>
           <img
-            class="hero-travel-image"
+            class="hero-travel-image hero-slide is-active"
             src="/static/travel/cape-town.webp"
             alt="Camps Bay and the Atlantic coast viewed from Table Mountain in Cape Town"
             width="1280"
@@ -81,6 +82,11 @@
             fetchpriority="high"
             decoding="async"
           >
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/cebu.webp" alt="A quiet tropical beach in Cebu" width="1280" height="960" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/kyoto.webp" alt="The hillside Kiyomizu-dera temple in Kyoto" width="1280" height="823" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/bali.webp" alt="Green rice terraces across the hills of Bali" width="1280" height="853" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/istanbul.webp" alt="Istanbul's historic peninsula and skyline beside the Bosphorus" width="1280" height="618" decoding="async">
+          <img class="hero-travel-image hero-slide" data-src="/static/travel/budapest.webp" alt="Budapest illuminated beside the Danube at night" width="1280" height="831" decoding="async">
           <figcaption>
             <img
               src="/static/branding/solara-mark-gold.png"
@@ -88,7 +94,14 @@
               width="1254"
               height="1254"
             >
-            <span>Camps Bay, Cape Town</span>
+            <span data-hero-caption>Camps Bay, Cape Town</span>
+            <button
+              class="motion-control hero-motion-control"
+              type="button"
+              data-hero-motion-control
+              aria-label="Pause slideshow"
+              aria-pressed="false"
+            >Pause</button>
           </figcaption>
         </figure>
       </section>
@@ -117,6 +130,14 @@
             >
               <span aria-hidden="true">&larr;</span>
             </button>
+            <button
+              id="popular-escapes-motion"
+              class="carousel-control motion-control"
+              type="button"
+              aria-controls="popular-escapes-track"
+              aria-label="Pause carousel"
+              aria-pressed="false"
+            >Pause</button>
             <button
               id="popular-escapes-next"
               class="carousel-control"
@@ -188,6 +209,24 @@
       </section>
 
       <section
+        id="how-solara-works"
+        class="how-solara-works shell"
+        aria-labelledby="how-solara-works-title"
+      >
+        <div class="section-introduction">
+          <p class="section-label">A clearer way to discover</p>
+          <h2 id="how-solara-works-title">How Solara works</h2>
+          <p>Start broad or compare places you already have in mind. Solara keeps the evidence and the decision in your hands.</p>
+        </div>
+        <ol class="journey-steps">
+          <li><span aria-hidden="true">01</span><h3>Set the map</h3><p>Choose a city, region, country, several cities, or leave the world open.</p></li>
+          <li><span aria-hidden="true">02</span><h3>Share your rhythm</h3><p>Add dates, interests, pace, climate, and any context that matters to this trip.</p></li>
+          <li><span aria-hidden="true">03</span><h3>Discover a shortlist</h3><p>Solara validates real places, then ranks their seasonal fit with deterministic evidence.</p></li>
+          <li><span aria-hidden="true">04</span><h3>Choose confidently</h3><p>Compare the visible evidence and decide what deserves a closer look.</p></li>
+        </ol>
+      </section>
+
+      <section
         id="recommendation-workspace"
         class="recommendation-workspace"
         aria-labelledby="workspace-title"
@@ -197,8 +236,8 @@
             <p class="section-label">Plan your trip</p>
             <h2 id="workspace-title">A few details are enough to get started.</h2>
             <p class="workspace-summary">
-              Add cities you're considering, then choose your dates and travel
-              preferences. Solara will help you compare their seasonal fit.
+              Start with a city, country or region &mdash; or leave it open. Add your
+              dates and tell Solara the kind of trip you're imagining.
             </p>
             <div class="workspace-assurance" aria-label="Planner qualities">
               <span>Season-led</span>
@@ -230,27 +269,33 @@
             </section>
 
             <fieldset class="destination-fieldset">
-              <legend>
-                Destinations <span class="optional-label">Optional</span>
-              </legend>
+              <legend>Where would you like to explore?</legend>
               <div class="form-field">
-                <label for="destination-input">Destination</label>
+                <label for="destination-input">City, region, or country</label>
                 <div class="destination-entry-row">
-                  <input
-                    id="destination-input"
-                    name="destination-input"
-                    type="text"
-                    maxlength="120"
-                    placeholder="Budapest, Hungary"
-                    autocomplete="off"
-                    aria-describedby="destination-help destination-error destination-status"
-                  >
+                  <div class="destination-autocomplete">
+                    <input
+                      id="destination-input"
+                      name="destination-input"
+                      type="text"
+                      maxlength="120"
+                      placeholder="Try Kyoto, Portugal, or the Caribbean"
+                      autocomplete="off"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded="false"
+                      aria-controls="destination-suggestions"
+                      aria-describedby="destination-help destination-error destination-status destination-attribution"
+                    >
+                    <div id="destination-suggestions" class="destination-suggestions" role="listbox" aria-label="Destination suggestions" hidden></div>
+                  </div>
                   <button id="destination-add" type="button">Add destination</button>
                 </div>
                 <p id="destination-help" class="field-help">
-                  Add cities you want Solara to evaluate. You can compare up to five
-                  cities.
+                  Add one country or region, compare two to five cities, choose one city,
+                  or leave this blank for worldwide discovery.
                 </p>
+                <p id="destination-attribution" class="destination-attribution" hidden>Suggestions by <span translate="no">Google Maps</span></p>
                 <p id="destination-error" class="field-error" hidden></p>
                 <p
                   id="destination-status"
@@ -301,7 +346,27 @@
                 Travel preferences <span class="optional-label">Optional</span>
               </legend>
               <div class="form-field">
-                <label for="interests">Interests</label>
+                <span class="field-label">What draws you in?</span>
+                <div class="interest-options" aria-describedby="interests-help">
+                  <label><input type="checkbox" name="guided-interest" value="culture"><span>Culture</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="food"><span>Food</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="nature"><span>Nature</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="beaches"><span>Beaches</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="islands"><span>Islands</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="architecture"><span>Architecture</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="art_and_culture"><span>Art &amp; culture</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="adventure"><span>Adventure</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="hiking"><span>Hiking</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="diving_and_snorkelling"><span>Diving &amp; snorkelling</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="wildlife"><span>Wildlife</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="wellness"><span>Wellness</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="nightlife"><span>Nightlife</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="history"><span>History</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="shopping"><span>Shopping</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="photography"><span>Photography</span></label>
+                  <label><input type="checkbox" name="guided-interest" value="local_experiences"><span>Local experiences</span></label>
+                </div>
+                <label for="interests">Something else</label>
                 <input
                   id="interests"
                   name="interests"
@@ -309,7 +374,7 @@
                   aria-describedby="interests-help interests-error"
                 >
                 <p id="interests-help" class="field-help">
-                  Separate multiple interests with commas, such as history, nature, food.
+                  Select any themes above, then add custom interests separated by commas.
                 </p>
                 <p id="interests-error" class="field-error" hidden></p>
               </div>
@@ -317,12 +382,18 @@
               <div class="form-grid form-grid-preferences">
                 <div class="form-field">
                   <label for="preferred-pace">Preferred pace</label>
-                  <input
+                  <select
                     id="preferred-pace"
                     name="preferred-pace"
-                    type="text"
                     aria-describedby="preferred-pace-help preferred-pace-error"
                   >
+                    <option value="">No preference</option>
+                    <option value="slow">Slow</option>
+                    <option value="relaxed">Relaxed</option>
+                    <option value="balanced">Balanced</option>
+                    <option value="active">Active</option>
+                    <option value="fast_paced">Fast-paced</option>
+                  </select>
                   <p id="preferred-pace-help" class="field-help">
                     For example relaxed, balanced, or fast-paced.
                   </p>
@@ -330,17 +401,33 @@
                 </div>
                 <div class="form-field">
                   <label for="preferred-climate">Preferred climate</label>
-                  <input
+                  <select
                     id="preferred-climate"
                     name="preferred-climate"
-                    type="text"
                     aria-describedby="preferred-climate-help preferred-climate-error"
                   >
+                    <option value="">No preference</option>
+                    <option value="hot_tropical">Hot and tropical</option>
+                    <option value="warm_sunny">Warm and sunny</option>
+                    <option value="warm_dry">Warm and dry</option>
+                    <option value="mild">Mild</option>
+                    <option value="cool">Cool</option>
+                    <option value="cold_snowy">Cold and snowy</option>
+                  </select>
                   <p id="preferred-climate-help" class="field-help">
                     For example warm, mild, or cool.
                   </p>
                   <p id="preferred-climate-error" class="field-error" hidden></p>
                 </div>
+              </div>
+              <div class="form-field trip-description-field">
+                <label for="trip-description">Describe where you're looking to vacation</label>
+                <textarea id="trip-description" name="trip-description" maxlength="1000" rows="4" aria-describedby="trip-description-help trip-description-error" placeholder="Warm islands, beaches and diving. Less city, more outdoors, with local food and adventurous activities."></textarea>
+                <div class="field-help-row">
+                  <p id="trip-description-help" class="field-help">Optional. Share the mood, occasion, accessibility needs, or trade-offs that matter.</p>
+                  <span><span id="trip-description-count">0</span>/1000</span>
+                </div>
+                <p id="trip-description-error" class="field-error" hidden></p>
               </div>
             </fieldset>
 
@@ -504,7 +591,7 @@
         </div>
       </section>
 
-      <section id="how-it-works" class="principles" aria-labelledby="principles-title">
+      <section id="principles" class="principles" aria-labelledby="principles-title">
         <div class="section-introduction">
           <p class="section-label">Designed for thoughtful discovery</p>
           <h2 id="principles-title">Useful intelligence, clearly explained</h2>

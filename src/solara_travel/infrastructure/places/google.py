@@ -10,6 +10,12 @@ from solara_travel.domain.attraction import Attraction
 from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.recommendation import RecommendationRequest
+from solara_travel.domain.travel_scope import (
+    GeoViewport,
+    TravelScope,
+    TravelScopeKind,
+    TravelScopeSuggestion,
+)
 from solara_travel.infrastructure.http import (
     JsonHttpDecodeError,
     JsonHttpTransport,
@@ -24,8 +30,20 @@ from solara_travel.ports.errors import (
 
 _TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 _NEARBY_SEARCH_URL = "https://places.googleapis.com/v1/places:searchNearby"
+_AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete"
 
 _DESTINATION_FIELD_MASK = "places.displayName,places.location,places.addressComponents"
+
+_TRAVEL_SCOPE_FIELD_MASK = (
+    "places.displayName,places.location,places.addressComponents,"
+    "places.primaryType,places.types,places.viewport"
+)
+
+_AUTOCOMPLETE_FIELD_MASK = (
+    "suggestions.placePrediction.text.text,"
+    "suggestions.placePrediction.primaryType,"
+    "suggestions.placePrediction.types"
+)
 
 _ATTRACTION_FIELD_MASK = "places.displayName,places.location,places.primaryType,places.types"
 
@@ -58,6 +76,14 @@ class GooglePlacesClient(Protocol):
 
     def search_destination(self, query: DestinationQuery) -> object:
         """Return a raw Google Places response for one explicit destination."""
+        ...
+
+    def search_travel_scope(self, query: DestinationQuery) -> object:
+        """Return a raw Google response for locality, region, or country resolution."""
+        ...
+
+    def autocomplete_travel_scopes(self, query: DestinationQuery) -> object:
+        """Return raw Autocomplete (New) region predictions."""
         ...
 
 
@@ -159,6 +185,37 @@ class GooglePlacesHttpClient:
                 "strictTypeFiltering": True,
                 "languageCode": "en",
                 "pageSize": 1,
+            },
+        )
+
+    def search_travel_scope(self, query: DestinationQuery) -> object:
+        """Resolve geographic text without forcing a locality-only type."""
+
+        if not isinstance(query, DestinationQuery):
+            raise TypeError("query must be a DestinationQuery")
+        return self._post_google(
+            url=_TEXT_SEARCH_URL,
+            field_mask=_TRAVEL_SCOPE_FIELD_MASK,
+            payload={
+                "textQuery": query.value,
+                "languageCode": "en",
+                "pageSize": 1,
+            },
+        )
+
+    def autocomplete_travel_scopes(self, query: DestinationQuery) -> object:
+        """Request up to five geographic predictions from Autocomplete (New)."""
+
+        if not isinstance(query, DestinationQuery):
+            raise TypeError("query must be a DestinationQuery")
+        return self._post_google(
+            url=_AUTOCOMPLETE_URL,
+            field_mask=_AUTOCOMPLETE_FIELD_MASK,
+            payload={
+                "input": query.value,
+                "includedPrimaryTypes": ["(regions)"],
+                "includeQueryPredictions": False,
+                "languageCode": "en",
             },
         )
 
@@ -296,6 +353,44 @@ class GooglePlacesProvider:
         except Exception as exc:
             raise ProviderUnavailableError("Google Places request failed") from exc
 
+    def resolve_travel_scope(self, query: DestinationQuery) -> TravelScope | None:
+        """Resolve one locality, region, or country into Solara geography."""
+
+        if not isinstance(query, DestinationQuery):
+            raise TypeError("query must be a DestinationQuery")
+        try:
+            places = _extract_places(self.client.search_travel_scope(query))
+            if not places:
+                return None
+            return normalize_google_travel_scope(places[0])
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderUnavailableError("Google Places request failed") from exc
+
+    def suggest_travel_scopes(
+        self,
+        query: DestinationQuery,
+    ) -> tuple[TravelScopeSuggestion, ...]:
+        """Normalize Autocomplete (New) geographic predictions."""
+
+        if not isinstance(query, DestinationQuery):
+            raise TypeError("query must be a DestinationQuery")
+        try:
+            predictions = _extract_autocomplete_predictions(
+                self.client.autocomplete_travel_scopes(query)
+            )
+            suggestions: list[TravelScopeSuggestion] = []
+            for prediction in predictions:
+                suggestion = normalize_google_travel_scope_suggestion(prediction)
+                if suggestion is not None:
+                    suggestions.append(suggestion)
+            return tuple(suggestions[:5])
+        except ProviderError:
+            raise
+        except Exception as exc:
+            raise ProviderUnavailableError("Google Places request failed") from exc
+
 
 def normalize_google_destination(
     payload: Mapping[str, object],
@@ -312,6 +407,45 @@ def normalize_google_destination(
         country=country,
         coordinates=coordinates,
     )
+
+
+def normalize_google_travel_scope(payload: Mapping[str, object]) -> TravelScope:
+    """Normalize one supported Google geographic result into a Solara scope."""
+
+    place = _require_place_mapping(payload)
+    kind = _travel_scope_kind(place)
+    country_identity = _extract_optional_country_identity(place)
+    if country_identity is None and kind is not TravelScopeKind.REGION:
+        raise ProviderResponseError("Google destination is missing country identity")
+    country_name, country_code = country_identity or (None, None)
+    return TravelScope(
+        display_name=_extract_display_name(place),
+        canonical_name=_extract_display_name(place),
+        kind=kind,
+        country_name=country_name,
+        country_code=country_code,
+        center=_extract_coordinates(place),
+        viewport=_extract_viewport(place),
+        containing_regions=_extract_containing_regions(place),
+    )
+
+
+def normalize_google_travel_scope_suggestion(
+    payload: Mapping[str, object],
+) -> TravelScopeSuggestion | None:
+    """Return one conservatively typed Autocomplete prediction."""
+
+    prediction = _require_place_mapping(payload)
+    kind = _travel_scope_kind(prediction, allow_unknown=True)
+    if kind is None:
+        return None
+    text = prediction.get("text")
+    if not isinstance(text, Mapping):
+        raise ProviderResponseError("Google prediction text must be an object")
+    display_name = text.get("text")
+    if not isinstance(display_name, str) or not display_name.strip():
+        raise ProviderResponseError("Google prediction text must be non-blank")
+    return TravelScopeSuggestion(display_name.strip(), kind)
 
 
 def normalize_google_attraction(
@@ -348,6 +482,24 @@ def _extract_places(
         raise ProviderResponseError("Google Places response places must be a list")
 
     return places
+
+
+def _extract_autocomplete_predictions(response: object) -> list[Mapping[str, object]]:
+    """Extract only place predictions from an Autocomplete (New) response."""
+
+    if not isinstance(response, Mapping):
+        raise ProviderResponseError("Google Autocomplete response must be an object")
+    suggestions = response.get("suggestions", [])
+    if not isinstance(suggestions, list):
+        raise ProviderResponseError("Google Autocomplete suggestions must be a list")
+    predictions: list[Mapping[str, object]] = []
+    for suggestion in suggestions:
+        if not isinstance(suggestion, Mapping):
+            raise ProviderResponseError("Google Autocomplete suggestion must be an object")
+        prediction = suggestion.get("placePrediction")
+        if isinstance(prediction, Mapping):
+            predictions.append(prediction)
+    return predictions
 
 
 def _require_place_mapping(
@@ -439,6 +591,116 @@ def _extract_country(
             return short_text.strip()
 
     raise ProviderResponseError("Google destination is missing a country")
+
+
+def _extract_country_identity(place: Mapping[str, object]) -> tuple[str, str]:
+    """Return long country name and short country code."""
+
+    address_components = place.get("addressComponents")
+    if not isinstance(address_components, list):
+        raise ProviderResponseError("Google destination is missing a country")
+    for component in address_components:
+        if not isinstance(component, Mapping):
+            continue
+        types = component.get("types")
+        if not isinstance(types, list) or "country" not in types:
+            continue
+        long_text = component.get("longText")
+        short_text = component.get("shortText")
+        if (
+            isinstance(long_text, str)
+            and long_text.strip()
+            and isinstance(short_text, str)
+            and short_text.strip()
+        ):
+            return long_text.strip(), short_text.strip()
+    raise ProviderResponseError("Google destination is missing country identity")
+
+
+def _extract_optional_country_identity(
+    place: Mapping[str, object],
+) -> tuple[str, str] | None:
+    """Return country identity when present for a potentially multinational region."""
+
+    try:
+        return _extract_country_identity(place)
+    except ProviderResponseError:
+        return None
+
+
+def _travel_scope_kind(
+    place: Mapping[str, object],
+    *,
+    allow_unknown: bool = False,
+) -> TravelScopeKind | None:
+    """Map current supported Google geographic types conservatively."""
+
+    primary_type = place.get("primaryType")
+    types = place.get("types", [])
+    values = {
+        value.casefold()
+        for value in ([primary_type] if isinstance(primary_type, str) else [])
+        + (types if isinstance(types, list) else [])
+        if isinstance(value, str)
+    }
+    if "country" in values:
+        return TravelScopeKind.COUNTRY
+    if values & {
+        "administrative_area_level_1",
+        "administrative_area_level_2",
+        "archipelago",
+    }:
+        return TravelScopeKind.REGION
+    if values & {"locality", "postal_town"}:
+        return TravelScopeKind.LOCALITY
+    if allow_unknown:
+        return None
+    raise ProviderResponseError("Google place is not a supported travel scope")
+
+
+def _extract_containing_regions(place: Mapping[str, object]) -> tuple[str, ...]:
+    """Return administrative/archipelago containment labels without provider fields."""
+
+    address_components = place.get("addressComponents")
+    if not isinstance(address_components, list):
+        return ()
+    values: list[str] = []
+    supported = {
+        "administrative_area_level_1",
+        "administrative_area_level_2",
+        "archipelago",
+    }
+    for component in address_components:
+        if not isinstance(component, Mapping):
+            continue
+        types = component.get("types")
+        if not isinstance(types, list) or not supported.intersection(types):
+            continue
+        text = component.get("longText")
+        if isinstance(text, str) and text.strip():
+            values.append(text.strip())
+    return tuple(dict.fromkeys(values))
+
+
+def _extract_viewport(place: Mapping[str, object]) -> GeoViewport | None:
+    """Normalize optional Google viewport bounds."""
+
+    viewport = place.get("viewport")
+    if viewport is None:
+        return None
+    if not isinstance(viewport, Mapping):
+        raise ProviderResponseError("Google place viewport must be an object")
+    low = viewport.get("low")
+    high = viewport.get("high")
+    if not isinstance(low, Mapping) or not isinstance(high, Mapping):
+        raise ProviderResponseError("Google place viewport bounds must be objects")
+    try:
+        return GeoViewport(
+            southwest=GeoCoordinates(low["latitude"], low["longitude"]),
+            northeast=GeoCoordinates(high["latitude"], high["longitude"]),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ProviderResponseError("Google place viewport is invalid") from exc
 
 
 def _extract_attraction_category(

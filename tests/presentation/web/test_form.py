@@ -33,6 +33,7 @@ def test_form_has_required_dates_and_optional_preference_fields() -> None:
         "interests",
         "preferred-pace",
         "preferred-climate",
+        "trip-description",
     ):
         assert f'<label for="{field_id}"' in html
         assert f'id="{field_id}"' in html
@@ -52,17 +53,18 @@ def test_form_has_accessible_optional_destination_chip_controls_above_dates() ->
     html = _root_html()
 
     assert html.index('id="destination-input"') < html.index('id="travel-start-date"')
-    assert '<label for="destination-input">Destination</label>' in html
-    assert 'placeholder="Budapest, Hungary"' in html
+    assert '<label for="destination-input">City, region, or country</label>' in html
+    assert 'placeholder="Try Kyoto, Portugal, or the Caribbean"' in html
     assert 'id="destination-add" type="button"' in html
     assert 'id="destination-chips"' in html
     assert 'aria-label="Destinations to evaluate"' in html
     assert 'id="destination-status"' in html
     assert 'aria-live="polite"' in html
-    assert "Add cities you want Solara to evaluate" in html
-    assert "You can compare up to five" in html
-    assert "leave blank to discover" not in html
-    assert "Add places you want Solara to evaluate" not in html
+    assert "Add one country or region" in html
+    assert "leave this blank for worldwide discovery" in html
+    assert 'role="combobox"' in html
+    assert 'role="listbox"' in html
+    assert '<span translate="no">Google Maps</span>' in html
 
 
 def test_form_loads_local_script_and_exposes_polite_status() -> None:
@@ -104,6 +106,7 @@ def test_javascript_asset_submits_the_existing_request_contract() -> None:
         "interests",
         "preferred_pace",
         "preferred_climate",
+        "trip_description",
         "destination: null",
         "destination_queries",
         "solara:recommendation-ready",

@@ -34,15 +34,16 @@ def test_form_exposes_initially_hidden_accessible_validation_feedback() -> None:
     assert "hidden" in summary
     assert 'id="recommendation-validation-list"' in html
 
-    for field_id, error_id in (
-        ("travel-start-date", "travel-start-date-error"),
-        ("travel-end-date", "travel-end-date-error"),
-        ("destination-input", "destination-error"),
-        ("interests", "interests-error"),
-        ("preferred-pace", "preferred-pace-error"),
-        ("preferred-climate", "preferred-climate-error"),
+    for tag, field_id, error_id in (
+        ("input", "travel-start-date", "travel-start-date-error"),
+        ("input", "travel-end-date", "travel-end-date-error"),
+        ("input", "destination-input", "destination-error"),
+        ("input", "interests", "interests-error"),
+        ("select", "preferred-pace", "preferred-pace-error"),
+        ("select", "preferred-climate", "preferred-climate-error"),
+        ("textarea", "trip-description", "trip-description-error"),
     ):
-        field = _tag_with_id(html, "input", field_id)
+        field = _tag_with_id(html, tag, field_id)
         error = _tag_with_id(html, "p", error_id)
         assert error_id in field
         assert "hidden" in error

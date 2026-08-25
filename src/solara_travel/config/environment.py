@@ -92,6 +92,19 @@ def load_deployment_settings(
             narration_budget_window_seconds=_integer(
                 source, "SOLARA_NARRATION_BUDGET_WINDOW_SECONDS", 3600
             ),
+            suggestion_rate_limit=_integer(source, "SOLARA_SUGGESTION_RATE_LIMIT", 60),
+            suggestion_rate_window_seconds=_integer(
+                source, "SOLARA_SUGGESTION_RATE_WINDOW_SECONDS", 60
+            ),
+            suggestion_budget_limit=_integer(source, "SOLARA_SUGGESTION_BUDGET_LIMIT", 300),
+            suggestion_budget_window_seconds=_integer(
+                source, "SOLARA_SUGGESTION_BUDGET_WINDOW_SECONDS", 3600
+            ),
+            suggestion_concurrency_limit=_integer(source, "SOLARA_SUGGESTION_CONCURRENCY_LIMIT", 4),
+            discovery_budget_limit=_integer(source, "SOLARA_DISCOVERY_BUDGET_LIMIT", 30),
+            discovery_budget_window_seconds=_integer(
+                source, "SOLARA_DISCOVERY_BUDGET_WINDOW_SECONDS", 3600
+            ),
         ),
         docs_enabled=_boolean(source, "SOLARA_DOCS_ENABLED", False),
     )

@@ -29,7 +29,7 @@ def test_editorial_page_order_and_real_navigation_contract() -> None:
     planner = html.index('id="recommendation-workspace"')
     results = html.index('id="recommendation-results"')
     assert hero < escapes < planner < results
-    for target in ("how-it-works", "popular-escapes", "recommendation-workspace"):
+    for target in ("how-solara-works", "popular-escapes", "recommendation-workspace"):
         assert f'href="#{target}"' in html
     for unsupported in ("Sign in", "Account", "Careers", "Blog", "Press"):
         assert unsupported not in html
@@ -37,7 +37,7 @@ def test_editorial_page_order_and_real_navigation_contract() -> None:
 
 def test_hero_and_popular_escape_images_are_local_and_sized() -> None:
     html = _client().get("/").text
-    hero_start = html.index('class="hero-travel-image"')
+    hero_start = html.index('class="hero-travel-image hero-slide')
     hero_tag = html[hero_start : html.index(">", hero_start)]
     assert 'src="/static/travel/cape-town.webp"' in hero_tag
     assert 'width="1280"' in hero_tag
@@ -93,6 +93,7 @@ def test_image_credits_cover_every_committed_travel_asset() -> None:
 
 def test_inspiration_script_is_small_safe_and_provider_independent() -> None:
     script = _client().get("/static/inspiration.js").text
+    html = _client().get("/").text
 
     for marker in (
         "scrollBy",
@@ -104,7 +105,6 @@ def test_inspiration_script_is_small_safe_and_provider_independent() -> None:
         assert marker in script
     for forbidden in (
         "fetch(",
-        "setInterval",
         "setTimeout",
         "localStorage",
         "sessionStorage",
@@ -113,3 +113,7 @@ def test_inspiration_script_is_small_safe_and_provider_independent() -> None:
         "https://",
     ):
         assert forbidden not in script
+    assert "setInterval" in script
+    assert "visibilitychange" in script
+    assert "Pause carousel" in html
+    assert "Pause slideshow" in html

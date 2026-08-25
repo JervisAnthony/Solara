@@ -1,5 +1,6 @@
 """External capability contracts exposed by Solara."""
 
+from solara_travel.ports.discovery import DestinationCandidateProposalPort
 from solara_travel.ports.errors import (
     ProviderAuthenticationError,
     ProviderError,
@@ -13,6 +14,8 @@ from solara_travel.ports.places import (
     DestinationDiscoveryPort,
     DestinationResolutionPort,
     PlacesProvider,
+    TravelScopeResolutionPort,
+    TravelScopeSuggestionPort,
 )
 from solara_travel.ports.weather import HistoricalWeatherProvider
 
@@ -20,10 +23,13 @@ __all__ = [
     "AttractionDiscoveryPort",
     "DestinationDiscoveryPort",
     "DestinationResolutionPort",
+    "DestinationCandidateProposalPort",
     "HistoricalWeatherProvider",
     "NarrationPrompt",
     "NarrationProvider",
     "PlacesProvider",
+    "TravelScopeResolutionPort",
+    "TravelScopeSuggestionPort",
     "ProviderAuthenticationError",
     "ProviderError",
     "ProviderRateLimitError",

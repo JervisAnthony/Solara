@@ -144,6 +144,11 @@ def test_web_shell_and_assets_are_independent_of_api_documentation_policy() -> N
 def test_root_and_static_mount_are_excluded_from_openapi() -> None:
     paths = TestClient(create_app()).get("/openapi.json").json()["paths"]
 
-    assert set(paths) == {"/health", "/api/v1/recommendations", "/api/v1/feedback"}
+    assert set(paths) == {
+        "/health",
+        "/api/v1/recommendations",
+        "/api/v1/feedback",
+        "/api/v1/travel-scope-suggestions",
+    }
     assert "/" not in paths
     assert all(not path.startswith("/static") for path in paths)

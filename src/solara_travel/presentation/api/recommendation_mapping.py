@@ -10,6 +10,7 @@ from solara_travel.domain import (
     TravellerInterests,
     TravellerPreferences,
     TravelPeriod,
+    TravelScope,
 )
 from solara_travel.presentation.api.recommendation_schemas import (
     AttractionResponse,
@@ -26,6 +27,7 @@ from solara_travel.presentation.api.recommendation_schemas import (
     TemperatureComfortResponse,
     TravellerPreferencesResponse,
     TravelPeriodResponse,
+    TravelScopeResponse,
 )
 
 
@@ -43,6 +45,7 @@ def to_domain_recommendation_request(
         interests=interests,
         preferred_pace=request_body.preferences.preferred_pace,
         preferred_climate=request_body.preferences.preferred_climate,
+        trip_description=request_body.preferences.trip_description,
     )
     destination = (
         None
@@ -146,7 +149,11 @@ def recommendation_result_to_response(
         for rank, recommendation in enumerate(result.recommendations, start=1)
     ]
     return RecommendationResponse(
-        request=_request_response(result.request),
+        request=_request_response(
+            result.request,
+            destination_mode=result.destination_mode,
+            travel_scope=result.travel_scope,
+        ),
         recommendation_count=result.recommendation_count,
         has_recommendations=result.has_recommendations,
         recommendations=recommendations,
@@ -155,7 +162,12 @@ def recommendation_result_to_response(
     )
 
 
-def _request_response(request: RecommendationRequest) -> RecommendationRequestResponse:
+def _request_response(
+    request: RecommendationRequest,
+    *,
+    destination_mode: str | None,
+    travel_scope: TravelScope | None,
+) -> RecommendationRequestResponse:
     interests = request.preferences.interests
     return RecommendationRequestResponse(
         travel_period=_travel_period_response(request.travel_period),
@@ -163,17 +175,21 @@ def _request_response(request: RecommendationRequest) -> RecommendationRequestRe
             interests=None if interests is None else list(interests.interests),
             preferred_pace=request.preferences.preferred_pace,
             preferred_climate=request.preferences.preferred_climate,
+            trip_description=request.preferences.trip_description,
         ),
         destination=(
             None if request.destination is None else _destination_response(request.destination)
         ),
         destination_queries=[query.value for query in request.destination_queries],
-        destination_mode=(
-            "pre_resolved"
-            if request.destination is not None
-            else "explicit_queries"
-            if request.destination_queries
-            else "discovery"
+        destination_mode=destination_mode
+        or ("pre_resolved" if request.destination is not None else "discovery"),
+        travel_scope=(
+            None
+            if travel_scope is None
+            else TravelScopeResponse(
+                display_name=travel_scope.display_name,
+                kind=travel_scope.kind.value,
+            )
         ),
     )
 

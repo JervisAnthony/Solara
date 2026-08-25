@@ -144,21 +144,25 @@ The hosted MVP1 deployment is live at
 [https://solara-travel-mvp1.onrender.com](https://solara-travel-mvp1.onrender.com).
 It runs on Render Free in Singapore as one Docker web service, one instance, and
 one Uvicorn worker. `GET /health` is the health check; hosted API documentation
-is disabled. Idle spin-down can cause cold starts. The public-alpha form now
-supports blank discovery, one explicit city/locality, or a comparison of up to
-five cities. Public result cards present the current seasonal-temperature score
-as a readable seasonal-fit percentage; interests and travel-style preferences
-are request context, not yet independent numeric ranking factors. Commit 47's
+is disabled. Idle spin-down can cause cold starts. The public-alpha planner
+supports one city, one country or region, a comparison of up to five cities, or
+blank worldwide discovery. Guided interests, stable pace and climate choices,
+and an optional natural-language trip description help express the trip without
+requiring technical vocabulary. Public result cards present the current
+seasonal-temperature score as a readable seasonal-fit percentage; interests and
+travel-style preferences are request context, not yet independent numeric
+ranking factors. Commit 47's
 explicit-destination public-alpha acceptance passed against the hosted service.
-Blank discovery remains structurally available, but the tested real hosted
-request returned no recommendations; correcting that limitation is deferred to
-Commit 48.
-
-Commit 48 is in progress as a three-phase visual travel-experience redesign.
-Phase 1 introduces an editorial travel homepage, locally bundled destination
-photography, curated Popular Escapes inspiration, and a more compact planner.
-The inspiration cards are static editorial starting points and do not affect
-recommendation ranking or call providers when the page opens.
+Commit 48 Phase 1 introduced an editorial travel homepage, locally bundled
+destination photography, curated Popular Escapes inspiration, and a compact
+planner. Phase 2A adds calm hero and carousel motion, traveller-facing guidance,
+same-origin geographic suggestions, and beta-stage locality discovery within
+one selected country or region. AI may propose a bounded candidate pool for
+broad or blank discovery, but Google must validate every locality and Solara's
+existing deterministic seasonal evidence still owns final scores and ranking.
+Explicit-city comparisons do not call candidate-proposal AI. The later
+Wayfinder, Postcards, Itinerary Studio, bookings, accounts, and multi-country
+journeys are not implemented.
 
 See the [deployment guide](docs/deployment.md) for local, container, and hosted
 operational details.

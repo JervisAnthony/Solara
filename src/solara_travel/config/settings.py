@@ -47,6 +47,13 @@ class PublicAlphaSafeguardSettings:
     feedback_rate_window_seconds: int = 60
     narration_budget_limit: int = 30
     narration_budget_window_seconds: int = 3600
+    suggestion_rate_limit: int = 60
+    suggestion_rate_window_seconds: int = 60
+    suggestion_budget_limit: int = 300
+    suggestion_budget_window_seconds: int = 3600
+    suggestion_concurrency_limit: int = 4
+    discovery_budget_limit: int = 30
+    discovery_budget_window_seconds: int = 3600
 
     def __post_init__(self) -> None:
         """Reject malformed or non-positive guardrail configuration."""

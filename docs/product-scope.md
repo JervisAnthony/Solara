@@ -25,22 +25,21 @@ Solara is intended for travellers who:
 
 ### Destination discovery
 
-A traveller may leave destination input blank and ask where to go, supply one
-human-readable city/locality for evaluation, or supply two to five cities for a
-bounded comparison. Country-wide recommendation is not part of MVP1. Solara
-resolves explicit locality names server-side, then uses
-the same evidence, deterministic scoring, and ranking pipeline in every mode.
-Blank discovery remains an intended Solara capability. In the current hosted
-public alpha, however, the tested real blank-discovery request completed with an
-empty result rather than useful destination candidates; correction is deferred
-to the next public-alpha experience iteration in Commit 48.
+A traveller may evaluate one city, compare two to five cities, choose one
+country or region as a discovery scope, or leave destination blank for worldwide
+discovery. A country or region is never treated as one scoreable destination.
+For broad and blank requests, an AI adapter proposes a bounded pool of locality
+names from the dates and traveller intent; Google then validates each locality,
+coordinates, country, and requested-scope containment before it can enter the
+existing evidence pipeline. At most five validated localities proceed.
 
-Commit 48's visual travel experience begins with a photography-led homepage,
-curated Popular Escapes, and a compact trip planner. Popular Escapes is static
-editorial inspiration: choosing a card only adds that city/locality to the
-planner and does not influence ranking or spend provider quota. Country scope
-and locality discovery within a country remain future Commit 49 capabilities,
-not part of this visual phase.
+Explicit-city evaluation and comparison bypass candidate-proposal AI. Interests,
+pace, climate, and the optional natural-language trip description may influence
+which localities are proposed for broad/open discovery, but do not become new
+numeric score components. Historical seasonal evidence and deterministic
+scoring still own final ranking. Geographic suggestions are same-origin,
+provider-neutral, user-confirmed, and protected by identity-free process-local
+limits. Multi-country dated journeys remain future work.
 
 ### Attraction discovery
 
@@ -68,6 +67,8 @@ The first usable version should support:
 
 - structured destination-recommendation requests;
 - discovery, single-city evaluation, and small city comparisons;
+- one-country or one-region locality discovery;
+- guided interests, stable pace/climate choices, and optional trip context;
 - traveller interests and trip-style preferences;
 - destination and attraction representations;
 - normalized weather and seasonal observations;

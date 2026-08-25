@@ -9,6 +9,7 @@ from solara_travel.config import (
     OpenMeteoSettings,
     RecommendationPolicySettings,
 )
+from solara_travel.infrastructure.discovery import OpenAIDestinationCandidateProposalProvider
 from solara_travel.infrastructure.http import UrllibJsonHttpTransport
 from solara_travel.infrastructure.narration import OpenAIResponsesNarrationProvider
 from solara_travel.infrastructure.places import GooglePlacesHttpClient, GooglePlacesProvider
@@ -66,6 +67,12 @@ def test_hosted_services_use_configured_live_providers_and_one_transport() -> No
     assert recommendation.comfort_range.maximum_celsius == 27.0
     assert recommendation.comfort_range.tolerance_celsius == 9.0
     assert recommendation.seasonal_weight == 0.8
+    assert recommendation.scope_resolver is recommendation.places_provider
+    assert isinstance(
+        recommendation.candidate_proposal_provider,
+        OpenAIDestinationCandidateProposalProvider,
+    )
+    assert services.travel_scope_suggestion_service.provider is recommendation.places_provider
     assert isinstance(narration.provider, OpenAIResponsesNarrationProvider)
     assert narration.provider.model == "test-model"
     assert narration.provider.timeout_seconds == 6.0
@@ -75,6 +82,7 @@ def test_hosted_services_use_configured_live_providers_and_one_transport() -> No
     assert isinstance(transport, UrllibJsonHttpTransport)
     assert recommendation.weather_provider.client.transport is transport
     assert narration.provider.transport is transport
+    assert recommendation.candidate_proposal_provider.transport is transport
 
 
 def test_hosted_dependency_repr_hides_both_secrets() -> None:

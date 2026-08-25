@@ -240,6 +240,7 @@ def test_grounding_contains_ranked_deterministic_evidence() -> None:
             "interests": ["history", "gardens"],
             "preferred_climate": "mild",
             "preferred_pace": "relaxed",
+            "trip_description": None,
         },
         "preselected_destination": None,
         "travel_period": {"end_date": "2026-04-12", "start_date": "2026-04-10"},

@@ -66,6 +66,13 @@ def test_every_optional_environment_override_is_mapped() -> None:
         "SOLARA_FEEDBACK_RATE_WINDOW_SECONDS": "62",
         "SOLARA_NARRATION_BUDGET_LIMIT": "32",
         "SOLARA_NARRATION_BUDGET_WINDOW_SECONDS": "3602",
+        "SOLARA_SUGGESTION_RATE_LIMIT": "63",
+        "SOLARA_SUGGESTION_RATE_WINDOW_SECONDS": "64",
+        "SOLARA_SUGGESTION_BUDGET_LIMIT": "365",
+        "SOLARA_SUGGESTION_BUDGET_WINDOW_SECONDS": "3603",
+        "SOLARA_SUGGESTION_CONCURRENCY_LIMIT": "4",
+        "SOLARA_DISCOVERY_BUDGET_LIMIT": "33",
+        "SOLARA_DISCOVERY_BUDGET_WINDOW_SECONDS": "3604",
     }
 
     settings = load_deployment_settings(environ)
@@ -94,6 +101,13 @@ def test_every_optional_environment_override_is_mapped() -> None:
         feedback_rate_window_seconds=62,
         narration_budget_limit=32,
         narration_budget_window_seconds=3602,
+        suggestion_rate_limit=63,
+        suggestion_rate_window_seconds=64,
+        suggestion_budget_limit=365,
+        suggestion_budget_window_seconds=3603,
+        suggestion_concurrency_limit=4,
+        discovery_budget_limit=33,
+        discovery_budget_window_seconds=3604,
     )
 
 

@@ -644,9 +644,21 @@ python -m uvicorn solara_travel.presentation.api.app:app --reload
 Open `http://127.0.0.1:8000/` to view the Solara browser shell. Its HTML,
 stylesheet, scripts, and approved brand images are package-local and need no
 browser-side credentials.
-The form collects up to five optional human-readable city/locality chips, required
-start and end dates, optional comma-separated interests, preferred pace, and
-preferred climate. It sends same-origin JSON to the recommendation API.
+The planner accepts one city, one country/region, two to five cities, or no
+destination for worldwide discovery. `travel-scopes.js` requests provider-
+neutral suggestions from the same-origin API only after at least two characters
+and a 350 ms debounce. It aborts stale requests, keeps only the latest response,
+supports Arrow keys/Enter/Escape/pointer selection, and remains usable after
+network, `429`, or `503` failure. Prediction display uses the required
+`Google Maps` attribution. Page load, image motion, preference controls, and
+manual destination entry do not call a provider.
+
+Guided interest checkboxes are the primary interest input; a custom field keeps
+ordered free-form interests and case-insensitive duplicate prevention. Pace and
+climate are accessible selects with stable canonical values. The optional
+`trip_description` textarea trims blank input to `null`, caps content at 1,000
+characters, accepts ordinary Unicode and punctuation, and rejects control
+characters at the domain boundary.
 
 The current browser and API surface is deliberately limited to:
 
@@ -654,6 +666,7 @@ The current browser and API surface is deliberately limited to:
 GET /
 GET /static/styles.css
 GET /static/app.js
+GET /static/travel-scopes.js
 GET /static/results.js
 GET /static/feedback.js
 GET /static/branding/solara-logo-horizontal.png
@@ -662,6 +675,7 @@ GET /static/branding/solara-mark-gold.png
 GET /static/branding/solara-logo-monochrome.png
 GET /health
 POST /api/v1/recommendations
+POST /api/v1/travel-scope-suggestions
 POST /api/v1/feedback
 GET /openapi.json
 GET /docs
@@ -691,15 +705,19 @@ A recommendation request uses this shape:
   "preferences": {
     "interests": ["nature"],
     "preferred_pace": "relaxed",
-    "preferred_climate": "warm"
+    "preferred_climate": "warm_sunny",
+    "trip_description": "Quiet coastal days, local food, and easy walks."
   },
   "destination": null,
   "destination_queries": ["Budapest, Hungary", "Vienna, Austria"]
 }
 ```
 
-The browser omits `destination_queries` to use discovery mode, sends one entry
-for single-destination evaluation, and sends two to five entries for comparison.
+The browser omits `destination_queries` for blank/global discovery, sends one
+entry for a city evaluation or one broad-scope discovery, and sends two to five
+entries for city comparison. A country or region cannot be combined with
+another query in Phase 2A. The application resolves query meaning again on
+submit; autocomplete hints are not authoritative.
 Pending destination text is committed on submit; commas remain part of a
 destination. Duplicate queries are rejected case-insensitively. The browser does
 not geocode, expose raw coordinate entry, or call providers. Pre-resolved
@@ -710,9 +728,9 @@ as `null`.
 The form keeps native `required` semantics while using explicit accessible
 browser feedback. Submission validates destination count and duplicates, that
 both dates exist, the end date is the same as or after the start date,
-comma-separated interests contain no blank
-items, and interests do not repeat after trimming and ordinary case-insensitive
-comparison. Valid interests preserve order and capitalization. Invalid input is
+custom comma-separated interests contain no blank items, and the combined guided
+and custom list does not repeat after trimming and ordinary case-insensitive
+comparison. Valid custom interests preserve order and capitalization. Invalid input is
 not repaired and does not reach `fetch`; field messages and a focusable summary
 identify the problem while the server/domain remains authoritative.
 
@@ -766,7 +784,10 @@ destinations but consumes one Solara recommendation admission and produces at
 most one grounded narration. While it is active, submit and destination-add
 controls are disabled. After ten seconds the status explains that a Render Free
 instance may be waking; the original request remains active and is never polled
-or duplicated. Destination chips survive every terminal error and retry state.
+or duplicated. Destination chips and all new preference controls survive every
+terminal error and retry state. An unresolved query can return bounded
+correction suggestions. Selecting one updates destination state through safe
+text APIs but never auto-submits.
 
 After a successful submission, `app.js` dispatches
 `solara:recommendation-ready`; `results.js` renders the
@@ -788,6 +809,38 @@ appears separately only when supplied, is conservatively normalized to remove
 common Markdown display markers, and is rendered as plain text; it does not
 determine ranking. These browser paths use
 no live credentials, client persistence, or browser-side provider calls.
+
+### Geographic discovery development
+
+Broad and blank discovery requires two explicit fakes in automated tests:
+
+- a scope/suggestion provider that returns `TravelScope` and
+  `TravelScopeSuggestion` values without Google payload fields;
+- a candidate-proposal provider that returns a strict
+  `DestinationCandidateProposal` without calling OpenAI.
+
+Candidate tests must prove that every proposed name is re-resolved, only
+localities with validated scope containment continue, duplicates are removed,
+and the final set is capped at five. Explicit-locality tests must assert that the
+proposal fake receives no call. Adapter tests use fake JSON transports for
+Autocomplete (New), Text Search, and Responses structured output. Never put
+live Google, OpenAI, Open-Meteo, or Render requests in the automated suite.
+
+Run the main focused areas with:
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests/domain tests/application `
+  tests/infrastructure/places tests/infrastructure/discovery `
+  tests/presentation/api/test_travel_scopes.py `
+  tests/presentation/api/test_recommendations.py tests/presentation/web tests/browser
+```
+
+The hero and Popular Escapes timers remain in `inspiration.js`. Both use an
+approximately five-second interval, pause while the document is hidden, expose
+pause/resume controls, and do not start when reduced motion is requested. The
+carousel also yields during hover, focus, and pointer interaction. Browser tests
+use reduced-motion emulation and local images; they do not depend on animation
+pixels or external assets.
 
 ### Premium presentation and brand assets
 
@@ -880,8 +933,10 @@ requests, or automatic retry.
 Every `create_app()` call owns independent, identity-free in-memory safeguard
 state. Defaults are 12 accepted recommendation attempts per 60 seconds, 60 per
 3,600 seconds, two concurrent recommendations, 30 feedback submissions per 60
-seconds, and 30 narration attempts per 3,600 seconds. All values must be actual
-positive integers; booleans are rejected.
+seconds, and 30 narration attempts per 3,600 seconds. Typeahead separately
+allows 60 attempts per 60 seconds, 300 per 3,600 seconds, and four concurrent
+requests. Candidate proposal has a separate 30-per-3,600-second budget. All
+values must be actual positive integers; booleans are rejected.
 
 Tests and local composition can supply alternate policy explicitly:
 
@@ -906,7 +961,9 @@ for concurrency; never add real sleeps to limiter tests.
 
 Solara-owned safeguard responses use HTTP `429`, integer delta-seconds
 `Retry-After`, and one of `recommendation_rate_limited`,
-`recommendation_budget_exhausted`, `recommendation_capacity_reached`, or
+`recommendation_budget_exhausted`, `recommendation_capacity_reached`,
+`suggestion_rate_limited`, `suggestion_budget_exhausted`,
+`suggestion_capacity_reached`, `discovery_budget_exhausted`, or
 `feedback_rate_limited`. The distinct upstream `provider_rate_limited` mapping
 remains HTTP `503`. Browser scripts use fixed local copy, keep form values,
 disable submit/retry controls during a bounded cooldown, restore them without
@@ -927,8 +984,11 @@ Use `create_deployment_app()` only for the hosted application. On invocation it
 loads typed settings, requires Google Places and OpenAI configuration, composes
 the live provider graph, and delegates to `create_app()`. Importing either the
 config package or deployment module is safe without credentials. Provider calls
-still happen only on admitted recommendation or narration work, never at
-startup.
+still happen only on admitted suggestion, recommendation, candidate-proposal,
+or narration work, never at startup. Geographic resolution and suggestions reuse
+`SOLARA_GOOGLE_PLACES_API_KEY`; candidate proposal and narration reuse
+`SOLARA_OPENAI_API_KEY` and `SOLARA_OPENAI_MODEL`. The new safeguard defaults and
+their optional environment overrides are listed in `.env.example`.
 
 Render is the live hosted MVP1 target, with the root `render.yaml` representing
 its desired configuration. That deployment does not change the local workflow:

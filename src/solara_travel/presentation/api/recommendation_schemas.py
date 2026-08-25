@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from solara_travel.domain import DestinationQuery
+from solara_travel.domain.preferences import TRIP_DESCRIPTION_MAX_LENGTH
 
 FiniteStrictFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 
@@ -39,11 +40,18 @@ class TravelPeriodRequest(StrictRequestModel):
 
 
 class TravellerPreferencesRequest(StrictRequestModel):
-    """Optional free-form traveller preferences."""
+    """Optional traveller preferences and untrusted natural-language context."""
 
     interests: list[str] | None = None
     preferred_pace: str | None = None
     preferred_climate: str | None = None
+    trip_description: str | None = Field(
+        default=None,
+        max_length=TRIP_DESCRIPTION_MAX_LENGTH,
+        description=(
+            "Optional traveller-provided trip context. Treated as untrusted data, not instructions."
+        ),
+    )
 
 
 class RecommendationRequestBody(StrictRequestModel):
@@ -100,6 +108,14 @@ class TravellerPreferencesResponse(BaseModel):
     interests: list[str] | None
     preferred_pace: str | None
     preferred_climate: str | None
+    trip_description: str | None
+
+
+class TravelScopeResponse(BaseModel):
+    """Selected broad discovery scope without provider implementation detail."""
+
+    display_name: str
+    kind: Literal["region", "country"]
 
 
 class RecommendationRequestResponse(BaseModel):
@@ -109,7 +125,8 @@ class RecommendationRequestResponse(BaseModel):
     preferences: TravellerPreferencesResponse
     destination: DestinationResponse | None
     destination_queries: list[str]
-    destination_mode: Literal["discovery", "pre_resolved", "explicit_queries"]
+    destination_mode: Literal["discovery", "pre_resolved", "explicit_queries", "scope_discovery"]
+    travel_scope: TravelScopeResponse | None = None
 
 
 class ScoreComponentResponse(BaseModel):

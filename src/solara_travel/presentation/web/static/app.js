@@ -20,6 +20,8 @@
   const destinationAddButton = document.querySelector("#destination-add");
   const destinationChips = document.querySelector("#destination-chips");
   const destinationStatus = document.querySelector("#destination-status");
+  const tripDescription = document.querySelector("#trip-description");
+  const tripDescriptionCount = document.querySelector("#trip-description-count");
   const recommendationEndpoint = "/api/v1/recommendations";
   const loadingSubmitLabel = "Comparing…";
   const maximumDestinations = 5;
@@ -39,6 +41,7 @@
     interests: "interests-error",
     "preferred-pace": "preferred-pace-error",
     "preferred-climate": "preferred-climate-error",
+    "trip-description": "trip-description-error",
   };
 
   function shortenedDestination(value) {
@@ -51,7 +54,7 @@
       return "FIND DESTINATIONS →";
     }
     if (destinationQueries.length === 1) {
-      return `EXPLORE ${shortenedDestination(destinationQueries[0]).toUpperCase()} →`;
+      return `EXPLORE ${shortenedDestination(destinationQueries[0].query).toUpperCase()} →`;
     }
     return "COMPARE DESTINATIONS →";
   }
@@ -71,6 +74,7 @@
       requestId = null,
       retryAfterSeconds = null,
       responseMessage = null,
+      suggestions = [],
     ) {
       super("Recommendation request failed.");
       this.name = "RecommendationRequestError";
@@ -81,6 +85,7 @@
       this.requestId = requestId;
       this.retryAfterSeconds = retryAfterSeconds;
       this.responseMessage = responseMessage;
+      this.suggestions = suggestions;
     }
   }
 
@@ -104,6 +109,21 @@
   function parseInterests(value) {
     const trimmed = value.trim();
     return trimmed === "" ? null : trimmed.split(",").map((interest) => interest.trim());
+  }
+
+  function selectedInterests(targetForm) {
+    const interests = [
+      ...targetForm.querySelectorAll('input[name="guided-interest"]:checked'),
+    ].map((control) => control.value);
+    const custom = parseInterests(targetForm.elements.namedItem("interests").value) ?? [];
+    const seen = new Set(interests.map((interest) => interest.toLowerCase()));
+    custom.forEach((interest) => {
+      if (!seen.has(interest.toLowerCase())) {
+        interests.push(interest);
+        seen.add(interest.toLowerCase());
+      }
+    });
+    return interests.length === 0 ? null : interests;
   }
 
   function validationError(fieldId, message) {
@@ -140,11 +160,16 @@
 
   function renderDestinationChips() {
     const fragment = document.createDocumentFragment();
-    destinationQueries.forEach((query, index) => {
+    destinationQueries.forEach(({ query, kind }, index) => {
       const item = document.createElement("li");
       item.className = "destination-chip";
       const label = document.createElement("span");
       label.textContent = query;
+      if (kind === "country" || kind === "region") {
+        const kindLabel = document.createElement("small");
+        kindLabel.textContent = kind;
+        label.append(" ", kindLabel);
+      }
       const remove = document.createElement("button");
       remove.type = "button";
       remove.dataset.destinationIndex = String(index);
@@ -157,7 +182,7 @@
     updateSubmitLabel();
   }
 
-  function addDestinationQuery(query) {
+  function addDestinationQuery(query, kind = null) {
     const normalizedQuery = query.trim();
     clearDestinationValidation();
     if (normalizedQuery === "") {
@@ -170,14 +195,25 @@
     }
     if (
       destinationQueries.some(
-        (value) => value.toLowerCase() === normalizedQuery.toLowerCase(),
+        (value) => value.query.toLowerCase() === normalizedQuery.toLowerCase(),
       )
     ) {
       showDestinationValidation("That destination is already included.");
       return false;
     }
-    destinationQueries.push(normalizedQuery);
+    const broadScope = kind === "country" || kind === "region";
+    const alreadyBroad = destinationQueries.some(
+      (value) => value.kind === "country" || value.kind === "region",
+    );
+    if ((broadScope && destinationQueries.length > 0) || alreadyBroad) {
+      showDestinationValidation(
+        "Choose one country or region by itself, or compare individual cities.",
+      );
+      return false;
+    }
+    destinationQueries.push({ query: normalizedQuery, kind });
     destinationInput.value = "";
+    delete destinationInput.dataset.scopeKind;
     destinationStatus.textContent = `${normalizedQuery} added.`;
     renderDestinationChips();
     return true;
@@ -193,7 +229,7 @@
       }
       return true;
     }
-    return addDestinationQuery(query);
+    return addDestinationQuery(query, destinationInput.dataset.scopeKind ?? null);
   }
 
   function showValidation(errors) {
@@ -270,16 +306,19 @@
         end_date: targetForm.elements.namedItem("travel-end-date").value,
       },
       preferences: {
-        interests: parseInterests(targetForm.elements.namedItem("interests").value),
+        interests: selectedInterests(targetForm),
         preferred_pace: optionalText(targetForm.elements.namedItem("preferred-pace").value),
         preferred_climate: optionalText(
           targetForm.elements.namedItem("preferred-climate").value,
+        ),
+        trip_description: optionalText(
+          targetForm.elements.namedItem("trip-description").value,
         ),
       },
       destination: null,
     };
     if (destinationQueries.length > 0) {
-      request.destination_queries = [...destinationQueries];
+      request.destination_queries = destinationQueries.map(({ query }) => query);
     }
     return request;
   }
@@ -300,6 +339,11 @@
         "preferences.preferred_climate",
         "preferred-climate",
         "Review your preferred climate.",
+      ],
+      [
+        "preferences.trip_description",
+        "trip-description",
+        "Review your trip description.",
       ],
     ];
     for (const issue of detail) {
@@ -347,6 +391,14 @@
         ),
       ];
     }
+    if (detail.message.includes("trip description")) {
+      return [
+        validationError(
+          "trip-description",
+          "Keep the trip description under 1,000 characters and remove control characters.",
+        ),
+      ];
+    }
     if (detail.message.includes("destination_queries")) {
       return [validationError("destination-input", "Review your destinations.")];
     }
@@ -381,6 +433,10 @@
       code === "destination_not_found" && typeof detail.message === "string"
         ? detail.message
         : null;
+    const suggestions =
+      code === "destination_not_found" && Array.isArray(detail?.suggestions)
+        ? detail.suggestions.filter((value) => typeof value === "string").slice(0, 5)
+        : [];
     return new RecommendationRequestError(
       "http",
       response.status,
@@ -389,6 +445,7 @@
       requestId,
       retryAfterSeconds,
       responseMessage,
+      suggestions,
     );
   }
 
@@ -453,6 +510,9 @@
     submitButton.disabled = loading || cooldownActive;
     submitButton.textContent = loading ? loadingSubmitLabel : idleSubmitLabel();
     destinationAddButton.disabled = loading;
+    form.querySelectorAll("input, select, textarea").forEach((control) => {
+      control.disabled = loading;
+    });
     if (loading) {
       form.setAttribute("aria-busy", "true");
     } else {
@@ -478,6 +538,7 @@
     requestErrorTitle.replaceChildren();
     requestErrorMessage.replaceChildren();
     retryButton.hidden = true;
+    requestError.querySelector(".destination-corrections")?.remove();
   }
 
   function classifyRequestError(error) {
@@ -529,6 +590,17 @@
         message:
           "Solara couldn't find one of those destinations. Review your destination and try again.",
         retry: false,
+      },
+      broad_scope_combination_not_supported: {
+        title: "Choose one discovery approach",
+        message: "Use one country or region by itself, or compare individual cities.",
+        retry: false,
+      },
+      destination_discovery_unavailable: {
+        title: "Destination discovery is temporarily unavailable",
+        message:
+          "Solara couldn't prepare a discovery shortlist right now. Please try again shortly.",
+        retry: true,
       },
       recommendation_rate_limited: {
         title: "Solara is taking a short pause",
@@ -602,6 +674,35 @@
     const presentation = classifyRequestError(error);
     requestErrorTitle.textContent = presentation.title;
     requestErrorMessage.textContent = presentation.message;
+    if (error.suggestions.length > 0) {
+      const choices = document.createElement("div");
+      choices.className = "destination-corrections";
+      const prompt = document.createElement("p");
+      prompt.textContent = "Did you mean:";
+      choices.append(prompt);
+      error.suggestions.forEach((suggestion) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = suggestion;
+        button.addEventListener("click", () => {
+          const unresolvedIndex = destinationQueries.findIndex(({ query }) =>
+            error.responseMessage?.includes(`"${query}"`),
+          );
+          if (unresolvedIndex >= 0) {
+            destinationQueries[unresolvedIndex] = { query: suggestion, kind: null };
+            destinationInput.value = "";
+            destinationStatus.textContent = `${suggestion} selected. Review your trip, then submit when ready.`;
+            renderDestinationChips();
+          } else {
+            destinationInput.value = suggestion;
+          }
+          clearRequestError();
+          destinationInput.focus();
+        });
+        choices.append(button);
+      });
+      requestErrorMessage.after(choices);
+    }
     retryButton.hidden = !presentation.retry;
     requestError.hidden = false;
     if (error.status === 429) {
@@ -693,7 +794,9 @@
     destinationInput &&
     destinationAddButton &&
     destinationChips &&
-    destinationStatus
+    destinationStatus &&
+    tripDescription &&
+    tripDescriptionCount
   ) {
     renderDestinationChips();
     form.addEventListener("submit", handleSubmit);
@@ -701,7 +804,7 @@
     form.addEventListener("solara:add-destination", (event) => {
       const query = event.detail?.query;
       if (!requestInFlight && typeof query === "string") {
-        addDestinationQuery(query);
+        addDestinationQuery(query, event.detail?.kind ?? null);
       }
     });
     destinationAddButton.addEventListener("click", () => {
@@ -725,10 +828,14 @@
       const index = Number.parseInt(button.dataset.destinationIndex, 10);
       if (Number.isInteger(index) && index >= 0 && index < destinationQueries.length) {
         const [removed] = destinationQueries.splice(index, 1);
-        destinationStatus.textContent = `${removed} removed.`;
+        destinationStatus.textContent = `${removed.query} removed.`;
         renderDestinationChips();
         destinationInput.focus();
       }
+    });
+    form.addEventListener("solara:scope-selected", () => clearDestinationValidation());
+    tripDescription.addEventListener("input", () => {
+      tripDescriptionCount.textContent = String(tripDescription.value.length);
     });
   }
 })();
