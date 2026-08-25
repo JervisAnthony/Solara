@@ -808,10 +808,10 @@ create agents.
 
 ## Retrieval-augmented generation
 
-A vector database or RAG pipeline is not required for the initial
-recommendation system.
-
-RAG may become useful in the future for grounded access to information such as:
+A vector database or RAG pipeline is not part of the current deterministic
+recommendation system. Commit 48 Phase 3 now plans a provider-independent
+destination knowledge base and retrieval layer for grounded editorial and
+itinerary context. It may support information such as:
 
 - destination guides;
 - travel documentation;
@@ -819,8 +819,19 @@ RAG may become useful in the future for grounded access to information such as:
 - traveller notes;
 - structured trip resources.
 
-It should be introduced only when retrieval over a meaningful corpus solves a
-demonstrated problem.
+Each indexed unit must retain source URL, publisher, destination, country,
+administrative area, retrieval date, publication/update date when available,
+content type, and licence/use boundaries where relevant. Retrieval must support
+geographic and other metadata filtering and preserve provenance for future
+Sources, Learn more, or Why Solara says this experiences. Pinecone, Weaviate,
+Qdrant, pgvector, Elasticsearch, or another vector/hybrid provider must be
+evaluated later for cost, latency, filtering, operations, scale, lock-in, and
+developer ergonomics; none is an architectural dependency yet.
+
+RAG may ground Good to Know, destination character, practical/cultural/activity
+context, Wayfinder storytelling, and itineraries. It must not silently replace
+provider-backed geographic validation, historical weather evidence,
+deterministic seasonal scoring, or rank authority.
 
 ## Deliberately deferred technologies
 
@@ -1224,10 +1235,31 @@ Commit 48 is split into three controlled phases on one feature branch:
   assisted scope input, country/region locality discovery, and blank/global
   candidate discovery without AI-owned ranking (implemented);
 - Phase 2B - Postcards, The Wayfinder, and the image-led recommendation experience
-  (implemented by this staged change: twelve credited Popular Escapes, three-second
-  accessible motion, premium planner controls, transient attributed photography,
-  structured editorial storytelling, and non-technical destination stories);
-- Phase 3 - Itinerary Studio and final hosted experience (pending).
+  (implemented / hosted-acceptance refinement in progress: twelve credited Popular
+  Escapes, three-second accessible motion, premium planner controls, transient
+  attributed photography, structured editorial storytelling, mixed geographic
+  discovery, and non-technical destination stories);
+- Phase 3 - Itinerary Studio / Build This Trip plus Destination Knowledge Base +
+  RAG Grounding and the final hosted experience (pending).
+
+The Phase 2B refinement accepts up to 15 selected geographic scopes in mixed
+combinations while globally bounding deterministic evaluation to 15 concrete
+destinations. Exact localities reserve capacity first. Countries and regions
+remain discovery boundaries; contained candidates are provider-validated,
+deduplicated, and allocated fairly. Provider-backed administrative context and
+selection origin are presentation metadata only. Seasonal Feel uses a natural
+editorial qualification instead of repetitive historical templates. Good to
+Know uses trusted non-seasonal grounding or is omitted, and the generic
+historical disclaimer appears once per result experience.
+
+Phase 3 Itinerary Studio planning includes a day-by-day builder with morning,
+afternoon, and evening structure; add/remove/reorder activity controls;
+accommodation suggestions; transport-leg representation; and a grounded
+Wayfinder itinerary narrative. The companion knowledge capability includes a
+curated/verifiable corpus, source provenance, ingestion, normalization/chunking,
+embedding/indexing, metadata-filtered vector or hybrid retrieval, grounded Good
+to Know and destination storytelling, and source-aware itinerary context. It
+does not add fake booking inventory.
 
 Commit 49 is reserved for partner and journey capabilities such as dated multi-
 country legs, embed/white-label boundaries, sharing/export, persistence

@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from solara_travel.application import (
-    BroadScopeCombinationError,
     DestinationDiscoveryUnavailableError,
     DestinationNotFoundError,
     RecommendationNarrationService,
@@ -105,7 +104,7 @@ def _wayfinder_json() -> str:
                     "destination": name,
                     "why_it_fits": f"{name} is worth considering for these dates.",
                     "seasonal_feel": "Historically, this is a distinct seasonal window.",
-                    "good_to_know": "Use this as historical context, not a forecast.",
+                    "good_to_know": "Validated landmarks offer useful anchors for wandering.",
                     "signature_highlights": [],
                 }
                 for name in names
@@ -293,7 +292,7 @@ def test_empty_destination_queries_preserve_discovery_mode() -> None:
 @pytest.mark.parametrize(
     "queries",
     [
-        ["one", "two", "three", "four", "five", "six"],
+        [str(index) for index in range(16)],
         ["   "],
     ],
 )
@@ -824,17 +823,9 @@ def test_narration_budget_skips_enrichment_then_expires(
     assert len(provider.prompts) == 2
 
 
-def test_broad_scope_and_discovery_failures_have_distinct_safe_contracts(
+def test_discovery_failure_has_a_safe_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def broad_failure(self: RecommendationService, request: object) -> object:
-        raise BroadScopeCombinationError("mixed")
-
-    monkeypatch.setattr(RecommendationService, "prepare", broad_failure)
-    response = _configured_client().post("/api/v1/recommendations", json=_valid_payload())
-    assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "broad_scope_combination_not_supported"
-
     def discovery_failure(self: RecommendationService, request: object) -> object:
         raise DestinationDiscoveryUnavailableError("offline")
 

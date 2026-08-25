@@ -60,8 +60,8 @@ def test_form_has_accessible_optional_destination_chip_controls_above_dates() ->
     assert 'aria-label="Destinations to evaluate"' in html
     assert 'id="destination-status"' in html
     assert 'aria-live="polite"' in html
-    assert "Add one country or region" in html
-    assert "leave this blank for worldwide discovery" in html
+    assert "Add up to 15 places you'd like Solara to consider" in html
+    assert "for worldwide discovery" in html
     assert 'role="combobox"' in html
     assert 'role="listbox"' in html
     assert '<span translate="no">Google Maps</span>' in html

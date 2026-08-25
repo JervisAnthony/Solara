@@ -57,8 +57,10 @@ def _wayfinder_json(*destinations: str) -> str:
                 {
                     "destination": name,
                     "why_it_fits": f"{name} offers a useful season-led option for this trip.",
-                    "seasonal_feel": "Historically, these dates sit in a comfortable window.",
-                    "good_to_know": "Treat this as historical context rather than a forecast.",
+                    "seasonal_feel": (
+                        "Around this time of year, the destination tends to feel comfortable."
+                    ),
+                    "good_to_know": "Validated landmarks offer useful anchors for wandering.",
                     "signature_highlights": [],
                 }
                 for name in names
@@ -189,9 +191,28 @@ def test_successful_narration_preserves_result_and_captures_grounding() -> None:
     assert narrated.recommendation_result is result
     assert narrated.recommendation_result.recommendations == result.recommendations
     assert narrated.wayfinder is not None
+    assert all(note.good_to_know is None for note in narrated.wayfinder.destination_notes)
     assert narrated.narration == RecommendationNarration(narrated.wayfinder.as_plain_text())
     assert narrated.has_narration
     assert len(provider.prompts) == 1
+
+
+def test_good_to_know_is_retained_only_when_it_names_trusted_grounding() -> None:
+    result = _recommendation_result()
+    payload = json.loads(_wayfinder_json())
+    for raw_note, recommendation in zip(
+        payload["destination_notes"], result.recommendations, strict=True
+    ):
+        raw_note["good_to_know"] = (
+            f"{recommendation.evidence.attractions[0].name} is a useful anchor for wandering."
+        )
+
+    narrated = RecommendationNarrationService(FakeNarrationProvider(json.dumps(payload))).narrate(
+        result
+    )
+
+    assert narrated.wayfinder is not None
+    assert all(note.good_to_know is not None for note in narrated.wayfinder.destination_notes)
 
 
 def test_invalid_unstructured_markdown_output_degrades_nonfatally() -> None:
@@ -217,6 +238,9 @@ def test_narration_instructions_require_plain_text_and_correct_policy_attributio
         "traveller interests, pace, or preferred-climate words",
         "Solara's configured scoring policy",
         "Never describe configured comfort values",
+        'Never repeat "Historically"',
+        "Return null rather than filler",
+        "provider-backed administrative context",
     ):
         assert requirement in instructions
 
@@ -285,6 +309,7 @@ def test_grounding_contains_ranked_deterministic_evidence() -> None:
         [1.0, 0.68, 0.0]
     )
     first = recommendations[0]
+    assert first["recommendation_origin"] is None
     assert first["destination"] == {"country": "Fixtureland", "name": "Sunspire Bay"}
     assert first["score_components"] == [
         {"name": "seasonal_temperature_comfort", "score": 1.0, "weight": 1.0}

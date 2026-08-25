@@ -18,9 +18,5 @@ class DestinationNotFoundError(Exception):
         super().__init__("requested destination could not be resolved")
 
 
-class BroadScopeCombinationError(ValueError):
-    """Raised when a request mixes a broad scope with another destination."""
-
-
 class DestinationDiscoveryUnavailableError(RuntimeError):
     """Raised when broad/open candidate discovery is not configured or fails safely."""

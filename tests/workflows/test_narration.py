@@ -64,7 +64,7 @@ def _wayfinder_json() -> str:
                     "destination": name,
                     "why_it_fits": f"{name} is worth considering for these dates.",
                     "seasonal_feel": "Historically, this is a distinct seasonal window.",
-                    "good_to_know": "Use this as historical context, not a forecast.",
+                    "good_to_know": "Validated landmarks offer useful anchors for wandering.",
                     "signature_highlights": [],
                 }
                 for name in names

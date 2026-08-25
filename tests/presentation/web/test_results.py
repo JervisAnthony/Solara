@@ -22,6 +22,7 @@ def test_root_contains_initially_hidden_semantic_results_region() -> None:
     assert "hidden" in region[: region.index(">")]
     assert 'id="results-title"' in region
     assert 'id="recommendation-results-summary"' in region
+    assert region.count("Seasonal guidance is based on historical patterns") == 1
     assert '<ol id="recommendation-list"' in region
     assert '<script src="/static/results.js" defer></script>' in html
     assert "AI-assisted explanation" not in region
@@ -53,6 +54,9 @@ def test_results_renderer_exposes_traveller_first_contract() -> None:
         "Postcards",
         "Google Maps",
         "replaceChildren",
+        "originLabel",
+        "administrative_context",
+        "recommendation-historical-note",
     ):
         assert marker in script
 
@@ -151,3 +155,13 @@ def test_results_clear_only_when_a_valid_request_starts() -> None:
     assert "recommendationList.replaceChildren()" in script
     assert "response.has_recommendations === false" in script
     assert "emptyTitle.focus()" in script
+
+
+def test_editorial_fallback_avoids_repetitive_templates_and_omits_filler() -> None:
+    script = _asset("/static/results.js")
+    assert "Around this time of year" in script
+    assert "Historically, these dates" not in script
+    assert "Your dates fall into" not in script
+    assert "this seasonal signal" not in script
+    assert "if (goodToKnowCopy)" in script
+    assert "historical patterns for your dates, not a live weather forecast" not in script

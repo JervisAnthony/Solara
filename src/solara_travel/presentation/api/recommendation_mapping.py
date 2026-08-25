@@ -25,6 +25,7 @@ from solara_travel.presentation.api.recommendation_schemas import (
     PhotoAuthorAttributionResponse,
     PostcardPhotoResponse,
     RecommendationEvidenceResponse,
+    RecommendationOriginResponse,
     RecommendationRequestBody,
     RecommendationRequestResponse,
     RecommendationResponse,
@@ -156,6 +157,16 @@ def recommendation_result_to_response(
                         recommendation.evidence.seasonal_temperature_comfort.mean_deviation_celsius
                     ),
                 ),
+            ),
+            origin=(
+                None
+                if recommendation.origin is None
+                else RecommendationOriginResponse(
+                    requested_scope=recommendation.origin.requested_scope,
+                    requested_scope_kind=recommendation.origin.requested_scope_kind.value,
+                    administrative_context=list(recommendation.origin.administrative_context),
+                    was_explicit_locality=(recommendation.origin.was_explicit_locality),
+                )
             ),
             postcards=_postcard_responses(postcards, recommendation.destination),
         )

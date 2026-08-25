@@ -128,6 +128,10 @@ def test_generate_sends_exact_stateless_responses_request() -> None:
     assert payload["tool_choice"] == "none"
     assert payload["text"]["format"]["type"] == "json_schema"
     assert payload["text"]["format"]["strict"] is True
+    schema = payload["text"]["format"]["schema"]
+    notes = schema["properties"]["destination_notes"]
+    assert notes["maxItems"] == 15
+    assert notes["items"]["properties"]["good_to_know"]["type"] == ["string", "null"]
     assert call["timeout_seconds"] == 7.5
 
 

@@ -145,8 +145,9 @@ The hosted MVP1 deployment is live at
 It runs on Render Free in Singapore as one Docker web service, one instance, and
 one Uvicorn worker. `GET /health` is the health check; hosted API documentation
 is disabled. Idle spin-down can cause cold starts. The public-alpha planner
-supports one city, one country or region, a comparison of up to five cities, or
-blank worldwide discovery. Guided interests, stable pace and climate choices,
+accepts up to 15 selected cities, countries, regions, provinces, island groups,
+or similar geographic scopes in any supported combination, as well as blank
+worldwide discovery. Guided interests, stable pace and climate choices,
 and an optional natural-language trip description help express the trip without
 requiring technical vocabulary. Public result cards present the current
 seasonal-temperature score as a readable seasonal-fit percentage; interests and
@@ -157,8 +158,10 @@ Commit 48 Phase 1 introduced an editorial travel homepage, locally bundled
 destination photography, curated Popular Escapes inspiration, and a compact
 planner. Phase 2A adds calm hero and carousel motion, traveller-facing guidance,
 same-origin geographic suggestions, and beta-stage locality discovery within
-one selected country or region. AI may propose a bounded candidate pool for
-broad or blank discovery, but Google must validate every locality and Solara's
+selected broad scopes. Explicit localities are reserved first; countries and
+regions expand into concrete contained localities through fair allocation. AI
+may propose bounded candidate pools for broad or blank discovery, but Google
+must validate every locality and Solara's
 existing deterministic seasonal evidence still owns final scores and ranking.
 Explicit-city comparisons do not call candidate-proposal AI. The Phase 2B
 experience expands the local hero and Popular Escapes catalogue to
@@ -167,9 +170,16 @@ movement. The planner now uses accessible premium pace and climate listboxes and
 a full-width natural-language composer. Results are traveller-first destination
 stories: transient Google Places Photos (New) imagery appears as Postcards;
 strict structured narration appears as The Wayfinder; and the UI prioritizes
-Seasonal Fit, Places to see, Seasonal feel, and Good to know. Neither enrichment
-can rank or rescore, and either may fail without losing the deterministic result.
-Itinerary Studio, bookings, accounts, and multi-country journeys remain pending.
+Seasonal Fit, Places to see, editorial Seasonal feel, and grounded destination-
+character Good to know. The generic historical-not-forecast note appears once
+for the result, and Good to know is omitted when trusted non-seasonal grounding
+is insufficient. No more than 15 concrete destinations proceed to evidence and
+scoring. Neither enrichment can rank or rescore, and either may fail without
+losing the deterministic result. Phase 3 remains pending and includes both
+Itinerary Studio / Build This Trip and a provenance-aware destination knowledge
+base with vector or hybrid retrieval for grounded Wayfinder and itinerary
+context. No vector database dependency has been selected or added. Bookings and
+accounts remain pending.
 
 See the [deployment guide](docs/deployment.md) for local, container, and hosted
 operational details.

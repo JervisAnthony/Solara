@@ -360,8 +360,14 @@ OpenAIResponsesNarrationProvider
 `RecommendationResult` remains authoritative. The narration service creates a
 deterministic, structured grounding payload from that result and asks a provider
 for one strict `WayfinderNarrative`: an opening, rank-aligned destination notes,
-and an optional comparison note. Each note owns `why_it_fits`, `seasonal_feel`,
-`good_to_know`, and optional provider-backed highlights. Provider failures or
+and an optional comparison note. Each note owns `why_it_fits`, an editorial
+`seasonal_feel`, optional `good_to_know`, and provider-backed highlights.
+Seasonal Feel qualifies historical evidence naturally once rather than repeating
+technical templates. Good to Know may synthesize only trusted destination
+identity, attractions/categories, traveller context, and provider-backed
+administrative context; it is omitted instead of filled when that grounding is
+insufficient. A generic historical-not-forecast statement is rendered once at
+the overall result boundary, not once per destination. Provider failures or
 invalid structured output are recoverable: the exact result remains available
 with no Wayfinder. The application restores authoritative result order even if a
 provider returns notes out of order. Generated prose never flows back
@@ -371,6 +377,41 @@ The application layer depends on the vendor-independent `NarrationProvider`
 port, not OpenAI. OpenAI infrastructure depends on that port and the shared JSON
 HTTP transport. Domain and analytics code have no dependency on narration
 infrastructure.
+
+### Future destination-knowledge and retrieval boundary
+
+Commit 48 Phase 3 plans a provider-independent destination knowledge capability;
+it is not implemented in the current refinement:
+
+```text
+curated/verifiable sources
+        |
+        v
+ingestion -> normalization/chunking -> embedding/indexing
+        |
+        v
+metadata-filtered vector or hybrid retrieval
+        |
+        v
+grounded destination context -> Wayfinder / itinerary generation
+        |
+        v
+source provenance
+```
+
+Every indexed unit must retain source URL, publisher, destination/country/admin
+links, retrieval date, publication/update date where available, content type,
+and relevant licence/use boundaries. A future retrieval port must allow provider
+selection based on cost, latency, geographic and hybrid filtering, operations,
+scale, lock-in, and developer ergonomics. Pinecone or another vector store may
+be evaluated later; no implementation is selected or depended on now.
+
+Retrieved knowledge may ground Good to Know, destination character, practical,
+cultural, or activity context, Wayfinder stories, and itinerary content. It may
+not silently replace provider-backed geography, historical weather evidence,
+deterministic seasonal scoring, or rank authority. The presentation contract
+reserves future source-aware experiences such as Sources, Learn more, and Why
+Solara says this without exposing technical retrieval diagnostics.
 
 ### Postcards photo-enrichment boundary
 
@@ -608,7 +649,10 @@ RecommendationResponse
 
 Accepted recommendation attempts consume the short-window and longer-budget
 slots atomically; concurrency or rate rejection consumes no unrelated quota.
-The separate narration budget never blocks or changes deterministic ranking.
+The separate candidate-proposal budget consumes one atomic unit per broad/open
+proposal call, so a mixed request cannot hide multiple provider calls behind one
+admission. Each request is still bounded to 15 units. The separate narration
+budget never blocks or changes deterministic ranking.
 When it is exhausted, Solara skips the provider call, emits `narration.skipped`,
 and returns the deterministic `200` response without narration. Valid feedback
 has an independent rolling rate and invalid bodies consume no capacity.
@@ -735,22 +779,34 @@ scope carries country/region containment evidence but never becomes a
 `Destination` and is never scored.
 
 ```text
-pre-resolved Destination ------------------------------+
-                                                        |
-one or more LOCALITY scopes -> Google normalization ----+-> evidence -> deterministic rank
-                                                        |
-one COUNTRY/REGION -> candidate proposal -> Google -----+
-blank/global -------> candidate proposal -> Google -----+
+pre-resolved Destination ----------------------------------+
+                                                            |
+up to 15 selected scopes -> Google scope normalization -----+
+          |                                                 |
+          +-> exact LOCALITY (reserved first) ---------------+-> deduplicate
+          |                                                 |       |
+          +-> COUNTRY/REGION -> bounded proposal -> Google --+       v
+blank/global -------------> bounded proposal -> Google ------+  max 15 concrete
+                                                                     localities
+                                                                         |
+                                                                         v
+                                                           evidence -> deterministic rank
 ```
 
 `DestinationCandidateProposalPort` is the only AI-assisted candidate boundary.
 The hosted OpenAI Responses adapter uses strict structured output for five to
-eight proposed locality names, treats traveller text as untrusted data, grants
-no tools, and stores no response. Every proposed name is then resolved by Google;
-non-localities, out-of-scope results, ambiguous results, and duplicates are
-discarded. At most five validated localities continue to attraction, historical
-weather, seasonal profile, comfort, deterministic scoring, and ranking.
-Explicit-city and bounded multi-city requests short-circuit proposal AI entirely.
+eight proposed locality names per broad scope, treats traveller text as untrusted
+data, grants no tools, and stores no response. Up to 15 broad and exact scopes may
+be mixed. Every proposed name is then resolved by Google; non-localities, out-of-
+scope results, ambiguous results, and duplicates are discarded. Exact localities
+are authoritative and reserve scoreable capacity first. A deterministic round-
+robin gives every valid broad scope representation where capacity permits, then
+distributes remaining places fairly. Scope work uses at most three concurrent
+workers and the final set never exceeds 15 concrete destinations. Each result
+retains provider-independent origin and optional provider-backed administrative
+context for presentation only. Those values never enter eligibility, evidence,
+scoring, or ranking. Requests containing only exact cities short-circuit proposal
+AI entirely.
 
 Interests, pace, climate, and `trip_description` may influence candidate proposal
 for broad/open discovery and remain narration context. They are not independent
@@ -780,9 +836,10 @@ array order and rank, never rescores, and owns both ranked and successful-empty
 rendering.
 
 Traveller-facing destination stories preserve deterministic order while showing
-Postcards, destination identity, a de-emphasized Seasonal Fit percentage, The
-Wayfinder when present, Places to see, natural historical Seasonal feel, Good to
-know, and a compact multi-destination overview. Technical components, weights,
+Postcards, destination identity and administrative context, a de-emphasized
+Seasonal Fit percentage, The Wayfinder when present, Places to see, editorial
+Seasonal feel, grounded-or-omitted Good to know, one global historical note, and
+a compact multi-destination overview with origin context. Technical components, weights,
 configured comfort values, observation counts, and audit keys remain typed in the
 API and internal model but are intentionally absent from the ordinary UI. Optional
 structured Wayfinder narration is separate enrichment and never controls ranking. All

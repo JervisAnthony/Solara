@@ -23,7 +23,7 @@ _WAYFINDER_SCHEMA: dict[str, object] = {
         "destination_notes": {
             "type": "array",
             "minItems": 1,
-            "maxItems": 5,
+            "maxItems": 15,
             "items": {
                 "type": "object",
                 "additionalProperties": False,
@@ -31,7 +31,7 @@ _WAYFINDER_SCHEMA: dict[str, object] = {
                     "destination": {"type": "string", "minLength": 1},
                     "why_it_fits": {"type": "string", "minLength": 1},
                     "seasonal_feel": {"type": "string", "minLength": 1},
-                    "good_to_know": {"type": "string", "minLength": 1},
+                    "good_to_know": {"type": ["string", "null"]},
                     "signature_highlights": {
                         "type": "array",
                         "items": {"type": "string", "minLength": 1},

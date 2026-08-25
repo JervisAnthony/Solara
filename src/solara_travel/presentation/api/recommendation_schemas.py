@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from solara_travel.domain import DestinationQuery
+from solara_travel.domain import MAX_SELECTED_TRAVEL_SCOPES, DestinationQuery
 from solara_travel.domain.preferences import TRIP_DESCRIPTION_MAX_LENGTH
 
 FiniteStrictFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
@@ -60,7 +60,13 @@ class RecommendationRequestBody(StrictRequestModel):
     travel_period: TravelPeriodRequest
     preferences: TravellerPreferencesRequest = Field(default_factory=TravellerPreferencesRequest)
     destination: DestinationRequest | None = None
-    destination_queries: list[str] | None = Field(default=None, max_length=5)
+    destination_queries: list[str] | None = Field(
+        default=None,
+        max_length=MAX_SELECTED_TRAVEL_SCOPES,
+        description=(
+            "Up to 15 selected cities, countries, regions, or other supported geographies."
+        ),
+    )
 
     @field_validator("destination_queries")
     @classmethod
@@ -125,7 +131,13 @@ class RecommendationRequestResponse(BaseModel):
     preferences: TravellerPreferencesResponse
     destination: DestinationResponse | None
     destination_queries: list[str]
-    destination_mode: Literal["discovery", "pre_resolved", "explicit_queries", "scope_discovery"]
+    destination_mode: Literal[
+        "discovery",
+        "pre_resolved",
+        "explicit_queries",
+        "scope_discovery",
+        "mixed_scopes",
+    ]
     travel_scope: TravelScopeResponse | None = None
 
 
@@ -185,6 +197,15 @@ class RecommendationEvidenceResponse(BaseModel):
     temperature_comfort: TemperatureComfortResponse
 
 
+class RecommendationOriginResponse(BaseModel):
+    """Traveller-safe context explaining why a destination was considered."""
+
+    requested_scope: str
+    requested_scope_kind: Literal["locality", "region", "country"]
+    administrative_context: list[str]
+    was_explicit_locality: bool
+
+
 class DestinationRecommendationResponse(BaseModel):
     """One ranked deterministic recommendation."""
 
@@ -193,6 +214,7 @@ class DestinationRecommendationResponse(BaseModel):
     score: float
     components: list[ScoreComponentResponse]
     evidence: RecommendationEvidenceResponse
+    origin: RecommendationOriginResponse | None = None
     postcards: list["PostcardPhotoResponse"] = Field(default_factory=list)
 
 
@@ -220,7 +242,7 @@ class WayfinderDestinationNoteResponse(BaseModel):
     destination: str
     why_it_fits: str
     seasonal_feel: str
-    good_to_know: str
+    good_to_know: str | None
     signature_highlights: list[str]
 
 

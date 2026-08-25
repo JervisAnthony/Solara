@@ -131,15 +131,23 @@ def test_blank_discovery_returns_nonempty_validated_shortlist() -> None:
     assert proposal.calls == [None]
 
 
-def test_explicit_locality_bypasses_ai_and_broad_combination_is_rejected() -> None:
+def test_explicit_locality_bypasses_ai_and_mixed_scope_is_supported() -> None:
     client, proposal = _client()
     explicit = client.post("/api/v1/recommendations", json=_payload("Porto"))
     assert explicit.status_code == 200
     assert explicit.json()["request"]["destination_mode"] == "explicit_queries"
     assert proposal.calls == []
     mixed = client.post("/api/v1/recommendations", json=_payload("Portugal", "Lisbon"))
-    assert mixed.status_code == 422
-    assert mixed.json()["detail"]["code"] == "broad_scope_combination_not_supported"
+    assert mixed.status_code == 200
+    assert mixed.json()["request"]["destination_mode"] == "mixed_scopes"
+    by_name = {item["destination"]["name"]: item for item in mixed.json()["recommendations"]}
+    assert by_name["Lisbon"]["origin"]["was_explicit_locality"] is True
+    assert by_name["Porto"]["origin"] == {
+        "requested_scope": "Portugal",
+        "requested_scope_kind": "country",
+        "administrative_context": [],
+        "was_explicit_locality": False,
+    }
 
 
 def test_candidate_ai_failure_is_safe_and_optional_field_remains_backward_compatible() -> None:

@@ -6,7 +6,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from solara_travel.application import (
-    BroadScopeCombinationError,
     DestinationDiscoveryUnavailableError,
     DestinationNotFoundError,
 )
@@ -127,7 +126,7 @@ def _run_recommendation(
     try:
         plan = recommendation_service.prepare(domain_request)
         if plan.requires_candidate_proposal:
-            discovery_admission = safeguards.admit_discovery()
+            discovery_admission = safeguards.admit_discovery(plan.proposal_call_count)
             if isinstance(discovery_admission, SafeguardRejection):
                 emit_event(
                     "recommendation.rejected",
@@ -161,19 +160,6 @@ def _run_recommendation(
                 "Review the spelling or choose one of the suggested places."
             ),
             suggestions=suggestions or None,
-        ) from exc
-    except BroadScopeCombinationError as exc:
-        emit_event(
-            "recommendation.failed",
-            request_id=request_id_from_request(request),
-            code="broad_scope_combination_not_supported",
-            stage="destination_resolution",
-            duration_ms=elapsed_milliseconds(recommendation_started_at),
-        )
-        raise _api_error(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "broad_scope_combination_not_supported",
-            "For now, choose one country or region at a time, or compare individual cities.",
         ) from exc
     except DestinationDiscoveryUnavailableError as exc:
         _emit_recommendation_failure(

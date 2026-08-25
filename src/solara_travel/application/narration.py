@@ -8,18 +8,35 @@ from solara_travel.application.results import (
     DestinationRecommendation,
     RecommendationResult,
 )
-from solara_travel.application.wayfinder import WayfinderNarrative, parse_wayfinder_narrative
+from solara_travel.application.wayfinder import (
+    WayfinderDestinationNote,
+    WayfinderNarrative,
+    parse_wayfinder_narrative,
+)
 from solara_travel.ports.errors import ProviderError
 from solara_travel.ports.narration import NarrationPrompt, NarrationProvider
 
 _NARRATION_INSTRUCTIONS = """Write The Wayfinder, Solara's concise editorial travel voice.
 Return only the required JSON schema. All strings must be plain text. The opening is at most three
 short sentences. For each
-destination, why_it_fits is 60-110 words, seasonal_feel is one or two sentences, and good_to_know
-is one or two grounded sentences. comparison_note is null for one destination and two to four
+destination, why_it_fits is 60-110 words and seasonal_feel is one or two sentences. good_to_know
+is one or two grounded non-seasonal sentences, or null when the grounding is insufficient.
+comparison_note is null for one destination and two to four
 sentences for a shortlist. Sound warm, worldly, vivid, practical, and confident without pretending
 certainty. Do not use HTML. Do not use Markdown, tables, code, or technical audit language.
-Remember that historical weather is not current weather or a forecast; describe it naturally.
+Seasonal Feel answers what this part of the year tends to feel like. Write it like a thoughtful
+travel editor: establish historical uncertainty once with natural wording such as "around this
+time of year", "typically", or "the season tends to", then use varied, evocative prose. Never
+repeat "Historically" in adjacent sentences. Avoid "Your dates fall into", "historical window",
+"this seasonal signal", "configured comfort window", "the observation period", and mechanical
+weather-analysis language. historical weather is not current weather or a forecast, but do not
+repeat that generic disclaimer inside every destination note.
+
+Good to Know answers what gives the destination grounded character. Use only validated attraction
+names/categories, destination identity, provider-backed administrative context, and traveller
+preferences present in the grounding JSON. Never use it as a second Seasonal Feel section or a
+generic historical-weather disclaimer. Return null rather than filler when trusted non-seasonal
+grounding is insufficient.
 
 Use only facts present in the grounding JSON. Preserve the supplied ranking exactly. Never rescore,
 reorder, add, or remove destinations. Never invent attractions, scores, component values, or missing
@@ -112,6 +129,7 @@ class RecommendationNarrationService:
                 generated_text,
                 tuple(item.destination.name for item in result.recommendations),
             )
+            wayfinder = _omit_ungrounded_good_to_know(wayfinder, result)
         except (ProviderError, TypeError, ValueError):
             return NarratedRecommendationResult(result, None)
 
@@ -166,6 +184,48 @@ def _build_narration_prompt(result: RecommendationResult) -> NarrationPrompt:
     )
 
 
+def _omit_ungrounded_good_to_know(
+    wayfinder: WayfinderNarrative,
+    result: RecommendationResult,
+) -> WayfinderNarrative:
+    """Drop Good to Know copy that names no trusted non-seasonal grounding."""
+
+    notes: list[WayfinderDestinationNote] = []
+    for note, recommendation in zip(
+        wayfinder.destination_notes,
+        result.recommendations,
+        strict=True,
+    ):
+        trusted_anchors = [
+            *(attraction.name for attraction in recommendation.evidence.attractions),
+            *(attraction.category for attraction in recommendation.evidence.attractions),
+            *(
+                ()
+                if recommendation.origin is None
+                else recommendation.origin.administrative_context
+            ),
+        ]
+        good_to_know = note.good_to_know
+        if good_to_know is not None and not any(
+            anchor.casefold() in good_to_know.casefold() for anchor in trusted_anchors
+        ):
+            good_to_know = None
+        notes.append(
+            WayfinderDestinationNote(
+                destination=note.destination,
+                why_it_fits=note.why_it_fits,
+                seasonal_feel=note.seasonal_feel,
+                good_to_know=good_to_know,
+                signature_highlights=note.signature_highlights,
+            )
+        )
+    return WayfinderNarrative(
+        opening=wayfinder.opening,
+        destination_notes=tuple(notes),
+        comparison_note=wayfinder.comparison_note,
+    )
+
+
 def _ground_recommendation(
     recommendation: DestinationRecommendation,
     rank: int,
@@ -181,6 +241,16 @@ def _ground_recommendation(
             "name": recommendation.destination.name,
             "country": recommendation.destination.country,
         },
+        "recommendation_origin": (
+            None
+            if recommendation.origin is None
+            else {
+                "requested_scope": recommendation.origin.requested_scope,
+                "requested_scope_kind": recommendation.origin.requested_scope_kind.value,
+                "administrative_context": list(recommendation.origin.administrative_context),
+                "was_explicit_locality": recommendation.origin.was_explicit_locality,
+            }
+        ),
         "seasonal_fit_score": recommendation.score,
         "score_components": [
             {

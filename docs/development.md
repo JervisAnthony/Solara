@@ -648,8 +648,9 @@ python -m uvicorn solara_travel.presentation.api.app:app --reload
 Open `http://127.0.0.1:8000/` to view the Solara browser shell. Its HTML,
 stylesheet, scripts, and approved brand images are package-local and need no
 browser-side credentials.
-The planner accepts one city, one country/region, two to five cities, or no
-destination for worldwide discovery. `travel-scopes.js` requests provider-
+The planner accepts zero to 15 cities, countries, regions, provinces, island
+groups, or similar supported geographies in mixed combinations. Zero selections
+preserve worldwide discovery. `travel-scopes.js` requests provider-
 neutral suggestions from the same-origin API only after at least two characters
 and a 350 ms debounce. It aborts stale requests, keeps only the latest response,
 supports Arrow keys/Enter/Escape/pointer selection, and remains usable after
@@ -720,11 +721,13 @@ A recommendation request uses this shape:
 }
 ```
 
-The browser omits `destination_queries` for blank/global discovery, sends one
-entry for a city evaluation or one broad-scope discovery, and sends two to five
-entries for city comparison. A country or region cannot be combined with
-another query in Phase 2A. The application resolves query meaning again on
-submit; autocomplete hints are not authoritative.
+The browser omits `destination_queries` for blank/global discovery and otherwise
+sends up to 15 selected place strings in traveller order. Countries, regions,
+and exact localities may coexist. The application resolves query meaning again
+on submit; autocomplete hints are not authoritative. The sixteenth selection is
+rejected with restrained traveller copy; at 15 the Add destination button is
+disabled until a chip is removed. Chips remain wrapping, readable controls rather
+than creating horizontal page overflow.
 Pending destination text is committed on submit; commas remain part of a
 destination. Duplicate queries are rejected case-insensitively. The browser does
 not geocode, expose raw coordinate entry, or call providers. Pre-resolved
@@ -811,7 +814,10 @@ Fit percentage and keeps components, technical weights, configured comfort
 values, observation counts, and raw audit data in the API rather than the
 traveller UI. The first six provider-backed attractions appear as Places to see,
 with a per-card accessible local expansion control. Historical evidence becomes
-careful Seasonal feel and Good to know language, never a forecast. Structured
+editorial Seasonal feel language plus one overall historical-not-forecast note.
+Good to Know instead synthesizes grounded destination character from validated
+identity, places/categories, traveller context, and administrative context; it
+is omitted when those trusted non-seasonal inputs are insufficient. Structured
 Wayfinder notes appear only when supplied and are rendered through text-only DOM
 APIs; they do not determine ranking. Postcards show up to four attributed photos,
 load only the first immediately, lazy-load later slides on interaction, never
@@ -829,8 +835,11 @@ Broad and blank discovery requires two explicit fakes in automated tests:
 
 Candidate tests must prove that every proposed name is re-resolved, only
 localities with validated scope containment continue, duplicates are removed,
-and the final set is capped at five. Explicit-locality tests must assert that the
-proposal fake receives no call. Adapter tests use fake JSON transports for
+explicit localities reserve capacity first, broad scopes receive fair round-robin
+representation, and the final set is capped at 15. Up to 15 proposal calls are
+charged atomically to the discovery safeguard and use at most three concurrent
+scope workers. Exact-locality-only tests must assert that the proposal fake
+receives no call. Adapter tests use fake JSON transports for
 Autocomplete (New), Text Search, and Responses structured output. Never put
 live Google, OpenAI, Open-Meteo, or Render requests in the automated suite.
 
@@ -1419,6 +1428,15 @@ Do not introduce technologies such as:
 - Kubernetes;
 - distributed event systems;
 - complex databases;
+
+This prohibition applies to the current Phase 2B refinement. Phase 3 explicitly
+plans a destination knowledge base behind provider-independent retrieval ports,
+but implementation must wait for corpus, provenance, freshness, licensing,
+geographic metadata-filtering, cost, latency, and operations requirements. Do not
+add Pinecone, Weaviate, Qdrant, pgvector, Elasticsearch, or another vector
+dependency until that evaluation is reviewed. Retrieval may ground Wayfinder,
+Good to Know, and itinerary content; it must remain outside deterministic
+geographic validation, weather evidence, seasonal scoring, and rank authority.
 
 without a demonstrated product requirement.
 

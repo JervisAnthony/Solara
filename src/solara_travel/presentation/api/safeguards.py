@@ -207,8 +207,13 @@ class ApiSafeguards:
             self._active_suggestions += 1
             return SuggestionLease(self)
 
-    def admit_discovery(self) -> SafeguardRejection | None:
-        """Consume one candidate-proposal budget slot for broad/open discovery."""
+    def admit_discovery(self, units: int = 1) -> SafeguardRejection | None:
+        """Atomically consume bounded candidate-proposal call units."""
+
+        if type(units) is not int:
+            raise TypeError("discovery units must be an int")
+        if not 1 <= units <= 15:
+            raise ValueError("discovery units must be between 1 and 15")
 
         with self._lock:
             now = self._clock()
@@ -217,16 +222,20 @@ class ApiSafeguards:
                 now,
                 self._settings.discovery_budget_window_seconds,
             )
-            if len(self._discovery_events) >= self._settings.discovery_budget_limit:
+            if len(self._discovery_events) + units > self._settings.discovery_budget_limit:
                 return SafeguardRejection(
                     "discovery_budget_exhausted",
-                    self._retry_after(
-                        self._discovery_events,
-                        now,
-                        self._settings.discovery_budget_window_seconds,
+                    (
+                        self._settings.discovery_budget_window_seconds
+                        if not self._discovery_events
+                        else self._retry_after(
+                            self._discovery_events,
+                            now,
+                            self._settings.discovery_budget_window_seconds,
+                        )
                     ),
                 )
-            self._discovery_events.append(now)
+            self._discovery_events.extend([now] * units)
             return None
 
     def _release_recommendation(self) -> None:

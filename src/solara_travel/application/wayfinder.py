@@ -12,6 +12,16 @@ _FORBIDDEN_LANGUAGE = re.compile(
     r"weather forecast)\b",
     re.IGNORECASE,
 )
+_SEASONAL_TEMPLATE_LANGUAGE = re.compile(
+    r"\b(?:your dates fall into|this seasonal signal|configured comfort window|"
+    r"historical window|the observation period|the evidence indicates)\b",
+    re.IGNORECASE,
+)
+_GENERIC_GOOD_TO_KNOW_LANGUAGE = re.compile(
+    r"\b(?:historical context|historical patterns?|seasonal signal|live (?:weather )?forecast|"
+    r"not a forecast|rather than a forecast)\b",
+    re.IGNORECASE,
+)
 
 
 def _plain_text(value: object, field_name: str, *, maximum_words: int) -> str:
@@ -29,6 +39,31 @@ def _plain_text(value: object, field_name: str, *, maximum_words: int) -> str:
     return normalized
 
 
+def _seasonal_text(value: object) -> str:
+    normalized = _plain_text(value, "seasonal_feel", maximum_words=55)
+    if _SEASONAL_TEMPLATE_LANGUAGE.search(normalized):
+        raise ValueError("seasonal_feel contains mechanical template language")
+    historical_openings = re.findall(
+        r"(?:^|[.!?]\s+)Historically\b",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    if len(historical_openings) > 1:
+        raise ValueError("seasonal_feel repeats historical qualification")
+    return normalized
+
+
+def _optional_good_to_know(value: object, seasonal_feel: str) -> str | None:
+    if value is None:
+        return None
+    normalized = _plain_text(value, "good_to_know", maximum_words=55)
+    if _GENERIC_GOOD_TO_KNOW_LANGUAGE.search(normalized):
+        raise ValueError("good_to_know must provide grounded destination character")
+    if normalized.casefold() == seasonal_feel.casefold():
+        raise ValueError("good_to_know must not duplicate seasonal_feel")
+    return normalized
+
+
 @dataclass(frozen=True, slots=True)
 class WayfinderDestinationNote:
     """One bounded, evidence-grounded destination story."""
@@ -36,7 +71,7 @@ class WayfinderDestinationNote:
     destination: str
     why_it_fits: str
     seasonal_feel: str
-    good_to_know: str
+    good_to_know: str | None
     signature_highlights: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -53,12 +88,12 @@ class WayfinderDestinationNote:
         object.__setattr__(
             self,
             "seasonal_feel",
-            _plain_text(self.seasonal_feel, "seasonal_feel", maximum_words=55),
+            _seasonal_text(self.seasonal_feel),
         )
         object.__setattr__(
             self,
             "good_to_know",
-            _plain_text(self.good_to_know, "good_to_know", maximum_words=55),
+            _optional_good_to_know(self.good_to_know, self.seasonal_feel),
         )
         if not isinstance(self.signature_highlights, tuple):
             raise TypeError("signature_highlights must be a tuple")
@@ -104,7 +139,15 @@ class WayfinderNarrative:
 
         paragraphs = [self.opening]
         paragraphs.extend(
-            f"{note.destination}: {note.why_it_fits} {note.seasonal_feel} {note.good_to_know}"
+            " ".join(
+                value
+                for value in (
+                    f"{note.destination}: {note.why_it_fits}",
+                    note.seasonal_feel,
+                    note.good_to_know,
+                )
+                if value is not None
+            )
             for note in self.destination_notes
         )
         if self.comparison_note is not None:

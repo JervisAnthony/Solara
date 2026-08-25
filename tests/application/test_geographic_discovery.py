@@ -1,11 +1,11 @@
 """Tests for broad/open geographic discovery orchestration."""
 
+from collections import Counter
 from datetime import date
 
 import pytest
 
 from solara_travel.application import (
-    BroadScopeCombinationError,
     DestinationDiscoveryUnavailableError,
     DestinationNotFoundError,
     RecommendationPlan,
@@ -106,6 +106,7 @@ def _service(
     proposal: FakeProposalProvider | None = None,
     *,
     maximum: int = 5,
+    scoreable_maximum: int = 15,
 ) -> RecommendationService:
     return RecommendationService(
         FakePlaces(),
@@ -115,6 +116,7 @@ def _service(
         scope_resolver=resolver,
         candidate_proposal_provider=proposal,
         maximum_candidates=maximum,
+        maximum_scoreable_destinations=scoreable_maximum,
     )
 
 
@@ -177,6 +179,8 @@ def test_country_and_multinational_region_scope_filter_every_candidate() -> None
     assert [item.destination.name for item in portugal_result.recommendations] == ["Porto"]
     assert portugal_result.destination_mode == "scope_discovery"
     assert portugal_result.travel_scope is portugal
+    assert portugal_result.recommendations[0].origin is not None
+    assert portugal_result.recommendations[0].origin.administrative_context == ("Norte",)
     assert [item.destination.name for item in caribbean_result.recommendations] == ["Havana"]
 
 
@@ -193,16 +197,32 @@ def test_explicit_localities_are_not_ai_ranked_and_preserve_score_ordering() -> 
     assert proposal.calls == []
 
 
-@pytest.mark.parametrize("queries", [("Portugal", "Porto"), ("Porto", "Portugal")])
-def test_broad_scope_must_be_used_alone(queries: tuple[str, str]) -> None:
+@pytest.mark.parametrize("queries", [("Portugal", "Lisbon"), ("Lisbon", "Portugal")])
+def test_broad_scope_can_mix_with_an_authoritative_locality(
+    queries: tuple[str, str],
+) -> None:
+    portugal = TravelScope("Portugal", TravelScopeKind.COUNTRY, "Portugal", "PT")
+    porto = _locality("Porto")
+    lisbon = _locality("Lisbon")
     resolver = FakeResolver(
         {
-            "Portugal": TravelScope("Portugal", TravelScopeKind.COUNTRY, "Portugal", "PT"),
-            "Porto": _locality("Porto"),
+            "Portugal": portugal,
+            "Lisbon": lisbon,
+            "Porto, Portugal": porto,
         }
     )
-    with pytest.raises(BroadScopeCombinationError):
-        _service(resolver, FakeProposalProvider(_proposal("Porto"))).prepare(_request(*queries))
+    provider = FakeProposalProvider(_proposal("Porto"))
+
+    result = _service(resolver, provider).recommend(_request(*queries))
+
+    assert result.destination_mode == "mixed_scopes"
+    assert {item.destination.name for item in result.recommendations} == {"Lisbon", "Porto"}
+    by_name = {item.destination.name: item.origin for item in result.recommendations}
+    assert by_name["Lisbon"] is not None
+    assert by_name["Lisbon"].was_explicit_locality  # type: ignore[union-attr]
+    assert by_name["Porto"] is not None
+    assert by_name["Porto"].requested_scope == "Portugal"  # type: ignore[union-attr]
+    assert provider.calls == [(_request(*queries), portugal)]
 
 
 def test_unresolved_explicit_scope_preserves_typed_not_found_error() -> None:
@@ -236,12 +256,143 @@ def test_candidate_cap_is_applied_after_validation() -> None:
     assert service.recommend(_request()).recommendation_count == 2
 
 
+def test_fair_round_robin_allocation_never_exceeds_global_scoreable_budget() -> None:
+    countries: dict[str, TravelScope] = {}
+    resolved: dict[str, TravelScope] = {}
+    proposals: dict[str, DestinationCandidateProposal] = {}
+    for country_index in range(5):
+        country = f"Country {country_index}"
+        code = f"C{country_index}"
+        countries[country] = TravelScope(
+            country,
+            TravelScopeKind.COUNTRY,
+            country,
+            code,
+        )
+        resolved[country] = countries[country]
+        names = tuple(f"Place {country_index}-{index}" for index in range(5))
+        proposals[country] = _proposal(*names)
+        for place_index, name in enumerate(names):
+            resolved[f"{name}, {country}"] = TravelScope(
+                f"{name}, {country}",
+                TravelScopeKind.LOCALITY,
+                country,
+                code,
+                canonical_name=name,
+                center=GeoCoordinates(country_index, place_index),
+                containing_regions=(f"Province {country_index}",),
+            )
+
+    class ScopedProposalProvider:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def propose_candidates(
+            self,
+            request: RecommendationRequest,
+            scope: TravelScope | None,
+        ) -> DestinationCandidateProposal:
+            assert scope is not None
+            self.calls.append(scope.display_name)
+            return proposals[scope.display_name]
+
+    provider = ScopedProposalProvider()
+    result = _service(
+        FakeResolver(resolved),
+        provider,  # type: ignore[arg-type]
+    ).recommend(_request(*countries))
+
+    assert result.recommendation_count == 15
+    assert set(provider.calls) == set(countries)
+    assert Counter(
+        item.origin.requested_scope  # type: ignore[union-attr]
+        for item in result.recommendations
+    ) == Counter({country: 3 for country in countries})
+
+
+def test_explicit_locality_priority_survives_containment_and_deduplication() -> None:
+    france = TravelScope("France", TravelScopeKind.COUNTRY, "France", "FR")
+    japan = TravelScope("Japan", TravelScopeKind.COUNTRY, "Japan", "JP")
+    tokyo = _locality("Tokyo", "Japan", "JP")
+    paris = _locality("Paris", "France", "FR")
+    kyoto = _locality("Kyoto", "Japan", "JP")
+    resolver = FakeResolver(
+        {
+            "Tokyo": tokyo,
+            "France": france,
+            "Japan": japan,
+            "Tokyo, France": tokyo,
+            "Paris, France": paris,
+            "Tokyo, Japan": tokyo,
+            "Kyoto, Japan": kyoto,
+        }
+    )
+
+    class ScopeAwareProposal:
+        def propose_candidates(
+            self,
+            request: RecommendationRequest,
+            scope: TravelScope | None,
+        ) -> DestinationCandidateProposal:
+            assert scope is not None
+            return _proposal("Tokyo", "Paris") if scope is france else _proposal("Tokyo", "Kyoto")
+
+    result = _service(
+        resolver,
+        ScopeAwareProposal(),  # type: ignore[arg-type]
+    ).recommend(_request("France", "Tokyo", "Japan"))
+
+    by_name = {item.destination.name: item for item in result.recommendations}
+    assert set(by_name) == {"Tokyo", "Paris", "Kyoto"}
+    assert by_name["Tokyo"].origin is not None
+    assert by_name["Tokyo"].origin.was_explicit_locality
+    assert by_name["Paris"].origin is not None
+    assert by_name["Paris"].origin.requested_scope == "France"
+
+
+def test_explicit_locality_can_fill_the_entire_scoreable_budget() -> None:
+    japan = TravelScope("Japan", TravelScopeKind.COUNTRY, "Japan", "JP")
+    tokyo = _locality("Tokyo", "Japan", "JP")
+    provider = FakeProposalProvider(_proposal("Kyoto"))
+    service = _service(
+        FakeResolver({"Tokyo": tokyo, "Japan": japan}),
+        provider,
+        scoreable_maximum=1,
+    )
+
+    result = service.recommend(_request("Tokyo", "Japan"))
+
+    assert [item.destination.name for item in result.recommendations] == ["Tokyo"]
+    assert provider.calls == []
+
+
+def test_candidate_deduplication_validates_alignment_and_keeps_first_identity() -> None:
+    destination = _locality("Porto").to_destination()
+    service = _service()
+    with pytest.raises(ValueError, match="origins must align"):
+        service._deduplicate_candidates((destination,), (None, None))
+    candidates, origins = service._deduplicate_candidates(
+        (destination, destination),
+        (None, None),
+    )
+    assert candidates == (destination,)
+    assert origins == (None,)
+
+
 @pytest.mark.parametrize("maximum", [0, 6])
 def test_service_validates_candidate_cap(maximum: int) -> None:
     with pytest.raises(ValueError, match="between 1 and 5"):
         _service(maximum=maximum)
     with pytest.raises(TypeError, match="maximum_candidates must be an int"):
         _service(maximum=True)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("maximum", [0, 16])
+def test_service_validates_global_scoreable_cap(maximum: int) -> None:
+    with pytest.raises(ValueError, match="between 1 and 15"):
+        _service(scoreable_maximum=maximum)
+    with pytest.raises(TypeError, match="maximum_scoreable_destinations must be an int"):
+        _service(scoreable_maximum=True)  # type: ignore[arg-type]
 
 
 def test_service_validates_optional_ports_and_plan_contract() -> None:
@@ -262,6 +413,22 @@ def test_service_validates_optional_ports_and_plan_contract() -> None:
         RecommendationPlan(request, (), travel_scope="bad")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="only valid for discovery"):
         RecommendationPlan(request, None, destination_mode="explicit_queries")
+    assert RecommendationPlan(request, None).proposal_call_count == 1
+    assert RecommendationPlan(request, ()).proposal_call_count == 0
+    with pytest.raises(TypeError, match="candidate_origins must be a tuple"):
+        RecommendationPlan(request, (), candidate_origins=[])  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="candidate_origins must contain"):
+        RecommendationPlan(request, (destination,), candidate_origins=("bad",))  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="align"):
+        RecommendationPlan(request, (destination,), candidate_origins=(None, None))
+    with pytest.raises(ValueError, match="require prepared candidates"):
+        RecommendationPlan(request, None, candidate_origins=(None,))
+    with pytest.raises(TypeError, match="broad_scopes must be a tuple"):
+        RecommendationPlan(request, (), broad_scopes=[])  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="broad_scopes must contain"):
+        RecommendationPlan(request, (), broad_scopes=("bad",))  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="must not contain localities"):
+        RecommendationPlan(request, (), broad_scopes=(_locality("Porto"),))
     with pytest.raises(TypeError, match="plan must be RecommendationPlan"):
         _service().recommend_plan("bad")  # type: ignore[arg-type]
     with pytest.raises(TypeError, match="request must be a RecommendationRequest"):

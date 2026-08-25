@@ -82,15 +82,26 @@ def test_request_schema_accepts_explicit_null_destination_queries() -> None:
     assert body.destination_queries is None
 
 
-def test_request_schema_accepts_exactly_five_destination_queries() -> None:
+def test_request_schema_accepts_exactly_fifteen_destination_queries() -> None:
+    queries = [str(index) for index in range(15)]
     body = RecommendationRequestBody.model_validate(
         {
             "travel_period": {"start_date": "2026-04-10", "end_date": "2026-04-12"},
-            "destination_queries": ["one", "two", "three", "four", "five"],
+            "destination_queries": queries,
         }
     )
 
-    assert body.destination_queries == ["one", "two", "three", "four", "five"]
+    assert body.destination_queries == queries
+
+
+def test_openapi_request_schema_publishes_the_fifteen_scope_limit() -> None:
+    schema = RecommendationRequestBody.model_json_schema()
+    destination_queries = schema["properties"]["destination_queries"]
+    array_schema = next(
+        value for value in destination_queries["anyOf"] if value.get("type") == "array"
+    )
+    assert array_schema["maxItems"] == 15
+    assert "cities, countries, regions" in destination_queries["description"]
 
 
 def test_response_mapping_preserves_authoritative_order_values_and_selected_evidence() -> None:

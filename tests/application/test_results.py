@@ -14,6 +14,7 @@ from solara_travel.analytics.seasonality import (
 from solara_travel.application.results import (
     DestinationRecommendation,
     RecommendationEvidence,
+    RecommendationOrigin,
     RecommendationResult,
 )
 from solara_travel.domain.attraction import Attraction
@@ -314,6 +315,7 @@ def test_destination_recommendation_is_immutable_hashable_value() -> None:
         ("destination", "Kyoto", "destination must be a Destination"),
         ("suitability", 0.8, "suitability must be a SuitabilityScore"),
         ("evidence", {}, "evidence must be RecommendationEvidence"),
+        ("origin", "France", "origin must be RecommendationOrigin or None"),
     ],
 )
 def test_destination_recommendation_rejects_invalid_field_type(
@@ -567,6 +569,7 @@ def test_recommendation_result_public_imports() -> None:
 
     assert application.DestinationRecommendation is DestinationRecommendation
     assert application.RecommendationEvidence is RecommendationEvidence
+    assert application.RecommendationOrigin is RecommendationOrigin
     assert application.RecommendationResult is RecommendationResult
 
 
@@ -586,3 +589,40 @@ def test_recommendation_result_validates_geographic_discovery_metadata() -> None
         RecommendationResult(request, (), travel_scope="Portugal")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="scope_discovery requires"):
         RecommendationResult(request, (), destination_mode="scope_discovery")
+
+
+def test_recommendation_origin_normalizes_provider_independent_context() -> None:
+    origin = RecommendationOrigin(
+        "  Philippines  ",
+        TravelScopeKind.COUNTRY,
+        ("  Palawan  ",),
+    )
+    assert origin.requested_scope == "Philippines"
+    assert origin.administrative_context == ("Palawan",)
+
+
+@pytest.mark.parametrize(
+    ("values", "error", "message"),
+    [
+        ({"requested_scope": None}, TypeError, "must be a string"),
+        ({"requested_scope": " "}, ValueError, "must not be blank"),
+        ({"requested_scope_kind": "country"}, TypeError, "TravelScopeKind"),
+        ({"administrative_context": []}, TypeError, "must be a tuple"),
+        ({"administrative_context": ("",)}, ValueError, "non-blank"),
+        ({"administrative_context": ("Palawan", "palawan")}, ValueError, "duplicates"),
+        ({"was_explicit_locality": 1}, TypeError, "must be a bool"),
+        ({"was_explicit_locality": True}, ValueError, "locality scope kind"),
+    ],
+)
+def test_recommendation_origin_rejects_invalid_context(
+    values: dict[str, object],
+    error: type[Exception],
+    message: str,
+) -> None:
+    arguments: dict[str, object] = {
+        "requested_scope": "Philippines",
+        "requested_scope_kind": TravelScopeKind.COUNTRY,
+    }
+    arguments.update(values)
+    with pytest.raises(error, match=message):
+        RecommendationOrigin(**arguments)  # type: ignore[arg-type]

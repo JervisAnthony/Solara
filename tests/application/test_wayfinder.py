@@ -16,8 +16,8 @@ def _note(name: str = "Budapest") -> WayfinderDestinationNote:
     return WayfinderDestinationNote(
         name,
         "A concise, grounded destination story.",
-        "Historically, these dates sit in a mild window.",
-        "Pack around historical variation rather than a forecast.",
+        "Around this time of year, the city tends to feel mild and easy to explore.",
+        "Buda Castle gives the validated places list a strong starting point.",
         ("Buda Castle",),
     )
 
@@ -30,8 +30,8 @@ def _payload(*names: str) -> str:
                 {
                     "destination": name,
                     "why_it_fits": f"{name} offers a grounded option for these dates.",
-                    "seasonal_feel": "Historically, the period has a mild feel.",
-                    "good_to_know": "Use historical context rather than a forecast.",
+                    "seasonal_feel": "Around this time of year, the period tends to feel mild.",
+                    "good_to_know": "Validated landmarks offer useful anchors for wandering.",
                     "signature_highlights": [f"{name} landmark"],
                 }
                 for name in names
@@ -184,6 +184,41 @@ def test_destination_note_validates_highlights() -> None:
 def test_destination_note_rejects_overlong_text() -> None:
     with pytest.raises(ValueError, match="too long"):
         WayfinderDestinationNote("A", "word " * 111, "Feel", "Know")
+
+
+@pytest.mark.parametrize(
+    "seasonal_feel",
+    [
+        "Historically, days are mild. Historically, rain is restrained.",
+        "Your dates fall into a comfortable window.",
+        "The evidence indicates a mild historical window.",
+    ],
+)
+def test_destination_note_rejects_repetitive_or_mechanical_seasonal_language(
+    seasonal_feel: str,
+) -> None:
+    with pytest.raises(ValueError, match="seasonal_feel"):
+        WayfinderDestinationNote("A", "Fit", seasonal_feel, "A validated landmark anchors it.")
+
+
+def test_good_to_know_may_be_omitted_but_not_used_as_a_weather_disclaimer() -> None:
+    omitted = WayfinderDestinationNote("A", "Fit", "The season tends to feel mild.", None)
+    assert omitted.good_to_know is None
+    assert "None" not in WayfinderNarrative("Opening", (omitted,)).as_plain_text()
+    with pytest.raises(ValueError, match="destination character"):
+        WayfinderDestinationNote(
+            "A",
+            "Fit",
+            "The season tends to feel mild.",
+            "This is historical context, not a forecast.",
+        )
+    with pytest.raises(ValueError, match="must not duplicate"):
+        WayfinderDestinationNote(
+            "A",
+            "Fit",
+            "The season tends to feel mild.",
+            "The season tends to feel mild.",
+        )
 
 
 def test_narrative_validates_notes_and_comparison() -> None:

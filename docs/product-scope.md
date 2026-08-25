@@ -25,13 +25,16 @@ Solara is intended for travellers who:
 
 ### Destination discovery
 
-A traveller may evaluate one city, compare two to five cities, choose one
-country or region as a discovery scope, or leave destination blank for worldwide
-discovery. A country or region is never treated as one scoreable destination.
-For broad and blank requests, an AI adapter proposes a bounded pool of locality
-names from the dates and traveller intent; Google then validates each locality,
-coordinates, country, and requested-scope containment before it can enter the
-existing evidence pipeline. At most five validated localities proceed.
+A traveller may select up to 15 cities, countries, regions, provinces, island
+groups, or similar supported geographies in one request, or leave destination
+blank for worldwide discovery. Broad and exact scopes may be mixed freely. A
+country or region is never treated as one scoreable destination. For broad and
+blank requests, an AI adapter proposes bounded locality pools from the dates and
+traveller intent; Google then validates each locality, coordinates, country,
+administrative context, and requested-scope containment before it can enter the
+existing evidence pipeline. Explicit localities are reserved first. Remaining
+capacity is allocated fairly across broad scopes, deduplicated, and capped at 15
+concrete scoreable destinations globally.
 
 Explicit-city evaluation and comparison bypass candidate-proposal AI. Interests,
 pace, climate, and the optional natural-language trip description may influence
@@ -39,7 +42,8 @@ which localities are proposed for broad/open discovery, but do not become new
 numeric score components. Historical seasonal evidence and deterministic
 scoring still own final ranking. Geographic suggestions are same-origin,
 provider-neutral, user-confirmed, and protected by identity-free process-local
-limits. Multi-country dated journeys remain future work.
+limits. Each result may explain whether it came from an exact traveller selection
+or a broad-scope expansion; that context never changes scoring.
 
 ### Attraction discovery
 
@@ -158,8 +162,12 @@ change Seasonal Fit. Photo, handle, media, narration, or schema failure leaves t
 same deterministic recommendation usable.
 
 The ordinary traveller UI is intentionally non-technical: it prioritizes imagery,
-destination identity, Seasonal Fit, concise stories, Places to see, Seasonal feel,
-Good to know, and shortlist comparison. Components, weights, weighted
+destination identity and provider-backed administrative context, Seasonal Fit,
+concise stories, Places to see, editorial Seasonal feel, grounded destination-
+character Good to know, and shortlist comparison. Good to know is omitted when
+trusted non-seasonal grounding is insufficient; the historical-not-forecast note
+appears once for the overall result rather than inside every card. Components,
+weights, weighted
 contributions, configured comfort values, raw aggregates, and audit keys remain
 available internally and through the additive typed API for engineering and
 compatible consumers; hiding them in the browser does not delete them.
@@ -169,6 +177,23 @@ Escapes and uses three-second motion with pause/resume, hidden-tab pausing, and 
 automatic movement under reduced-motion preferences. Premium pace/climate menus
 and the vacation-description composer preserve stable API values and traveller
 text without claiming those preferences are independent numeric score factors.
+
+### Phase 3 destination knowledge and itinerary boundary
+
+Phase 3 remains pending and includes both Itinerary Studio / Build This Trip and
+a provenance-aware destination knowledge base with vector or hybrid retrieval.
+The future itinerary experience may organize morning, afternoon, and evening;
+add, remove, and reorder activities; represent accommodation suggestions and
+transport legs; and generate a grounded Wayfinder itinerary. It must not invent
+booking inventory.
+
+The knowledge corpus must use authoritative or verifiable sources and retain
+source, destination/country/admin links, freshness, content type, and relevant
+licence metadata. Retrieval may support grounded Good to Know, destination
+character, practical/cultural/activity context, and itinerary storytelling with
+future source links. It must not replace geographic validation, historical
+weather evidence, deterministic seasonal scoring, or rank authority. No vector
+provider is selected or installed in the current phase.
 
 ## Out of scope for the initial milestones
 

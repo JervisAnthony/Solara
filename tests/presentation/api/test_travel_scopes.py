@@ -180,6 +180,21 @@ def test_discovery_budget_is_separate_and_expires() -> None:
     assert safeguards.admit_discovery() is None
 
 
+def test_discovery_budget_accounts_for_call_units_atomically() -> None:
+    safeguards = ApiSafeguards(
+        PublicAlphaSafeguardSettings(discovery_budget_limit=3),
+        clock=lambda: 0.0,
+    )
+    assert safeguards.admit_discovery(2) is None
+    rejected = safeguards.admit_discovery(2)
+    assert isinstance(rejected, SafeguardRejection)
+    assert rejected.code == "discovery_budget_exhausted"
+    assert safeguards.admit_discovery() is None
+    for invalid, error in ((True, TypeError), (0, ValueError), (16, ValueError)):
+        with pytest.raises(error):
+            safeguards.admit_discovery(invalid)  # type: ignore[arg-type]
+
+
 def test_dependencies_validate_suggestion_service() -> None:
     with pytest.raises(TypeError, match="travel_scope_suggestion_service"):
         ApiDependencies(travel_scope_suggestion_service="bad")  # type: ignore[arg-type]

@@ -5,7 +5,10 @@ from solara_travel.domain.climate import TemperatureComfortRange
 from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.preferences import TravellerInterests, TravellerPreferences
-from solara_travel.domain.recommendation import RecommendationRequest
+from solara_travel.domain.recommendation import (
+    MAX_SELECTED_TRAVEL_SCOPES,
+    RecommendationRequest,
+)
 from solara_travel.domain.travel import TravelPeriod
 from solara_travel.domain.travel_intent import DestinationCandidateProposal
 from solara_travel.domain.travel_scope import (
@@ -23,6 +26,7 @@ __all__ = [
     "DestinationCandidateProposal",
     "GeoCoordinates",
     "GeoViewport",
+    "MAX_SELECTED_TRAVEL_SCOPES",
     "RecommendationRequest",
     "TemperatureComfortRange",
     "TravellerInterests",

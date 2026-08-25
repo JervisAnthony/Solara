@@ -85,8 +85,8 @@ class BrowserNarrationProvider:
                         "why_it_fits": (
                             "Budapest offers a grounded season-led option for these dates."
                         ),
-                        "seasonal_feel": "Historically, the period has a warmer feel.",
-                        "good_to_know": "Use this historical context rather than a forecast.",
+                        "seasonal_feel": "Around this time of year, warmer days set the rhythm.",
+                        "good_to_know": "Validated landmarks offer useful anchors for wandering.",
                         "signature_highlights": ["Budapest attraction 1"],
                     }
                 ],
@@ -240,7 +240,13 @@ def _synthetic_response(scores: list[float]) -> dict[str, object]:
                     }
                 ],
                 "evidence": {
-                    "attractions": [],
+                    "attractions": [
+                        {
+                            "name": f"City {rank} landmark",
+                            "category": "landmark",
+                            "coordinates": {"latitude": rank, "longitude": rank},
+                        }
+                    ],
                     "seasonal_weather": {
                         "target_period": {
                             "start_date": "2027-04-10",
@@ -684,7 +690,7 @@ def test_escape_prefill_reuses_destination_state_without_request(
 
     actions.nth(0).click()
     assert page.locator(".destination-chip").all_inner_texts()[0].startswith("Budapest, Hungary")
-    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE BUDAPEST →"
+    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE THIS DESTINATION →"
     assert page.locator("#destination-input").evaluate(
         "element => element === document.activeElement"
     )
@@ -694,12 +700,17 @@ def test_escape_prefill_reuses_destination_state_without_request(
     assert page.locator(".destination-chip").count() == 1
     assert "already included" in page.locator("#destination-error").inner_text()
 
-    for index in range(1, 5):
+    for index in range(1, 12):
         actions.nth(index).click()
-    assert page.locator(".destination-chip").count() == 5
-    actions.nth(5).click()
-    assert page.locator(".destination-chip").count() == 5
-    assert "up to five" in page.locator("#destination-error").inner_text()
+    for query in ("Lisbon", "Tokyo", "Oslo"):
+        _add(page, query)
+    assert page.locator(".destination-chip").count() == 15
+    assert page.locator("#destination-add").is_disabled()
+    assert "plenty to explore" in page.locator("#destination-status").inner_text()
+    page.locator("#destination-input").fill("Paris")
+    page.locator("#destination-input").press("Enter")
+    assert page.locator(".destination-chip").count() == 15
+    assert "up to 15 places" in page.locator("#destination-error").inner_text()
     assert recommendation_requests == []
 
 
@@ -709,7 +720,7 @@ def test_discovery_mode_submits_and_renders_fake_ranked_results(
     base_url, _ = local_public_alpha
     _open(page, base_url)
     _fill_dates(page)
-    assert page.locator("#recommendation-submit").inner_text() == "FIND DESTINATIONS →"
+    assert page.locator("#recommendation-submit").inner_text() == "FIND PLACES FOR ME →"
 
     page.locator("#recommendation-submit").click()
 
@@ -741,7 +752,8 @@ def test_score_percentage_and_human_seasonal_formatting(
     ]
     story = page.locator(".destination-story").first.inner_text()
     assert "SEASONAL FEEL" in story
-    assert "Historically" in story
+    assert "Around this time of year" in story
+    assert story.count("Historically") <= 1
     assert "OBSERVATIONS" not in story
     assert "HISTORICAL YEAR COUNT" not in story
 
@@ -754,7 +766,7 @@ def test_single_destination_chip_cta_request_and_result(
     _fill_dates(page)
     _add(page, "Budapest, Hungary")
     assert page.locator(".destination-chip").inner_text().startswith("Budapest, Hungary")
-    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE BUDAPEST →"
+    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE THIS DESTINATION →"
 
     with page.expect_request(lambda request: request.url.endswith("/recommendations")) as sent:
         page.locator("#recommendation-submit").click()
@@ -772,7 +784,7 @@ def test_comparison_ranks_once_and_remove_updates_mode(
     _fill_dates(page)
     _add(page, "Budapest, Hungary")
     _add(page, "Vienna, Austria")
-    assert page.locator("#recommendation-submit").inner_text() == "COMPARE DESTINATIONS →"
+    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE MY OPTIONS →"
 
     page.locator("#recommendation-submit").click()
     page.locator(".destination-story").first.wait_for()
@@ -782,7 +794,38 @@ def test_comparison_ranks_once_and_remove_updates_mode(
     remove = page.get_by_role("button", name="Remove Vienna, Austria")
     remove.focus()
     remove.press("Enter")
-    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE BUDAPEST →"
+    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE THIS DESTINATION →"
+
+
+def test_browser_accepts_mixed_country_region_and_locality_chips(
+    page: object,
+    local_public_alpha: tuple[str, BrowserPlacesProvider],
+) -> None:
+    base_url, _ = local_public_alpha
+    submitted: list[object] = []
+
+    def fulfill(route: object) -> None:
+        submitted.append(route.request.post_data_json)
+        route.fulfill(status=200, json=_synthetic_response([0.9, 0.8, 0.7]))
+
+    page.route("**/api/v1/recommendations", fulfill)
+    _open(page, base_url)
+    _fill_dates(page)
+    for query, kind in (("France", "country"), ("Palawan", "region"), ("Tokyo", "locality")):
+        page.evaluate(
+            """value => document.querySelector('#recommendation-form').dispatchEvent(
+              new CustomEvent('solara:add-destination', {detail: value})
+            )""",
+            {"query": query, "kind": kind},
+        )
+    assert page.locator(".destination-chip").count() == 3
+    assert page.locator("#destination-error").is_hidden()
+    assert page.locator("#recommendation-submit").inner_text() == "EXPLORE MY OPTIONS →"
+
+    page.locator("#recommendation-submit").click()
+    page.locator(".destination-story").first.wait_for()
+
+    assert submitted[0]["destination_queries"] == ["France", "Palawan", "Tokyo"]
 
 
 def test_pending_destination_submits_once_without_add(
@@ -808,7 +851,7 @@ def test_pending_destination_submits_once_without_add(
     assert page.locator(".destination-chip").count() == 1
 
 
-def test_duplicate_and_max_five_validation_are_visible(
+def test_duplicate_and_max_fifteen_validation_are_visible(
     page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
 ) -> None:
     base_url, _ = local_public_alpha
@@ -816,11 +859,27 @@ def test_duplicate_and_max_five_validation_are_visible(
     _add(page, "Budapest")
     _add(page, "BUDAPEST")
     assert "already included" in page.locator("#destination-error").inner_text()
-    for query in ("Vienna", "Prague", "Rome", "Paris"):
+    for query in (
+        "Vienna",
+        "Prague",
+        "Rome",
+        "Paris",
+        "Lisbon",
+        "Tokyo",
+        "Kyoto",
+        "Cebu",
+        "Barcelona",
+        "Bangkok",
+        "Seoul",
+        "Delhi",
+        "Marrakesh",
+        "Lima",
+    ):
         _add(page, query)
-    _add(page, "Lisbon")
-    assert page.locator(".destination-chip").count() == 5
-    assert "up to five" in page.locator("#destination-error").inner_text()
+    assert page.locator(".destination-chip").count() == 15
+    page.locator("#destination-input").fill("Oslo")
+    page.locator("#destination-input").press("Enter")
+    assert "up to 15 places" in page.locator("#destination-error").inner_text()
 
 
 @pytest.mark.parametrize(
@@ -1019,11 +1078,41 @@ def test_responsive_destination_and_results_smoke(
     page.set_viewport_size({"width": width, "height": 900})
     _open(page, base_url)
     _fill_dates(page)
-    _add(page, "A very long destination name designed to wrap safely, Example Country")
+    destinations = [
+        "A very long destination name designed to wrap safely, Example Country",
+        "France",
+        "Tokyo",
+        "Philippines",
+        "Budapest",
+        "Morocco",
+        "Spain",
+        "India",
+        "Kyoto",
+        "Bali",
+        "Costa Rica",
+        "Cebu",
+        "Barcelona",
+        "Thailand",
+        "Andaman and Nicobar Islands",
+    ]
+    for destination in destinations:
+        _add(page, destination)
+    assert page.locator(".destination-chip").count() == 15
     assert page.get_by_role(
         "button",
         name="Remove A very long destination name designed to wrap safely, Example Country",
     ).is_visible()
+    page.evaluate(
+        """response => document.querySelector('#recommendation-form').dispatchEvent(
+          new CustomEvent('solara:recommendation-ready', {detail: response})
+        )""",
+        _synthetic_response([0.9, 0.8, 0.7]),
+    )
+    assert page.locator(".shortlist-overview").is_visible()
+    assert page.locator(".postcards").first.is_visible()
+    assert page.get_by_text("Seasonal feel", exact=True).first.is_visible()
+    assert page.get_by_text("Good to know", exact=True).first.is_visible()
+    assert page.locator("#recommendation-historical-note").is_visible()
 
     overflowing = page.locator("*").evaluate_all(
         """elements => elements

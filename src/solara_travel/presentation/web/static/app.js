@@ -24,7 +24,7 @@
   const tripDescriptionCount = document.querySelector("#trip-description-count");
   const recommendationEndpoint = "/api/v1/recommendations";
   const loadingSubmitLabel = "Comparing…";
-  const maximumDestinations = 5;
+  const maximumDestinations = 15;
   const coldStartThresholdMilliseconds = 10000;
   const defaultCooldownSeconds = 60;
   const maximumCooldownSeconds = 86400;
@@ -51,12 +51,14 @@
 
   function idleSubmitLabel() {
     if (destinationQueries.length === 0) {
-      return "FIND DESTINATIONS →";
+      return "FIND PLACES FOR ME →";
     }
     if (destinationQueries.length === 1) {
-      return `EXPLORE ${shortenedDestination(destinationQueries[0].query).toUpperCase()} →`;
+      return destinationQueries[0].kind === "country" || destinationQueries[0].kind === "region"
+        ? "EXPLORE THIS PLACE →"
+        : "EXPLORE THIS DESTINATION →";
     }
-    return "COMPARE DESTINATIONS →";
+    return "EXPLORE MY OPTIONS →";
   }
 
   function updateSubmitLabel() {
@@ -179,6 +181,11 @@
       fragment.append(item);
     });
     destinationChips.replaceChildren(fragment);
+    destinationAddButton.disabled =
+      requestInFlight || destinationQueries.length >= maximumDestinations;
+    if (destinationQueries.length >= maximumDestinations) {
+      destinationStatus.textContent = "You've added 15 places — that's plenty to explore.";
+    }
     updateSubmitLabel();
   }
 
@@ -190,7 +197,7 @@
       return false;
     }
     if (destinationQueries.length >= maximumDestinations) {
-      showDestinationValidation("You can compare up to five destinations.");
+      showDestinationValidation("Add up to 15 places you'd like Solara to consider.");
       return false;
     }
     if (
@@ -199,16 +206,6 @@
       )
     ) {
       showDestinationValidation("That destination is already included.");
-      return false;
-    }
-    const broadScope = kind === "country" || kind === "region";
-    const alreadyBroad = destinationQueries.some(
-      (value) => value.kind === "country" || value.kind === "region",
-    );
-    if ((broadScope && destinationQueries.length > 0) || alreadyBroad) {
-      showDestinationValidation(
-        "Choose one country or region by itself, or compare individual cities.",
-      );
       return false;
     }
     destinationQueries.push({ query: normalizedQuery, kind });
@@ -511,7 +508,8 @@
     requestInFlight = loading;
     submitButton.disabled = loading || cooldownActive;
     submitButton.textContent = loading ? loadingSubmitLabel : idleSubmitLabel();
-    destinationAddButton.disabled = loading;
+    destinationAddButton.disabled =
+      loading || destinationQueries.length >= maximumDestinations;
     form.querySelectorAll("input, select, textarea, .premium-select-trigger, .prompt-starter").forEach((control) => {
       control.disabled = loading;
     });
@@ -591,11 +589,6 @@
         title: "Destination not found",
         message:
           "Solara couldn't find one of those destinations. Review your destination and try again.",
-        retry: false,
-      },
-      broad_scope_combination_not_supported: {
-        title: "Choose one discovery approach",
-        message: "Use one country or region by itself, or compare individual cities.",
         retry: false,
       },
       destination_discovery_unavailable: {

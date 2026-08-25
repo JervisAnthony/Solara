@@ -1,7 +1,6 @@
 """Application recommendation values and services exposed by Solara."""
 
 from solara_travel.application.errors import (
-    BroadScopeCombinationError,
     DestinationDiscoveryUnavailableError,
     DestinationNotFoundError,
 )
@@ -25,6 +24,7 @@ from solara_travel.application.recommendation_service import (
 from solara_travel.application.results import (
     DestinationRecommendation,
     RecommendationEvidence,
+    RecommendationOrigin,
     RecommendationResult,
 )
 from solara_travel.application.travel_scopes import TravelScopeSuggestionService
@@ -36,9 +36,9 @@ from solara_travel.application.wayfinder import (
 
 __all__ = [
     "DestinationRecommendation",
+    "RecommendationOrigin",
     "DestinationDiscoveryUnavailableError",
     "DestinationNotFoundError",
-    "BroadScopeCombinationError",
     "NarratedRecommendationResult",
     "DestinationPostcards",
     "InvalidPhotoHandleError",
