@@ -336,7 +336,7 @@ narration is applied.
 
 Solara should remain useful when the AI provider is unavailable.
 
-### The Wayfinder structured narration boundary
+### Grounded narration boundary
 
 Grounded narration is application enrichment applied only after deterministic
 recommendation work is complete:
@@ -359,93 +359,14 @@ OpenAIResponsesNarrationProvider
 
 `RecommendationResult` remains authoritative. The narration service creates a
 deterministic, structured grounding payload from that result and asks a provider
-for one strict `WayfinderNarrative`: an opening, rank-aligned destination notes,
-and an optional comparison note. Each note owns `why_it_fits`, an editorial
-`seasonal_feel`, optional `good_to_know`, and provider-backed highlights.
-Seasonal Feel qualifies historical evidence naturally once rather than repeating
-technical templates. Good to Know may synthesize only trusted destination
-identity, attractions/categories, traveller context, and provider-backed
-administrative context; it is omitted instead of filled when that grounding is
-insufficient. A generic historical-not-forecast statement is rendered once at
-the overall result boundary, not once per destination. Provider failures or
-invalid structured output are recoverable: the exact result remains available
-with no Wayfinder. The application restores authoritative result order even if a
-provider returns notes out of order. Generated prose never flows back
+for traveller-friendly prose. Provider failures are recoverable: the exact
+result remains available with no narration. Generated prose never flows back
 into eligibility, evidence, scoring, or ranking.
 
 The application layer depends on the vendor-independent `NarrationProvider`
 port, not OpenAI. OpenAI infrastructure depends on that port and the shared JSON
 HTTP transport. Domain and analytics code have no dependency on narration
 infrastructure.
-
-### MVP2 destination-knowledge and retrieval boundary
-
-Destination Knowledge + RAG Grounding is deferred entirely to MVP2 and is not
-part of the remaining MVP1 implementation sequence:
-
-```text
-curated/verifiable sources
-        |
-        v
-ingestion -> normalization/chunking -> embedding/indexing
-        |
-        v
-metadata-filtered vector or hybrid retrieval
-        |
-        v
-grounded destination context -> Wayfinder / itinerary generation
-        |
-        v
-source provenance
-```
-
-Every indexed unit must retain source URL, publisher, destination/country/admin
-links, retrieval date, publication/update date where available, content type,
-and relevant licence/use boundaries. A future retrieval port must allow provider
-selection based on cost, latency, geographic and hybrid filtering, operations,
-scale, lock-in, and developer ergonomics. Pinecone or another vector store may
-be evaluated during MVP2; no implementation is selected or depended on now.
-
-Throughout MVP1, provider-backed geography and places plus deterministic seasonal
-evidence remain authoritative. Wayfinder may use only currently trusted request
-and result context; Good to Know is omitted when trustworthy non-seasonal
-grounding is insufficient, and unsupported destination facts must not be
-generated merely to improve prose.
-
-In MVP2, retrieved knowledge may ground destination facts, Good to Know,
-destination character, practical, cultural, or activity context, Wayfinder
-stories, and itinerary enrichment. It may not silently replace provider-backed
-geography, historical weather evidence, deterministic seasonal scoring, or rank
-authority. The presentation contract reserves future source-aware experiences
-such as Sources, Learn more, and Why Solara says this without exposing technical
-retrieval diagnostics.
-
-### Postcards photo-enrichment boundary
-
-Postcards are transient visual enrichment, never recommendation evidence. After
-ranking, `PostcardEnrichmentService` asks a provider-independent metadata port
-for at most four current photos per destination. The hosted Google adapter makes
-one bounded Places Text Search per result destination, deduplicates photo/place
-identity, and returns current photo dimensions, Google Maps source links, and any
-author attributions. Failure yields an empty gallery and a premium Solara fallback;
-it cannot fail, reorder, or rescore the recommendation.
-
-Google photo names are not persisted. A startup-random HMAC secret signs each
-fresh resource name into a tamper-resistant five-minute browser handle. The
-browser receives only `/api/v1/postcards/{handle}`. The same-origin delivery
-route verifies expiry, calls Place Photos (New) with bounded dimensions and
-`skipHttpRedirect=true`, then retrieves the credential-free Google media URI.
-It returns supported image bytes with `private, no-store, max-age=0`; neither the
-resource name nor image content is written to a database, filesystem, Redis, or
-browser cache. The Google API key stays in server headers and never enters HTML,
-JavaScript, or an image URL.
-
-The gallery associates author names/profile links with each image, links directly
-to the source photo on Google Maps, and displays Google Maps attribution. This
-design follows the current official [Place Photos (New)](https://developers.google.com/maps/documentation/places/web-service/place-photos)
-and [Places API policies](https://developers.google.com/maps/documentation/places/web-service/policies)
-reviewed for Phase 2B. The browser sends no cookies, analytics identifiers, user
-IP forwarding, User-Agent forwarding, or direct third-party image request.
 
 ## Provider normalization
 
@@ -609,12 +530,6 @@ HTTP response mapper
 RecommendationResponse
 ```
 
-Autocomplete has independent short-window, long-window, and concurrency
-admission before Google is called. Broad/open recommendation plans consume a
-separate discovery-AI budget immediately before candidate proposal; explicit
-locality and multi-city plans do not consume it. These limits share no identity
-key and remain distinct from upstream Google/OpenAI `429` translation.
-
 `ApiDependencies` injects application services when each FastAPI instance is
 created. The default module-level app remains credential-free; it serves health
 normally and returns a safe `503` for recommendation calls until a
@@ -656,10 +571,7 @@ RecommendationResponse
 
 Accepted recommendation attempts consume the short-window and longer-budget
 slots atomically; concurrency or rate rejection consumes no unrelated quota.
-The separate candidate-proposal budget consumes one atomic unit per broad/open
-proposal call, so a mixed request cannot hide multiple provider calls behind one
-admission. Each request is still bounded to 15 units. The separate narration
-budget never blocks or changes deterministic ranking.
+The separate narration budget never blocks or changes deterministic ranking.
 When it is exhausted, Solara skips the provider call, emits `narration.skipped`,
 and returns the deterministic `200` response without narration. Valid feedback
 has an independent rolling rate and invalid bodies consume no capacity.
@@ -698,8 +610,6 @@ Web presentation
     +----> packaged JavaScript at /static/app.js
     |
     +----> packaged result renderer at /static/results.js
-    |
-    +----> packaged geographic typeahead at /static/travel-scopes.js
     |
     +----> packaged tester feedback at /static/feedback.js
     |
@@ -765,62 +675,28 @@ POST /api/v1/recommendations
               +----> successful empty state
 ```
 
-The browser is presentation-only and calls same-origin Solara APIs; provider
-calls remain server-side. `travel-scopes.js` debounces destination text, aborts
-stale requests, and uses an accessible listbox backed by
-`POST /api/v1/travel-scope-suggestions`. The response contains only canonical
-display text and Solara's `locality`, `region`, or `country` hint. It contains no
-Google identifier or raw payload. Prediction display includes the exact
-space-constrained text attribution `Google Maps`, marked `translate="no"` and
-visually separated below the predictions, following the current
-[Places API policy](https://developers.google.com/maps/documentation/places/web-service/policies).
-No invented or hotlinked Google logo is used. The canonical text is resolved
-again on intentional recommendation submit.
+The script is presentation-only and calls the same-origin recommendation API;
+provider calls remain server-side. The browser omits `destination_queries` for
+discovery, sends one query for a named-destination evaluation, or sends two to
+five queries for comparison. A `DestinationQuery` is an immutable,
+provider-independent domain value. `DestinationResolutionPort` resolves each
+explicit query to a normalized `Destination`; Google implements that operation
+as a narrow locality Text Search requesting only display name, coordinates, and
+country. The programmatic API continues to support a pre-resolved structured
+destination, which is mutually exclusive with destination queries.
 
-`TravelScope` and `TravelScopeKind` are provider-independent domain values.
-Google Text Search normalizes locality, country, administrative-region, and
-archipelago responses behind `TravelScopeResolutionPort`; unfamiliar or business
-types are rejected rather than guessed. A locality carries the normalized name,
-coordinates, and country needed to become a scoreable `Destination`. A broad
-scope carries country/region containment evidence but never becomes a
-`Destination` and is never scored.
+Explicit browser input is therefore a city/locality contract, not country-wide
+recommendation. Traveller cards label the unchanged deterministic value as
+seasonal fit and omit technical weights and weighted contributions; those audit
+fields remain available in the API and domain. Interests, pace, and preferred-
+climate words remain context and are not independent numeric score components.
 
-```text
-pre-resolved Destination ----------------------------------+
-                                                            |
-up to 15 selected scopes -> Google scope normalization -----+
-          |                                                 |
-          +-> exact LOCALITY (reserved first) ---------------+-> deduplicate
-          |                                                 |       |
-          +-> COUNTRY/REGION -> bounded proposal -> Google --+       v
-blank/global -------------> bounded proposal -> Google ------+  max 15 concrete
-                                                                     localities
-                                                                         |
-                                                                         v
-                                                           evidence -> deterministic rank
-```
-
-`DestinationCandidateProposalPort` is the only AI-assisted candidate boundary.
-The hosted OpenAI Responses adapter uses strict structured output for five to
-eight proposed locality names per broad scope, treats traveller text as untrusted
-data, grants no tools, and stores no response. Up to 15 broad and exact scopes may
-be mixed. Every proposed name is then resolved by Google; non-localities, out-of-
-scope results, ambiguous results, and duplicates are discarded. Exact localities
-are authoritative and reserve scoreable capacity first. A deterministic round-
-robin gives every valid broad scope representation where capacity permits, then
-distributes remaining places fairly. Scope work uses at most three concurrent
-workers and the final set never exceeds 15 concrete destinations. Each result
-retains provider-independent origin and optional provider-backed administrative
-context for presentation only. Those values never enter eligibility, evidence,
-scoring, or ranking. Requests containing only exact cities short-circuit proposal
-AI entirely.
-
-Interests, pace, climate, and `trip_description` may influence candidate proposal
-for broad/open discovery and remain narration context. They are not independent
-numeric score components. `destination_not_found` may carry bounded Google-backed
-correction suggestions, but the traveller must select a correction and submit
-again; no silent rewrite occurs. Submitted geography, preferences, description,
-proposals, and raw model output are excluded from operational logs.
+Candidate precedence is pre-resolved destination, explicit query resolution,
+then discovery. After selection, every mode uses the same attraction, historical
+weather, seasonal profile, comfort, deterministic score, rank, and optional
+single-narration pipeline. A legitimate no-match becomes the Solara-owned
+`destination_not_found` HTTP `422`; provider failures retain their established
+translations. Submitted destination text is not added to operational logs.
 
 Current deterministic scoring is season-led. Interests, preferred pace, and
 preferred climate travel through the request but are not yet separate score
@@ -842,17 +718,11 @@ consumes the parsed response without fetching independently, preserves response
 array order and rank, never rescores, and owns both ranked and successful-empty
 rendering.
 
-Traveller-facing destination stories preserve deterministic order while showing
-Postcards, destination identity and administrative context, a de-emphasized
-Seasonal Fit percentage, The Wayfinder when present, Places to see, editorial
-Seasonal feel, grounded-or-omitted Good to know, one global historical note, and
-a compact multi-destination overview with origin context. Technical components, weights,
-configured comfort values, observation counts, and audit keys remain typed in the
-API and internal model but are intentionally absent from the ordinary UI. Optional
-structured Wayfinder narration is separate enrichment and never controls ranking. All
+Result cards present deterministic and provider-derived evidence. Optional
+grounded narration is separate enrichment and never controls ranking. All
 response text is inserted through safe DOM text APIs rather than interpreted as
 HTML or Markdown. Application-level normalization conservatively removes common
-structured strings are validated as bounded plain text before serialization,
+Markdown presentation delimiters from generated narration before serialization,
 while the browser continues to insert the result only as text. `app.js` also
 reads the server-owned `X-Request-ID` response header before consuming a
 recommendation response. A handled HTTP outcome shows
@@ -923,9 +793,8 @@ The deployed MVP1 topology is operationally narrow:
 GitHub main -> CI checks -> Render Docker web service
     -> single Uvicorn process -> create_deployment_app()
     -> RecommendationService
-        -> Google Places resolution, suggestions, attractions
+        -> Google Places
         -> Open-Meteo
-        -> bounded OpenAI candidate proposal for broad/open discovery
         -> optional OpenAI narration
 ```
 
@@ -934,13 +803,11 @@ browser and API same-origin in one service and adds no database, cache, worker,
 custom domain, or trusted proxy-header boundary. Root, health, and disabled-docs
 behavior are verified; provider-backed recommendation, feedback, and live
 responsive-browser validation completed for Commit 47's explicit-destination
-public-alpha flow. Commit 48 added candidate proposal and validation for blank and
-broad discovery, mixed-scope planning, Postcards, Wayfinder, and the final visual
-travel experience. The exact hosted build at
-`c9d698ad5e926beb4e6cad1c291f6d4a786c479c` was manually reviewed and accepted
-after deployment. That acceptance does not change deterministic scoring and
-ranking authority. Automated Chromium and adapter coverage continues to use only
-fake providers.
+public-alpha flow. Deterministic local Chromium coverage continues to use fake
+providers with no live network dependency. A tested hosted blank-discovery
+request completed with an empty result; investigation of real open-discovery
+provider semantics is deferred to Commit 48 without changing deterministic
+scoring and ranking authority.
 
 The service was manually configured before `render.yaml` existed remotely. The
 repository Blueprint now represents the desired topology but does not yet manage

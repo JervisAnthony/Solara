@@ -27,8 +27,5 @@ def create_deployment_app(
         dependencies=ApiDependencies(
             recommendation_service=services.recommendation_service,
             narration_service=services.narration_service,
-            travel_scope_suggestion_service=services.travel_scope_suggestion_service,
-            postcard_enrichment_service=services.postcard_enrichment_service,
-            photo_delivery_service=services.photo_delivery_service,
         ),
     )

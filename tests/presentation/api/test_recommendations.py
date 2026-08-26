@@ -1,6 +1,5 @@
 """HTTP tests for the versioned recommendation API."""
 
-import json
 from datetime import date
 from threading import Event, Thread
 
@@ -8,22 +7,11 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from solara_travel.application import (
-    DestinationDiscoveryUnavailableError,
-    DestinationNotFoundError,
-    RecommendationNarrationService,
-    RecommendationPlan,
-    RecommendationResult,
-    RecommendationService,
-    TravelScopeSuggestionService,
-)
+from solara_travel.application import RecommendationNarrationService, RecommendationService
 from solara_travel.domain import (
     Destination,
-    DestinationQuery,
     TemperatureComfortRange,
     TravelPeriod,
-    TravelScopeKind,
-    TravelScopeSuggestion,
 )
 from solara_travel.infrastructure.offline import DEFAULT_OFFLINE_DATASET, OfflineTravelDataset
 from solara_travel.ports import (
@@ -53,7 +41,6 @@ def _valid_payload() -> dict[str, object]:
             "interests": ["nature"],
             "preferred_pace": "relaxed",
             "preferred_climate": "warm",
-            "trip_description": None,
         },
         "destination": None,
     }
@@ -92,26 +79,6 @@ class FakeNarrationProvider:
         if isinstance(self.outcome, BaseException):
             raise self.outcome
         return self.outcome
-
-
-def _wayfinder_json() -> str:
-    names = ("Sunspire Bay", "Mistral Hollow", "Frostglass Vale")
-    return json.dumps(
-        {
-            "opening": "A grounded seasonal shortlist.",
-            "destination_notes": [
-                {
-                    "destination": name,
-                    "why_it_fits": f"{name} is worth considering for these dates.",
-                    "seasonal_feel": "Historically, this is a distinct seasonal window.",
-                    "good_to_know": "Validated landmarks offer useful anchors for wandering.",
-                    "signature_highlights": [],
-                }
-                for name in names
-            ],
-            "comparison_note": "Compare all three before choosing.",
-        }
-    )
 
 
 class ErrorPlacesProvider:
@@ -184,7 +151,6 @@ def test_offline_http_pipeline_returns_ranked_deterministic_evidence() -> None:
     assert body["request"] == _valid_payload() | {
         "destination_queries": [],
         "destination_mode": "discovery",
-        "travel_scope": None,
     }
     assert body["recommendation_count"] == 3
     assert body["has_recommendations"] is True
@@ -218,7 +184,6 @@ def test_preselected_destination_and_preferences_are_preserved() -> None:
         "interests": ["History", "Nature"],
         "preferred_pace": " Relaxed ",
         "preferred_climate": "Warm",
-        "trip_description": None,
     }
     payload["destination"] = {
         "name": destination.name,
@@ -236,7 +201,6 @@ def test_preselected_destination_and_preferences_are_preserved() -> None:
     assert body["request"] == payload | {
         "destination_queries": [],
         "destination_mode": "pre_resolved",
-        "travel_scope": None,
     }
     assert body["recommendation_count"] == 1
     assert body["recommendations"][0]["destination"] == payload["destination"]
@@ -252,7 +216,6 @@ def test_omitted_preferences_become_authoritative_empty_preferences() -> None:
         "interests": None,
         "preferred_pace": None,
         "preferred_climate": None,
-        "trip_description": None,
     }
 
 
@@ -292,7 +255,7 @@ def test_empty_destination_queries_preserve_discovery_mode() -> None:
 @pytest.mark.parametrize(
     "queries",
     [
-        [str(index) for index in range(16)],
+        ["one", "two", "three", "four", "five", "six"],
         ["   "],
     ],
 )
@@ -345,8 +308,8 @@ def test_destination_not_found_maps_to_safe_specific_422_without_query_logging(
     assert response.json()["detail"] == {
         "code": "destination_not_found",
         "message": (
-            'Solara couldn\'t find "Morocco" as a city, country or region. '
-            "Review the spelling or choose one of the suggested places."
+            'Solara couldn\'t resolve "Morocco" as a city or locality. Enter a city and, '
+            "if helpful, its country — for example, Budapest, Hungary."
         ),
     }
     failure = next(event for event in events if event["event"] == "recommendation.failed")
@@ -381,12 +344,11 @@ def test_empty_recommendation_result_is_a_valid_success() -> None:
         "recommendations": [],
         "has_narration": False,
         "narration": None,
-        "wayfinder": None,
     }
 
 
 def test_successful_narration_enriches_without_changing_deterministic_result() -> None:
-    provider = FakeNarrationProvider(_wayfinder_json())
+    provider = FakeNarrationProvider("Fixed grounded narration")
     recommendation_service = _offline_service()
     client = _configured_client(
         recommendation_service,
@@ -404,8 +366,7 @@ def test_successful_narration_enriches_without_changing_deterministic_result() -
     assert body["recommendations"] == baseline["recommendations"]
     assert body["request"] == baseline["request"]
     assert body["has_narration"] is True
-    assert body["wayfinder"]["opening"] == "A grounded seasonal shortlist."
-    assert body["narration"].startswith("A grounded seasonal shortlist.")
+    assert body["narration"] == "Fixed grounded narration"
     assert len(provider.prompts) == 1
 
 
@@ -611,14 +572,14 @@ def test_recommendation_rate_limit_returns_safe_429_without_calling_service(
     calls = 0
     events: list[dict[str, object]] = []
     service = _offline_service()
-    original_recommend_plan = RecommendationService.recommend_plan
+    original_recommend = RecommendationService.recommend
 
-    def counted_recommend_plan(self: RecommendationService, plan: object) -> object:
+    def counted_recommend(self: RecommendationService, request: object) -> object:
         nonlocal calls
         calls += 1
-        return original_recommend_plan(self, plan)  # type: ignore[arg-type]
+        return original_recommend(self, request)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(RecommendationService, "recommend_plan", counted_recommend_plan)
+    monkeypatch.setattr(RecommendationService, "recommend", counted_recommend)
     monkeypatch.setattr(
         recommendation_routes,
         "emit_event",
@@ -721,17 +682,17 @@ def test_capacity_rejection_does_not_call_service_and_slot_releases(
     release = Event()
     calls = 0
     service = _offline_service()
-    original_recommend_plan = RecommendationService.recommend_plan
+    original_recommend = RecommendationService.recommend
 
-    def blocking_recommend_plan(self: RecommendationService, plan: object) -> object:
+    def blocking_recommend(self: RecommendationService, request: object) -> object:
         nonlocal calls
         calls += 1
         if calls == 1:
             started.set()
             assert release.wait(timeout=5)
-        return original_recommend_plan(self, plan)  # type: ignore[arg-type]
+        return original_recommend(self, request)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(RecommendationService, "recommend_plan", blocking_recommend_plan)
+    monkeypatch.setattr(RecommendationService, "recommend", blocking_recommend)
     settings = ApiSettings(
         public_alpha_safeguards=PublicAlphaSafeguardSettings(
             recommendation_rate_limit=10,
@@ -769,7 +730,7 @@ def test_narration_budget_skips_enrichment_then_expires(
 ) -> None:
     now = [0.0]
     events: list[dict[str, object]] = []
-    provider = FakeNarrationProvider(_wayfinder_json())
+    provider = FakeNarrationProvider("Fixed grounded narration")
     settings = ApiSettings(
         public_alpha_safeguards=PublicAlphaSafeguardSettings(
             recommendation_rate_limit=10,
@@ -821,98 +782,3 @@ def test_narration_budget_skips_enrichment_then_expires(
     assert renewed.status_code == 200
     assert renewed.json()["has_narration"] is True
     assert len(provider.prompts) == 2
-
-
-def test_discovery_failure_has_a_safe_contract(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def discovery_failure(self: RecommendationService, request: object) -> object:
-        raise DestinationDiscoveryUnavailableError("offline")
-
-    monkeypatch.setattr(RecommendationService, "prepare", discovery_failure)
-    response = _configured_client().post("/api/v1/recommendations", json=_valid_payload())
-    assert response.status_code == 503
-    assert response.json()["detail"]["code"] == "destination_discovery_unavailable"
-
-
-def test_discovery_budget_rejects_before_candidate_proposal(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    settings = ApiSettings(
-        public_alpha_safeguards=PublicAlphaSafeguardSettings(discovery_budget_limit=1)
-    )
-    app = create_app(settings, dependencies=ApiDependencies(_offline_service()))
-    assert app.state.api_safeguards.admit_discovery() is None
-
-    def discovery_plan(self: RecommendationService, request: object) -> RecommendationPlan:
-        return RecommendationPlan(request, None)  # type: ignore[arg-type]
-
-    monkeypatch.setattr(RecommendationService, "prepare", discovery_plan)
-    response = TestClient(app).post("/api/v1/recommendations", json=_valid_payload())
-    assert response.status_code == 429
-    assert response.headers["Retry-After"] == "3600"
-    assert response.json()["detail"]["code"] == "discovery_budget_exhausted"
-
-
-def test_discovery_budget_admission_continues_to_prepared_result(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def discovery_plan(self: RecommendationService, request: object) -> RecommendationPlan:
-        return RecommendationPlan(request, None)  # type: ignore[arg-type]
-
-    def empty_result(self: RecommendationService, plan: RecommendationPlan) -> RecommendationResult:
-        return RecommendationResult(plan.request, (), destination_mode="discovery")
-
-    monkeypatch.setattr(RecommendationService, "prepare", discovery_plan)
-    monkeypatch.setattr(RecommendationService, "recommend_plan", empty_result)
-    response = _configured_client().post("/api/v1/recommendations", json=_valid_payload())
-    assert response.status_code == 200
-    assert response.json()["recommendation_count"] == 0
-
-
-class CorrectionSuggestionProvider:
-    def __init__(self, outcome: object) -> None:
-        self.outcome = outcome
-
-    def suggest_travel_scopes(self, query: DestinationQuery) -> object:
-        if isinstance(self.outcome, Exception):
-            raise self.outcome
-        return self.outcome
-
-
-def test_correction_suggestions_use_bounded_service_and_fail_closed() -> None:
-    query = DestinationQuery("Lisbom")
-    safeguards = ApiSafeguards(PublicAlphaSafeguardSettings(suggestion_rate_limit=1))
-    direct = DestinationNotFoundError(query, ("Lisbon, Portugal",))
-    assert recommendation_routes._correction_suggestions(
-        direct, ApiDependencies(_offline_service()), safeguards
-    ) == ("Lisbon, Portugal",)
-
-    service = TravelScopeSuggestionService(
-        CorrectionSuggestionProvider(
-            (TravelScopeSuggestion("Lisbon, Portugal", TravelScopeKind.LOCALITY),)
-        )
-    )
-    dependencies = ApiDependencies(_offline_service(), travel_scope_suggestion_service=service)
-    assert recommendation_routes._correction_suggestions(
-        DestinationNotFoundError(query), dependencies, safeguards
-    ) == ("Lisbon, Portugal",)
-    assert (
-        recommendation_routes._correction_suggestions(
-            DestinationNotFoundError(query), dependencies, safeguards
-        )
-        == ()
-    )
-
-    failing = TravelScopeSuggestionService(
-        CorrectionSuggestionProvider(ProviderUnavailableError("offline"))
-    )
-    fresh = ApiSafeguards(PublicAlphaSafeguardSettings())
-    assert (
-        recommendation_routes._correction_suggestions(
-            DestinationNotFoundError(query),
-            ApiDependencies(_offline_service(), travel_scope_suggestion_service=failing),
-            fresh,
-        )
-        == ()
-    )

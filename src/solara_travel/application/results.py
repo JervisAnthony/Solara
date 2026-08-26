@@ -10,43 +10,8 @@ from solara_travel.analytics.seasonality import (
 from solara_travel.domain.attraction import Attraction
 from solara_travel.domain.destination import Destination
 from solara_travel.domain.recommendation import RecommendationRequest
-from solara_travel.domain.travel_scope import TravelScope, TravelScopeKind
 
 _SEASONAL_TEMPERATURE_COMFORT_COMPONENT = "seasonal_temperature_comfort"
-
-
-@dataclass(frozen=True, slots=True)
-class RecommendationOrigin:
-    """Provider-independent context explaining why a destination was evaluated."""
-
-    requested_scope: str
-    requested_scope_kind: TravelScopeKind
-    administrative_context: tuple[str, ...] = ()
-    was_explicit_locality: bool = False
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.requested_scope, str):
-            raise TypeError("requested_scope must be a string")
-        normalized_scope = self.requested_scope.strip()
-        if not normalized_scope:
-            raise ValueError("requested_scope must not be blank")
-        object.__setattr__(self, "requested_scope", normalized_scope)
-        if not isinstance(self.requested_scope_kind, TravelScopeKind):
-            raise TypeError("requested_scope_kind must be TravelScopeKind")
-        if not isinstance(self.administrative_context, tuple):
-            raise TypeError("administrative_context must be a tuple")
-        if not all(
-            isinstance(value, str) and value.strip() for value in self.administrative_context
-        ):
-            raise ValueError("administrative_context must contain non-blank strings")
-        normalized_context = tuple(value.strip() for value in self.administrative_context)
-        if len({value.casefold() for value in normalized_context}) != len(normalized_context):
-            raise ValueError("administrative_context must not contain duplicates")
-        object.__setattr__(self, "administrative_context", normalized_context)
-        if not isinstance(self.was_explicit_locality, bool):
-            raise TypeError("was_explicit_locality must be a bool")
-        if self.was_explicit_locality and self.requested_scope_kind is not TravelScopeKind.LOCALITY:
-            raise ValueError("explicit locality origins must use locality scope kind")
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,11 +42,14 @@ class RecommendationEvidence:
             SeasonalTemperatureComfortAssessment,
         ):
             raise TypeError(
-                "seasonal_temperature_comfort must be a SeasonalTemperatureComfortAssessment"
+                "seasonal_temperature_comfort must be a "
+                "SeasonalTemperatureComfortAssessment"
             )
 
         if self.seasonal_temperature_comfort.profile != self.seasonal_weather:
-            raise ValueError("seasonal temperature comfort must describe seasonal weather")
+            raise ValueError(
+                "seasonal temperature comfort must describe seasonal weather"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +59,6 @@ class DestinationRecommendation:
     destination: Destination
     suitability: SuitabilityScore
     evidence: RecommendationEvidence
-    origin: RecommendationOrigin | None = None
 
     def __post_init__(self) -> None:
         """Validate result types and evidence-backed seasonal scoring."""
@@ -105,15 +72,15 @@ class DestinationRecommendation:
         if not isinstance(self.evidence, RecommendationEvidence):
             raise TypeError("evidence must be RecommendationEvidence")
 
-        if self.origin is not None and not isinstance(self.origin, RecommendationOrigin):
-            raise TypeError("origin must be RecommendationOrigin or None")
-
         seasonal_component = self._seasonal_temperature_comfort_component()
         if (
             seasonal_component is not None
-            and seasonal_component.score != self.evidence.seasonal_temperature_comfort.score
+            and seasonal_component.score
+            != self.evidence.seasonal_temperature_comfort.score
         ):
-            raise ValueError("seasonal temperature comfort component score must match evidence")
+            raise ValueError(
+                "seasonal temperature comfort component score must match evidence"
+            )
 
     @property
     def score(self) -> float:
@@ -134,7 +101,8 @@ class DestinationRecommendation:
             (
                 component
                 for component in self.suitability.components
-                if component.name.strip().casefold() == _SEASONAL_TEMPERATURE_COMFORT_COMPONENT
+                if component.name.strip().casefold()
+                == _SEASONAL_TEMPERATURE_COMFORT_COMPONENT
             ),
             None,
         )
@@ -146,8 +114,6 @@ class RecommendationResult:
 
     request: RecommendationRequest
     recommendations: tuple[DestinationRecommendation, ...]
-    destination_mode: str | None = None
-    travel_scope: TravelScope | None = None
 
     def __post_init__(self) -> None:
         """Validate result types, identity, and request/evidence consistency."""
@@ -162,43 +128,32 @@ class RecommendationResult:
             isinstance(recommendation, DestinationRecommendation)
             for recommendation in self.recommendations
         ):
-            raise TypeError("every recommendation must be a DestinationRecommendation")
+            raise TypeError(
+                "every recommendation must be a DestinationRecommendation"
+            )
 
-        inferred_mode = (
-            "pre_resolved"
-            if self.request.destination is not None
-            else "explicit_queries"
-            if self.request.destination_queries
-            else "discovery"
+        destinations = tuple(
+            recommendation.destination for recommendation in self.recommendations
         )
-        if self.destination_mode is None:
-            object.__setattr__(self, "destination_mode", inferred_mode)
-        elif self.destination_mode not in {
-            "discovery",
-            "pre_resolved",
-            "explicit_queries",
-            "scope_discovery",
-            "mixed_scopes",
-        }:
-            raise ValueError("destination_mode is not supported")
-        if self.travel_scope is not None and not isinstance(self.travel_scope, TravelScope):
-            raise TypeError("travel_scope must be TravelScope or None")
-        if self.destination_mode == "scope_discovery" and self.travel_scope is None:
-            raise ValueError("scope_discovery requires travel_scope")
-
-        destinations = tuple(recommendation.destination for recommendation in self.recommendations)
         if len(destinations) != len(set(destinations)):
             raise ValueError("recommendation destinations must be unique")
 
         for recommendation in self.recommendations:
-            if recommendation.evidence.seasonal_weather.target_period != self.request.travel_period:
-                raise ValueError("recommendation evidence target period must match request")
+            if (
+                recommendation.evidence.seasonal_weather.target_period
+                != self.request.travel_period
+            ):
+                raise ValueError(
+                    "recommendation evidence target period must match request"
+                )
 
             if (
                 self.request.destination is not None
                 and recommendation.destination != self.request.destination
             ):
-                raise ValueError("recommendation destination must match requested destination")
+                raise ValueError(
+                    "recommendation destination must match requested destination"
+                )
 
     @property
     def recommendation_count(self) -> int:

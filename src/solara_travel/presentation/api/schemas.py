@@ -16,7 +16,6 @@ class ApiErrorDetail(BaseModel):
 
     code: str
     message: str
-    suggestions: list[str] | None = None
 
 
 class ApiErrorResponse(BaseModel):

@@ -5,310 +5,348 @@
   const resultsSection = document.querySelector("#recommendation-results");
   const resultsSummary = document.querySelector("#recommendation-results-summary");
   const resultsTitle = document.querySelector("#results-title");
-  const historicalNote = document.querySelector("#recommendation-historical-note");
   const recommendationList = document.querySelector("#recommendation-list");
   const emptyState = document.querySelector("#recommendation-empty");
   const emptyTitle = document.querySelector("#recommendation-empty-title");
+  const narrationSection = document.querySelector("#recommendation-narration");
+  const narrationText = document.querySelector("#recommendation-narration-text");
 
-  function element(tagName, className, text) {
-    const node = document.createElement(tagName);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = String(text);
-    return node;
-  }
-
-  function percentage(value) {
-    const numeric = Number(value);
-    return Number.isFinite(numeric) ? `${(numeric * 100).toFixed(1)}%` : "—";
-  }
-
-  function destinationNote(response, recommendation) {
-    const notes = response.wayfinder?.destination_notes;
-    return Array.isArray(notes)
-      ? notes.find((note) => note.destination === recommendation.destination.name) ?? null
-      : null;
-  }
-
-  function seasonalFeel(recommendation) {
-    const weather = recommendation.evidence?.seasonal_weather;
-    if (!weather) return "Seasonal context is not available for this travel window.";
-    const mean = Number(weather.mean_temperature_celsius);
-    const rain = Number(weather.mean_daily_precipitation_mm);
-    const temperature = mean >= 27
-      ? "warmer days and a tropical feel"
-      : mean >= 20 ? "mild-to-warm days" : mean >= 12 ? "a cooler, comfortable window" : "crisp, cooler days";
-    const moisture = rain >= 4
-      ? " Wetter days can be part of the rhythm, so a light waterproof layer may earn its place."
-      : " Rainfall tends to be more restrained, leaving more room for unhurried outdoor days.";
-    return `Around this time of year, ${recommendation.destination.name} tends to settle into ${temperature}.${moisture}`;
-  }
-
-  function goodToKnow(recommendation) {
-    const attractions = recommendation.evidence?.attractions;
-    if (!Array.isArray(attractions) || attractions.length === 0) return null;
-    const names = attractions.slice(0, 3).map((attraction) => attraction.name);
-    const joined = names.length === 1
-      ? names[0]
-      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-    return `Your validated places shortlist includes ${joined} — useful anchors for a day that still leaves room to wander.`;
-  }
-
-  function originLabel(recommendation) {
-    const origin = recommendation.origin;
-    if (!origin?.requested_scope) return null;
-    return origin.was_explicit_locality
-      ? `You selected ${origin.requested_scope}`
-      : `From your ${origin.requested_scope} search`;
-  }
-
-  function geographicContext(recommendation) {
-    const regions = recommendation.origin?.administrative_context;
-    const context = Array.isArray(regions) ? regions.filter(Boolean) : [];
-    return [...context, recommendation.destination.country].join(", ");
-  }
-
-  function renderPostcards(recommendation) {
-    const section = element("section", "postcards");
-    section.setAttribute("aria-label", `Postcards from ${recommendation.destination.name}`);
-    section.append(element("p", "card-kicker", "Postcards"));
-    const photos = Array.isArray(recommendation.postcards) ? recommendation.postcards : [];
-    if (photos.length === 0) {
-      const fallback = element("div", "postcard-fallback");
-      const mark = document.createElement("img");
-      mark.src = "/static/branding/solara-mark-gold.png";
-      mark.alt = "";
-      mark.width = 1254;
-      mark.height = 1254;
-      fallback.append(mark, element("strong", "", recommendation.destination.name), element("span", "", recommendation.destination.country));
-      section.append(fallback);
-      return section;
+  function createTextElement(tagName, className, value) {
+    const element = document.createElement(tagName);
+    if (className) {
+      element.className = className;
     }
+    element.textContent = String(value);
+    return element;
+  }
 
-    const frame = element("div", "postcard-frame");
-    const track = element("div", "postcard-track");
-    let current = 0;
-    const slides = photos.map((photo, index) => {
-      const figure = document.createElement("figure");
-      figure.className = "postcard-slide";
-      figure.hidden = index !== 0;
-      const image = document.createElement("img");
-      if (index === 0) {
-        image.src = photo.image_path;
-        image.fetchPriority = recommendation.rank === 1 ? "high" : "auto";
-      } else {
-        image.dataset.src = photo.image_path;
-        image.loading = "lazy";
-      }
-      image.alt = photo.place_name;
-      image.width = photo.width_px;
-      image.height = photo.height_px;
-      image.decoding = "async";
-      const caption = document.createElement("figcaption");
-      const source = document.createElement("a");
-      source.href = photo.google_maps_uri;
-      source.target = "_blank";
-      source.rel = "noopener noreferrer";
-      source.textContent = "View source photo on Google Maps";
-      caption.append(element("span", "postcard-place", photo.place_name), source);
-      if (Array.isArray(photo.author_attributions) && photo.author_attributions.length > 0) {
-        const credit = element("span", "postcard-credit", "Photo by ");
-        photo.author_attributions.forEach((author, authorIndex) => {
-          if (authorIndex > 0) credit.append(document.createTextNode(", "));
-          if (author.profile_uri) {
-            const authorLink = document.createElement("a");
-            authorLink.href = author.profile_uri;
-            authorLink.target = "_blank";
-            authorLink.rel = "noopener noreferrer";
-            authorLink.textContent = author.display_name;
-            credit.append(authorLink);
-          } else {
-            credit.append(document.createTextNode(author.display_name));
-          }
-        });
-        caption.append(credit);
-      }
-      const googleAttribution = element("span", "google-attribution", "Google Maps");
-      googleAttribution.setAttribute("translate", "no");
-      caption.append(googleAttribution);
-      figure.append(image, caption);
-      track.append(figure);
-      return figure;
-    });
-    frame.append(track);
-    section.append(frame);
+  function humanizeIdentifier(value) {
+    const words = String(value).replace(/[_-]+/g, " ").trim();
+    return words === "" ? "" : words.charAt(0).toUpperCase() + words.slice(1);
+  }
 
-    if (slides.length > 1) {
-      const controls = element("div", "postcard-controls");
-      const previous = element("button", "postcard-arrow", "←");
-      previous.type = "button";
-      previous.setAttribute("aria-label", "Previous Postcard");
-      const status = element("span", "postcard-index", `1 / ${slides.length}`);
-      status.setAttribute("aria-live", "polite");
-      const next = element("button", "postcard-arrow", "→");
-      next.type = "button";
-      next.setAttribute("aria-label", "Next Postcard");
-      const show = (nextIndex) => {
-        current = (nextIndex + slides.length) % slides.length;
-        slides.forEach((slide, index) => { slide.hidden = index !== current; });
-        const image = slides[current].querySelector("img");
-        if (!image.src && image.dataset.src) {
-          image.src = image.dataset.src;
-          delete image.dataset.src;
-        }
-        status.textContent = `${current + 1} / ${slides.length}`;
-      };
-      previous.addEventListener("click", () => show(current - 1));
-      next.addEventListener("click", () => show(current + 1));
-      let touchStart = null;
-      track.addEventListener("touchstart", (event) => { touchStart = event.changedTouches[0]?.clientX ?? null; }, { passive: true });
-      track.addEventListener("touchend", (event) => {
-        if (touchStart === null) return;
-        const distance = (event.changedTouches[0]?.clientX ?? touchStart) - touchStart;
-        if (Math.abs(distance) > 40) show(current + (distance < 0 ? 1 : -1));
-        touchStart = null;
-      }, { passive: true });
-      controls.append(previous, status, next);
-      section.append(controls);
+  function appendMetric(metrics, label, value) {
+    const metric = document.createElement("div");
+    metric.append(
+      createTextElement("dt", "metric-label", label),
+      createTextElement("dd", "metric-value", value),
+    );
+    metrics.append(metric);
+  }
+
+  function formatNumber(value, maximumFractionDigits) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return String(value);
     }
+    return new Intl.NumberFormat("en", {
+      maximumFractionDigits,
+      useGrouping: false,
+    }).format(numericValue);
+  }
+
+  function formatPercentage(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return String(value);
+    }
+    const percentage = Math.round((numericValue * 100 + Number.EPSILON) * 10) / 10;
+    return `${String(percentage)}%`;
+  }
+
+  function renderScoreComponents(components) {
+    const section = document.createElement("section");
+    section.className = "component-section";
+    section.append(createTextElement("h4", "evidence-heading", "Why it ranked here"));
+
+    const list = document.createElement("ul");
+    list.className = "component-list";
+    for (const component of components) {
+      const item = document.createElement("li");
+      item.className = "component-item";
+      item.append(
+        createTextElement("p", "component-name", humanizeIdentifier(component.name)),
+      );
+
+      item.append(
+        createTextElement(
+          "p",
+          "component-fit",
+          `${formatPercentage(component.score)} seasonal fit`,
+        ),
+      );
+      list.append(item);
+    }
+    section.append(list);
     return section;
   }
 
-  function renderPlaces(attractions, rank) {
-    const section = element("section", "story-section places-section");
-    section.append(element("h4", "story-heading", "Places to see"));
-    const list = element("ul", "places-list");
-    attractions.forEach((attraction, index) => {
-      const item = element("li", "", attraction.name);
-      item.hidden = index >= 6;
+  function renderAttractions(attractions, recommendationRank) {
+    if (!Array.isArray(attractions) || attractions.length === 0) {
+      return null;
+    }
+
+    const section = document.createElement("section");
+    section.className = "evidence-section";
+    section.append(createTextElement("h4", "evidence-heading", "Selected attractions"));
+
+    const list = document.createElement("ul");
+    list.className = "attraction-list";
+    for (const [index, attraction] of attractions.entries()) {
+      const item = document.createElement("li");
+      if (index >= 6) {
+        item.hidden = true;
+      }
+      item.append(
+        createTextElement("span", "attraction-name", attraction.name),
+        createTextElement("span", "attraction-category", attraction.category),
+      );
       list.append(item);
-    });
+    }
+    list.id = `attraction-list-${String(recommendationRank)}`;
     section.append(list);
     if (attractions.length > 6) {
-      list.id = `places-${rank}`;
-      const toggle = element("button", "places-toggle", "See more places");
+      const toggle = createTextElement("button", "attraction-toggle", "Show all attractions");
       toggle.type = "button";
       toggle.setAttribute("aria-controls", list.id);
       toggle.setAttribute("aria-expanded", "false");
       toggle.addEventListener("click", () => {
         const expanded = toggle.getAttribute("aria-expanded") === "true";
-        [...list.children].forEach((item, index) => { item.hidden = expanded && index >= 6; });
-        toggle.setAttribute("aria-expanded", String(!expanded));
-        toggle.textContent = expanded ? "See more places" : "See fewer places";
+        const nextExpanded = !expanded;
+        for (const item of list.children) {
+          item.hidden = !nextExpanded && Number(item.dataset.attractionIndex) >= 6;
+        }
+        toggle.setAttribute("aria-expanded", String(nextExpanded));
+        toggle.textContent = nextExpanded ? "Show fewer attractions" : "Show all attractions";
       });
+      for (const [index, item] of Array.from(list.children).entries()) {
+        item.dataset.attractionIndex = String(index);
+      }
       section.append(toggle);
     }
     return section;
   }
 
-  function renderRecommendation(response, recommendation) {
+  function renderSeasonalEvidence(seasonalWeather) {
+    const section = document.createElement("section");
+    section.className = "evidence-section";
+    section.append(
+      createTextElement("h4", "evidence-heading", "Historical seasonal evidence"),
+    );
+
+    const metrics = document.createElement("dl");
+    metrics.className = "metric-grid";
+    appendMetric(
+      metrics,
+      "Travel window",
+      `${String(seasonalWeather.target_period.start_date)} — ${String(
+        seasonalWeather.target_period.end_date,
+      )}`,
+    );
+    appendMetric(
+      metrics,
+      "Historical years",
+      seasonalWeather.historical_years.map(String).join(", "),
+    );
+    appendMetric(
+      metrics,
+      "Historical year count",
+      String(seasonalWeather.historical_year_count),
+    );
+    appendMetric(metrics, "Observations", String(seasonalWeather.observation_count));
+    appendMetric(
+      metrics,
+      "Mean temperature",
+      `${formatNumber(seasonalWeather.mean_temperature_celsius, 1)} °C`,
+    );
+    appendMetric(
+      metrics,
+      "Temperature range",
+      `${formatNumber(seasonalWeather.minimum_temperature_celsius, 1)} °C — ${formatNumber(
+        seasonalWeather.maximum_temperature_celsius,
+        1,
+      )} °C`,
+    );
+    appendMetric(
+      metrics,
+      "Mean relative humidity",
+      `${formatNumber(seasonalWeather.mean_relative_humidity_percent, 1)}%`,
+    );
+    appendMetric(
+      metrics,
+      "Mean daily precipitation",
+      `${formatNumber(seasonalWeather.mean_daily_precipitation_mm, 2)} mm`,
+    );
+    section.append(metrics);
+    return section;
+  }
+
+  function renderTemperatureComfort(temperatureComfort) {
+    const section = document.createElement("section");
+    section.className = "evidence-section";
+    section.append(
+      createTextElement("h4", "evidence-heading", "Temperature comfort"),
+      createTextElement(
+        "p",
+        "evidence-note",
+        "This range is configured by Solara's deterministic seasonal analysis.",
+      ),
+    );
+
+    const metrics = document.createElement("dl");
+    metrics.className = "metric-grid";
+    appendMetric(metrics, "Seasonal fit", formatPercentage(temperatureComfort.score));
+    appendMetric(
+      metrics,
+      "Configured comfort range",
+      `${formatNumber(temperatureComfort.comfort_range.minimum_celsius, 1)} °C — ${formatNumber(
+        temperatureComfort.comfort_range.maximum_celsius,
+        1,
+      )} °C`,
+    );
+    appendMetric(
+      metrics,
+      "Tolerance",
+      `${formatNumber(temperatureComfort.comfort_range.tolerance_celsius, 1)} °C`,
+    );
+    appendMetric(
+      metrics,
+      "Within configured comfort range",
+      formatPercentage(temperatureComfort.within_preferred_fraction),
+    );
+    appendMetric(
+      metrics,
+      "Mean deviation",
+      `${formatNumber(temperatureComfort.mean_deviation_celsius, 1)} °C`,
+    );
+    section.append(metrics);
+    return section;
+  }
+
+  function renderEvidence(evidence, recommendationRank) {
+    const details = document.createElement("details");
+    details.className = "recommendation-evidence";
+    details.append(createTextElement("summary", "evidence-summary", "Explore evidence"));
+
+    const content = document.createElement("div");
+    content.className = "evidence-content";
+    const attractions = renderAttractions(evidence.attractions, recommendationRank);
+    if (attractions) {
+      content.append(attractions);
+    }
+    content.append(
+      renderSeasonalEvidence(evidence.seasonal_weather),
+      renderTemperatureComfort(evidence.temperature_comfort),
+    );
+    details.append(content);
+    return details;
+  }
+
+  function renderRecommendation(recommendation) {
     const item = document.createElement("li");
     const card = document.createElement("article");
-    card.className = "destination-story";
-    card.id = `destination-story-${recommendation.rank}`;
-    card.append(renderPostcards(recommendation));
-    const note = destinationNote(response, recommendation);
-    const header = element("header", "destination-story-header");
-    const identity = element("div", "destination-story-identity");
-    identity.append(element("p", "rank-label", `#${recommendation.rank}`), element("h3", "destination-name", recommendation.destination.name), element("p", "destination-country", geographicContext(recommendation)));
-    const origin = originLabel(recommendation);
-    if (origin) identity.append(element("p", "destination-origin", origin));
-    const fit = element("div", "seasonal-fit");
-    fit.append(element("span", "", "Seasonal Fit"), element("strong", "", percentage(recommendation.score)));
-    header.append(identity, fit);
-    card.append(header);
-    if (note) {
-      const wayfinder = element("section", "wayfinder-section");
-      wayfinder.append(element("p", "card-kicker", "The Wayfinder"), element("p", "wayfinder-copy", note.why_it_fits));
-      card.append(wayfinder);
-    }
-    const storyGrid = element("div", "story-grid");
-    const seasonal = element("section", "story-section");
-    seasonal.append(element("h4", "story-heading", "Seasonal feel"), element("p", "", note?.seasonal_feel ?? seasonalFeel(recommendation)));
-    storyGrid.append(seasonal, renderPlaces(recommendation.evidence?.attractions ?? [], recommendation.rank));
-    const goodToKnowCopy = note?.good_to_know ?? goodToKnow(recommendation);
-    if (goodToKnowCopy) {
-      const good = element("section", "story-section good-to-know");
-      good.append(element("h4", "story-heading", "Good to know"), element("p", "", goodToKnowCopy));
-      storyGrid.append(good);
-    }
-    card.append(storyGrid);
+    card.className = "recommendation-card";
+
+    const header = document.createElement("header");
+    header.className = "recommendation-card-header";
+    const identity = document.createElement("div");
+    identity.className = "destination-identity";
+    identity.append(
+      createTextElement("p", "rank-label", `Rank ${String(recommendation.rank)}`),
+      createTextElement("h3", "destination-name", recommendation.destination.name),
+      createTextElement("p", "destination-country", recommendation.destination.country),
+    );
+
+    const score = document.createElement("dl");
+    score.className = "suitability-score";
+    appendMetric(score, "Seasonal fit", formatPercentage(recommendation.score));
+    header.append(identity, score);
+    card.append(
+      header,
+      renderScoreComponents(recommendation.components),
+      renderEvidence(recommendation.evidence, recommendation.rank),
+    );
     item.append(card);
     return item;
   }
 
-  function heading(response) {
-    const recommendations = response.recommendations;
-    const mode = response.request?.destination_mode;
-    if (recommendations.length === 1 && ["explicit_queries", "pre_resolved"].includes(mode)) return `${recommendations[0].destination.name} for your trip`;
-    if (mode === "scope_discovery" && response.request?.travel_scope?.display_name) return `Places in ${response.request.travel_scope.display_name} worth considering`;
-    if (mode === "mixed_scopes") return "Places across your searches worth considering";
-    if (mode === "discovery") return "Places that fit this trip";
-    return "Your shortlist";
-  }
-
-  function renderOverview(response) {
-    if (response.recommendations.length < 2) return null;
-    const item = element("li", "shortlist-overview-item");
-    const nav = element("nav", "shortlist-overview");
-    nav.setAttribute("aria-label", "Shortlist overview");
-    nav.append(element("p", "card-kicker", "At a glance"));
-    const list = element("ol", "shortlist-links");
-    response.recommendations.forEach((recommendation) => {
-      const row = document.createElement("li");
-      const link = document.createElement("a");
-      link.href = `#destination-story-${recommendation.rank}`;
-      link.append(element("span", "overview-rank", String(recommendation.rank)), element("strong", "", recommendation.destination.name), element("span", "", percentage(recommendation.score)));
-      const note = destinationNote(response, recommendation);
-      if (note) link.append(element("small", "", note.why_it_fits));
-      const origin = originLabel(recommendation);
-      if (origin) link.append(element("small", "overview-origin", origin));
-      row.append(link);
-      list.append(row);
-    });
-    nav.append(list);
-    if (response.wayfinder?.opening) nav.append(element("p", "wayfinder-opening", response.wayfinder.opening));
-    if (response.wayfinder?.comparison_note) nav.append(element("p", "comparison-note", response.wayfinder.comparison_note));
-    item.append(nav);
-    return item;
+  function renderNarration(response) {
+    if (
+      response.has_narration === true &&
+      typeof response.narration === "string" &&
+      response.narration.trim() !== ""
+    ) {
+      narrationText.textContent = response.narration;
+      narrationSection.hidden = false;
+    }
   }
 
   function clearResults() {
     resultsSection.hidden = true;
     recommendationList.replaceChildren();
     resultsSummary.replaceChildren();
+    narrationSection.hidden = true;
+    narrationText.replaceChildren();
     emptyState.hidden = true;
-    historicalNote.hidden = true;
   }
 
-  function renderResponse(response) {
+  function renderRecommendationResponse(response) {
     clearResults();
-    resultsTitle.textContent = heading(response);
+    const mode = response.request?.destination_mode;
+    if (mode === "explicit_queries" && response.request.destination_queries?.length === 1) {
+      const destinationName = response.recommendations[0]?.destination?.name;
+      resultsTitle.textContent = destinationName
+        ? `${String(destinationName)} for your trip`
+        : "Destination for your trip";
+    } else if (mode === "explicit_queries") {
+      resultsTitle.textContent = "Your destination comparison";
+    } else {
+      resultsTitle.textContent = "Recommended destinations";
+    }
     if (response.has_recommendations === false || response.recommendations.length === 0) {
       resultsSection.hidden = false;
       emptyState.hidden = false;
       emptyTitle.focus();
       return;
     }
-    const fragment = document.createDocumentFragment();
-    const overview = renderOverview(response);
-    if (overview) fragment.append(overview);
-    response.recommendations.forEach((recommendation) => { fragment.append(renderRecommendation(response, recommendation)); });
-    recommendationList.replaceChildren(fragment);
-    const period = response.request?.travel_period;
-    resultsSummary.textContent = period
-      ? `${response.recommendation_count} places considered for ${period.start_date} — ${period.end_date}.`
-      : `${response.recommendation_count} places considered.`;
-    historicalNote.hidden = false;
+
+    const cards = document.createDocumentFragment();
+    for (const recommendation of response.recommendations) {
+      cards.append(renderRecommendation(recommendation));
+    }
+    recommendationList.replaceChildren(cards);
+
+    const travelPeriod = response.request?.travel_period;
+    const periodText = travelPeriod
+      ? ` for ${String(travelPeriod.start_date)} — ${String(travelPeriod.end_date)}`
+      : "";
+    resultsSummary.textContent =
+      `${String(response.recommendation_count)} ranked recommendations${periodText}.`;
     resultsSection.hidden = false;
+    renderNarration(response);
     resultsTitle.focus();
   }
 
-  function handleReady(event) {
-    try { renderResponse(event.detail); } catch { clearResults(); }
+  function handleRecommendationReady(event) {
+    try {
+      renderRecommendationResponse(event.detail);
+    } catch {
+      clearResults();
+    }
   }
 
-  if (form && resultsSection && resultsSummary && resultsTitle && historicalNote && recommendationList && emptyState && emptyTitle) {
+  if (
+    form &&
+    resultsSection &&
+    resultsSummary &&
+    resultsTitle &&
+    recommendationList &&
+    emptyState &&
+    emptyTitle &&
+    narrationSection &&
+    narrationText
+  ) {
     form.addEventListener("solara:recommendation-request-start", clearResults);
-    form.addEventListener("solara:recommendation-ready", handleReady);
+    form.addEventListener("solara:recommendation-ready", handleRecommendationReady);
   }
 })();

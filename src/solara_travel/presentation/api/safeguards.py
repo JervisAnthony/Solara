@@ -39,26 +39,6 @@ class RecommendationLease:
         self._safeguards._release_recommendation()
 
 
-class SuggestionLease:
-    """Release one admitted autocomplete concurrency slot on exit."""
-
-    __slots__ = ("_safeguards",)
-
-    def __init__(self, safeguards: "ApiSafeguards") -> None:
-        self._safeguards = safeguards
-
-    def __enter__(self) -> "SuggestionLease":
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        self._safeguards._release_suggestion()
-
-
 class ApiSafeguards:
     """Thread-safe rolling limits owned by exactly one application process."""
 
@@ -79,11 +59,7 @@ class ApiSafeguards:
         self._recommendation_budget_events: deque[float] = deque()
         self._feedback_events: deque[float] = deque()
         self._narration_events: deque[float] = deque()
-        self._suggestion_rate_events: deque[float] = deque()
-        self._suggestion_budget_events: deque[float] = deque()
-        self._discovery_events: deque[float] = deque()
         self._active_recommendations = 0
-        self._active_suggestions = 0
 
     def admit_recommendation(self) -> RecommendationLease | SafeguardRejection:
         """Atomically admit one recommendation or return its safe rejection."""
@@ -167,84 +143,9 @@ class ApiSafeguards:
             self._narration_events.append(now)
             return True
 
-    def admit_suggestion(self) -> SuggestionLease | SafeguardRejection:
-        """Admit one identity-free typeahead request within process-local limits."""
-
-        with self._lock:
-            if self._active_suggestions >= self._settings.suggestion_concurrency_limit:
-                return SafeguardRejection("suggestion_capacity_reached", 1)
-            now = self._clock()
-            self._expire(
-                self._suggestion_rate_events,
-                now,
-                self._settings.suggestion_rate_window_seconds,
-            )
-            self._expire(
-                self._suggestion_budget_events,
-                now,
-                self._settings.suggestion_budget_window_seconds,
-            )
-            if len(self._suggestion_rate_events) >= self._settings.suggestion_rate_limit:
-                return SafeguardRejection(
-                    "suggestion_rate_limited",
-                    self._retry_after(
-                        self._suggestion_rate_events,
-                        now,
-                        self._settings.suggestion_rate_window_seconds,
-                    ),
-                )
-            if len(self._suggestion_budget_events) >= self._settings.suggestion_budget_limit:
-                return SafeguardRejection(
-                    "suggestion_budget_exhausted",
-                    self._retry_after(
-                        self._suggestion_budget_events,
-                        now,
-                        self._settings.suggestion_budget_window_seconds,
-                    ),
-                )
-            self._suggestion_rate_events.append(now)
-            self._suggestion_budget_events.append(now)
-            self._active_suggestions += 1
-            return SuggestionLease(self)
-
-    def admit_discovery(self, units: int = 1) -> SafeguardRejection | None:
-        """Atomically consume bounded candidate-proposal call units."""
-
-        if type(units) is not int:
-            raise TypeError("discovery units must be an int")
-        if not 1 <= units <= 15:
-            raise ValueError("discovery units must be between 1 and 15")
-
-        with self._lock:
-            now = self._clock()
-            self._expire(
-                self._discovery_events,
-                now,
-                self._settings.discovery_budget_window_seconds,
-            )
-            if len(self._discovery_events) + units > self._settings.discovery_budget_limit:
-                return SafeguardRejection(
-                    "discovery_budget_exhausted",
-                    (
-                        self._settings.discovery_budget_window_seconds
-                        if not self._discovery_events
-                        else self._retry_after(
-                            self._discovery_events,
-                            now,
-                            self._settings.discovery_budget_window_seconds,
-                        )
-                    ),
-                )
-            self._discovery_events.extend([now] * units)
-            return None
-
     def _release_recommendation(self) -> None:
         with self._lock:
             self._active_recommendations -= 1
-
-    def _release_suggestion(self) -> None:
-        with self._lock:
-            self._active_suggestions -= 1
 
     @staticmethod
     def _expire(events: deque[float], now: float, window_seconds: int) -> None:

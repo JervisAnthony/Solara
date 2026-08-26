@@ -5,8 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from solara_travel.domain import MAX_SELECTED_TRAVEL_SCOPES, DestinationQuery
-from solara_travel.domain.preferences import TRIP_DESCRIPTION_MAX_LENGTH
+from solara_travel.domain import DestinationQuery
 
 FiniteStrictFloat = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 
@@ -40,18 +39,11 @@ class TravelPeriodRequest(StrictRequestModel):
 
 
 class TravellerPreferencesRequest(StrictRequestModel):
-    """Optional traveller preferences and untrusted natural-language context."""
+    """Optional free-form traveller preferences."""
 
     interests: list[str] | None = None
     preferred_pace: str | None = None
     preferred_climate: str | None = None
-    trip_description: str | None = Field(
-        default=None,
-        max_length=TRIP_DESCRIPTION_MAX_LENGTH,
-        description=(
-            "Optional traveller-provided trip context. Treated as untrusted data, not instructions."
-        ),
-    )
 
 
 class RecommendationRequestBody(StrictRequestModel):
@@ -60,13 +52,7 @@ class RecommendationRequestBody(StrictRequestModel):
     travel_period: TravelPeriodRequest
     preferences: TravellerPreferencesRequest = Field(default_factory=TravellerPreferencesRequest)
     destination: DestinationRequest | None = None
-    destination_queries: list[str] | None = Field(
-        default=None,
-        max_length=MAX_SELECTED_TRAVEL_SCOPES,
-        description=(
-            "Up to 15 selected cities, countries, regions, or other supported geographies."
-        ),
-    )
+    destination_queries: list[str] | None = Field(default=None, max_length=5)
 
     @field_validator("destination_queries")
     @classmethod
@@ -114,14 +100,6 @@ class TravellerPreferencesResponse(BaseModel):
     interests: list[str] | None
     preferred_pace: str | None
     preferred_climate: str | None
-    trip_description: str | None
-
-
-class TravelScopeResponse(BaseModel):
-    """Selected broad discovery scope without provider implementation detail."""
-
-    display_name: str
-    kind: Literal["region", "country"]
 
 
 class RecommendationRequestResponse(BaseModel):
@@ -131,14 +109,7 @@ class RecommendationRequestResponse(BaseModel):
     preferences: TravellerPreferencesResponse
     destination: DestinationResponse | None
     destination_queries: list[str]
-    destination_mode: Literal[
-        "discovery",
-        "pre_resolved",
-        "explicit_queries",
-        "scope_discovery",
-        "mixed_scopes",
-    ]
-    travel_scope: TravelScopeResponse | None = None
+    destination_mode: Literal["discovery", "pre_resolved", "explicit_queries"]
 
 
 class ScoreComponentResponse(BaseModel):
@@ -197,15 +168,6 @@ class RecommendationEvidenceResponse(BaseModel):
     temperature_comfort: TemperatureComfortResponse
 
 
-class RecommendationOriginResponse(BaseModel):
-    """Traveller-safe context explaining why a destination was considered."""
-
-    requested_scope: str
-    requested_scope_kind: Literal["locality", "region", "country"]
-    administrative_context: list[str]
-    was_explicit_locality: bool
-
-
 class DestinationRecommendationResponse(BaseModel):
     """One ranked deterministic recommendation."""
 
@@ -214,44 +176,6 @@ class DestinationRecommendationResponse(BaseModel):
     score: float
     components: list[ScoreComponentResponse]
     evidence: RecommendationEvidenceResponse
-    origin: RecommendationOriginResponse | None = None
-    postcards: list["PostcardPhotoResponse"] = Field(default_factory=list)
-
-
-class PhotoAuthorAttributionResponse(BaseModel):
-    """Current author attribution accompanying one transient provider photo."""
-
-    display_name: str
-    profile_uri: str | None
-
-
-class PostcardPhotoResponse(BaseModel):
-    """Browser-safe Postcards metadata with a same-origin media path."""
-
-    image_path: str
-    place_name: str
-    width_px: int
-    height_px: int
-    google_maps_uri: str
-    author_attributions: list[PhotoAuthorAttributionResponse]
-
-
-class WayfinderDestinationNoteResponse(BaseModel):
-    """Traveller-facing structured editorial note for one destination."""
-
-    destination: str
-    why_it_fits: str
-    seasonal_feel: str
-    good_to_know: str | None
-    signature_highlights: list[str]
-
-
-class WayfinderNarrativeResponse(BaseModel):
-    """Structured Wayfinder response aligned to deterministic rank order."""
-
-    opening: str
-    destination_notes: list[WayfinderDestinationNoteResponse]
-    comparison_note: str | None
 
 
 class RecommendationResponse(BaseModel):
@@ -263,4 +187,3 @@ class RecommendationResponse(BaseModel):
     recommendations: list[DestinationRecommendationResponse]
     has_narration: bool
     narration: str | None
-    wayfinder: WayfinderNarrativeResponse | None = None

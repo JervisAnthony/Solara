@@ -1,122 +1,126 @@
-"""Contracts for the traveller-first Postcards and Wayfinder presentation."""
+"""Tests for the recommendation-results presentation contract."""
 
 from fastapi.testclient import TestClient
 
 from solara_travel.presentation.api import create_app
 
 
-def _asset(path: str) -> str:
-    response = TestClient(create_app()).get(path)
-    assert response.status_code == 200
-    return response.text
+def _client() -> TestClient:
+    return TestClient(create_app())
 
 
 def test_root_contains_initially_hidden_semantic_results_region() -> None:
-    html = _asset("/")
+    html = _client().get("/").text
     results_start = html.index('id="recommendation-results"')
     principles_start = html.index('class="principles"')
-    region = html[results_start:principles_start]
 
     assert results_start < principles_start
-    assert 'aria-labelledby="results-title"' in region
-    assert "hidden" in region[: region.index(">")]
-    assert 'id="results-title"' in region
-    assert 'id="recommendation-results-summary"' in region
-    assert region.count("Seasonal guidance is based on historical patterns") == 1
-    assert '<ol id="recommendation-list"' in region
+    assert '<section\n        id="recommendation-results"' in html
+    assert 'aria-labelledby="results-title"' in html[results_start:]
+    assert "hidden" in html[results_start : html.index(">", results_start)]
+    for marker in (
+        'id="results-title"',
+        'id="recommendation-results-summary"',
+        'id="recommendation-list"',
+        'id="recommendation-narration"',
+        'id="recommendation-narration-text"',
+    ):
+        assert marker in html[results_start:principles_start]
+    assert '<ol id="recommendation-list"' in html
     assert '<script src="/static/results.js" defer></script>' in html
-    assert "AI-assisted explanation" not in region
-    assert "Optional context" not in region
 
 
 def test_static_html_contains_no_fixture_results_or_scores() -> None:
-    html = _asset("/").casefold()
-    for forbidden in ("sunspire bay", "mistral hollow", "frostglass vale", "1.00", "0.68"):
+    html = _client().get("/").text.casefold()
+
+    for forbidden in (
+        "sunspire bay",
+        "mistral hollow",
+        "frostglass vale",
+        "1.00",
+        "0.68",
+        "0.00",
+    ):
         assert forbidden not in html
 
 
-def test_results_renderer_exposes_traveller_first_contract() -> None:
-    script = _asset("/static/results.js")
+def test_results_javascript_asset_exposes_authoritative_response_contract() -> None:
+    response = _client().get("/static/results.js")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].split(";", 1)[0] in {
+        "application/javascript",
+        "text/javascript",
+    }
+    script = response.text
+    assert script.strip()
     for marker in (
         "solara:recommendation-ready",
         "event.detail",
+        "recommendations",
         "recommendation.rank",
         "recommendation.score",
-        "recommendation.postcards",
-        "wayfinder?.destination_notes",
-        "seasonal_weather",
+        "components",
+        "evidence",
         "attractions",
-        "Seasonal Fit",
-        "The Wayfinder",
-        "Places to see",
-        "Seasonal feel",
-        "Good to know",
-        "Postcards",
-        "Google Maps",
+        "seasonal_weather",
+        "temperature_comfort",
+        "narration",
+        "recommendation_count",
+        "destination_mode",
+        "destination_queries",
         "replaceChildren",
-        "originLabel",
-        "administrative_context",
-        "recommendation-historical-note",
     ):
         assert marker in script
 
 
-def test_renderer_preserves_authoritative_order_and_hides_technical_audit_language() -> None:
-    script = _asset("/static/results.js")
+def test_results_renderer_preserves_order_and_zero_scores() -> None:
+    script = _client().get("/static/results.js").text
+
     assert ".sort(" not in script
     assert ".reverse(" not in script
-    assert "response.recommendations.forEach" in script
-    assert "percentage(recommendation.score)" in script
-    for forbidden in (
-        "weighted_contribution",
+    assert "String(recommendation.rank)" in script
+    assert "formatPercentage(recommendation.score)" in script
+    assert "if (recommendation.score)" not in script
+    assert "index + 1" not in script
+
+
+def test_results_renderer_formats_seasonal_fit_without_exposing_weighting() -> None:
+    script = _client().get("/static/results.js").text
+
+    assert 'appendMetric(score, "Seasonal fit", formatPercentage(recommendation.score))' in script
+    assert "maximumFractionDigits" in script
+    assert "Number.EPSILON" in script
+    for forbidden_label in (
+        '"Suitability score"',
         '"Weight"',
         '"Weighted contribution"',
-        "comfort_range.minimum_celsius",
-        "observation_count",
-        "historical_year_count",
-        "temperature_comfort",
-        "component-list",
-        "technical details",
     ):
-        assert forbidden not in script
+        assert forbidden_label not in script
+    assert "weighted_contribution" not in script
 
 
-def test_postcards_are_manual_lazy_safe_and_have_a_premium_fallback() -> None:
-    script = _asset("/static/results.js")
-    for marker in (
-        "image.dataset.src",
-        'image.loading = "lazy"',
-        'previous.addEventListener("click"',
-        'next.addEventListener("click"',
-        'track.addEventListener("touchstart"',
-        'track.addEventListener("touchend"',
-        "postcard-fallback",
-        "author.profile_uri",
-        "photo.google_maps_uri",
-    ):
-        assert marker in script
-    assert "setInterval" not in script
-    assert "fetch(" not in script
-    assert 'googleAttribution.setAttribute("translate", "no")' in script
+def test_results_renderer_limits_attractions_with_an_accessible_local_toggle() -> None:
+    script = _client().get("/static/results.js").text
 
-
-def test_places_are_locally_bounded_with_an_accessible_toggle() -> None:
-    script = _asset("/static/results.js")
     for marker in (
         "index >= 6",
-        "See more places",
-        "See fewer places",
+        '"Show all attractions"',
+        '"Show fewer attractions"',
         'toggle.type = "button"',
         'toggle.setAttribute("aria-controls"',
         'toggle.setAttribute("aria-expanded"',
         'toggle.addEventListener("click"',
     ):
         assert marker in script
+    assert "fetch(" not in script
 
 
-def test_results_renderer_uses_safe_same_origin_dom_apis() -> None:
-    script = _asset("/static/results.js")
+def test_results_renderer_uses_safe_dom_apis_for_response_text() -> None:
+    script = _client().get("/static/results.js").text
+
     assert "textContent" in script
+    assert "narrationText.textContent" in script
     for forbidden in (
         "innerHTML",
         "outerHTML",
@@ -124,6 +128,7 @@ def test_results_renderer_uses_safe_same_origin_dom_apis() -> None:
         "document.write",
         "eval(",
         "new Function",
+        "fetch(",
         "localStorage",
         "sessionStorage",
         "IndexedDB",
@@ -134,34 +139,33 @@ def test_results_renderer_uses_safe_same_origin_dom_apis() -> None:
         assert forbidden not in script
 
 
-def test_results_headings_are_mode_specific_without_internal_names() -> None:
-    script = _asset("/static/results.js")
-    for copy in (
-        "Your shortlist",
-        "Places that fit this trip",
-        "worth considering",
-        "for your trip",
-    ):
-        assert copy in script
-    assert "global discovery mode" not in script
-    assert "scope_discovery mode" not in script
+def test_results_renderer_clears_only_when_a_valid_request_starts() -> None:
+    script = _client().get("/static/results.js").text
 
-
-def test_results_clear_only_when_a_valid_request_starts() -> None:
-    script = _asset("/static/results.js")
     assert '"solara:recommendation-request-start"' in script
     assert 'form.addEventListener("submit", clearResults)' not in script
     assert "resultsSection.hidden = true" in script
     assert "recommendationList.replaceChildren()" in script
+    assert "narrationText.replaceChildren()" in script
+
+
+def test_results_renderer_reveals_successful_empty_responses() -> None:
+    script = _client().get("/static/results.js").text
+
     assert "response.has_recommendations === false" in script
+    assert "emptyState.hidden = false" in script
+    assert "resultsSection.hidden = false" in script
     assert "emptyTitle.focus()" in script
+    assert '"No recommendations returned this time"' not in script
 
 
-def test_editorial_fallback_avoids_repetitive_templates_and_omits_filler() -> None:
-    script = _asset("/static/results.js")
-    assert "Around this time of year" in script
-    assert "Historically, these dates" not in script
-    assert "Your dates fall into" not in script
-    assert "this seasonal signal" not in script
-    assert "if (goodToKnowCopy)" in script
-    assert "historical patterns for your dates, not a live weather forecast" not in script
+def test_results_renderer_uses_one_pipeline_with_mode_specific_copy() -> None:
+    script = _client().get("/static/results.js").text
+
+    for copy in (
+        "Recommended destinations",
+        "Destination for your trip",
+        "Your destination comparison",
+    ):
+        assert copy in script
+    assert script.count("function renderRecommendationResponse") == 1

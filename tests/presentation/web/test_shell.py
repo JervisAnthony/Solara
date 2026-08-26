@@ -21,7 +21,6 @@ def test_packaged_web_resources_resolve_from_the_web_package() -> None:
     assert INDEX_DOCUMENT.parent.name == "templates"
     assert STATIC_DIRECTORY.is_dir()
     assert (STATIC_DIRECTORY / "styles.css").is_file()
-    assert (STATIC_DIRECTORY / "inspiration.js").is_file()
     assert (STATIC_DIRECTORY / "app.js").is_file()
     assert (STATIC_DIRECTORY / "results.js").is_file()
     assert (STATIC_DIRECTORY / "feedback.js").is_file()
@@ -52,20 +51,15 @@ def test_root_returns_semantic_solara_html_shell() -> None:
     assert "Current scoring focuses on seasonal fit" in html
     assert "Season-smart travel intelligence" in html
     assert "Travel that fits the season &mdash; and you." in html
-    assert "Popular escapes" in html
+    assert "A clearer starting point" in html
     assert 'href="#recommendation-workspace"' in html
 
 
-def test_shell_uses_approved_brand_assets_without_altering_the_packaged_set() -> None:
+def test_shell_uses_every_approved_local_brand_asset() -> None:
     html = TestClient(create_app()).get("/").text
 
-    for filename in (
-        "solara-logo-horizontal.png",
-        "solara-mark-gold.png",
-        "solara-logo-monochrome.png",
-    ):
+    for filename in BRANDING_FILENAMES:
         assert f"/static/branding/{filename}" in html
-    assert "/static/branding/solara-logo-stacked.png" not in html
     assert 'rel="icon"' in html
     assert 'href="/static/branding/solara-mark-gold.png"' in html
     assert "<picture" not in html
@@ -129,7 +123,6 @@ def test_web_shell_and_assets_are_independent_of_api_documentation_policy() -> N
 
     assert client.get("/").status_code == 200
     assert client.get("/static/styles.css").status_code == 200
-    assert client.get("/static/inspiration.js").status_code == 200
     assert client.get("/static/app.js").status_code == 200
     assert client.get("/static/results.js").status_code == 200
     assert client.get("/static/feedback.js").status_code == 200
@@ -144,11 +137,6 @@ def test_web_shell_and_assets_are_independent_of_api_documentation_policy() -> N
 def test_root_and_static_mount_are_excluded_from_openapi() -> None:
     paths = TestClient(create_app()).get("/openapi.json").json()["paths"]
 
-    assert set(paths) == {
-        "/health",
-        "/api/v1/recommendations",
-        "/api/v1/feedback",
-        "/api/v1/travel-scope-suggestions",
-    }
+    assert set(paths) == {"/health", "/api/v1/recommendations", "/api/v1/feedback"}
     assert "/" not in paths
     assert all(not path.startswith("/static") for path in paths)

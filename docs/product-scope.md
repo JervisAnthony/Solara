@@ -25,25 +25,15 @@ Solara is intended for travellers who:
 
 ### Destination discovery
 
-A traveller may select up to 15 cities, countries, regions, provinces, island
-groups, or similar supported geographies in one request, or leave destination
-blank for worldwide discovery. Broad and exact scopes may be mixed freely. A
-country or region is never treated as one scoreable destination. For broad and
-blank requests, an AI adapter proposes bounded locality pools from the dates and
-traveller intent; Google then validates each locality, coordinates, country,
-administrative context, and requested-scope containment before it can enter the
-existing evidence pipeline. Explicit localities are reserved first. Remaining
-capacity is allocated fairly across broad scopes, deduplicated, and capped at 15
-concrete scoreable destinations globally.
-
-Explicit-city evaluation and comparison bypass candidate-proposal AI. Interests,
-pace, climate, and the optional natural-language trip description may influence
-which localities are proposed for broad/open discovery, but do not become new
-numeric score components. Historical seasonal evidence and deterministic
-scoring still own final ranking. Geographic suggestions are same-origin,
-provider-neutral, user-confirmed, and protected by identity-free process-local
-limits. Each result may explain whether it came from an exact traveller selection
-or a broad-scope expansion; that context never changes scoring.
+A traveller may leave destination input blank and ask where to go, supply one
+human-readable city/locality for evaluation, or supply two to five cities for a
+bounded comparison. Country-wide recommendation is not part of MVP1. Solara
+resolves explicit locality names server-side, then uses
+the same evidence, deterministic scoring, and ranking pipeline in every mode.
+Blank discovery remains an intended Solara capability. In the current hosted
+public alpha, however, the tested real blank-discovery request completed with an
+empty result rather than useful destination candidates; correction is deferred
+to the next public-alpha experience iteration in Commit 48.
 
 ### Attraction discovery
 
@@ -71,8 +61,6 @@ The first usable version should support:
 
 - structured destination-recommendation requests;
 - discovery, single-city evaluation, and small city comparisons;
-- one-country or one-region locality discovery;
-- guided interests, stable pace/climate choices, and optional trip context;
 - traveller interests and trip-style preferences;
 - destination and attraction representations;
 - normalized weather and seasonal observations;
@@ -153,78 +141,18 @@ places, mapping, search, or AI provider.
 Useful deterministic results should remain available when optional AI generation
 or an external provider is unavailable.
 
-### Phase 2B traveller experience boundary
+## Out of scope for the initial milestones
 
-Postcards are optional visual enrichment from current provider-backed photo
-metadata. The Wayfinder is optional structured explanation and storytelling.
-Neither is evidence, neither selects or orders destinations, and neither can
-change Seasonal Fit. Photo, handle, media, narration, or schema failure leaves the
-same deterministic recommendation usable.
-
-The ordinary traveller UI is intentionally non-technical: it prioritizes imagery,
-destination identity and provider-backed administrative context, Seasonal Fit,
-concise stories, Places to see, editorial Seasonal feel, grounded destination-
-character Good to know, and shortlist comparison. Good to know is omitted when
-trusted non-seasonal grounding is insufficient; the historical-not-forecast note
-appears once for the overall result rather than inside every card. Components,
-weights, weighted
-contributions, configured comfort values, raw aggregates, and audit keys remain
-available internally and through the additive typed API for engineering and
-compatible consumers; hiding them in the browser does not delete them.
-
-The homepage catalogue contains exactly twelve locally bundled, credited Popular
-Escapes and uses three-second motion with pause/resume, hidden-tab pausing, and no
-automatic movement under reduced-motion preferences. Premium pace/climate menus
-and the vacation-description composer preserve stable API values and traveller
-text without claiming those preferences are independent numeric score factors.
-
-### Commit 49 itinerary boundary
-
-Commit 48's public-alpha traveller experience is complete: intent collection,
-mixed geographic discovery, deterministic seasonal ranking, Postcards,
-Wayfinder, and traveller-first recommendation stories are implemented. Commit 49
-remains pending and contains only Itinerary Studio / Build This Trip. The future
-itinerary experience may organize morning, afternoon, and evening; add, remove,
-replace, and reorder activities; sequence destinations and allocate trip days;
-represent accommodation suggestions and transport legs; summarize the itinerary;
-and generate Wayfinder itinerary narration. Its initial implementation may be
-session-based without accounts. It must not invent booking inventory.
-
-### MVP2 destination knowledge and RAG boundary
-
-Destination Knowledge + RAG Grounding is deferred entirely to MVP2. A future
-curated or verifiable corpus may use ingestion, normalization/chunking,
-embeddings, vector or hybrid retrieval, metadata and geographic filtering,
-freshness metadata, and destination/admin-area linking to ground destination
-facts, Good to Know, destination character, cultural or practical context,
-Wayfinder stories, and itinerary enrichment.
-
-The knowledge corpus must use authoritative or verifiable sources and retain
-source URL, publisher/source, destination, country, relevant administrative area,
-retrieval date, publication/update date when available, content type, and
-relevant licence/use boundaries. Retrieval may support grounded Good to Know,
-destination character, practical/cultural/activity context, and itinerary
-storytelling with future source links. It must not replace geographic validation,
-historical weather evidence, deterministic seasonal scoring, or rank authority.
-No vector provider is selected; vector and hybrid retrieval technology will be
-evaluated during MVP2.
-
-## Out of scope for the current public alpha
-
-The current public-alpha implementation does not:
+The initial implementation will not:
 
 - book flights, hotels, activities, or transport;
 - process payments;
-- construct itineraries or multi-country dated journeys;
-- persist trips or provide traveller accounts;
-- provide partner booking inventory or booking-provider integrations;
-- operate the MVP2 destination corpus, RAG, or vector-retrieval layer;
 - guarantee prices or availability;
 - replace official visa, immigration, health, or safety advice;
 - provide real-time emergency guidance;
 - operate as an autonomous travel agent;
 - scrape websites in violation of their terms;
-- introduce a vector database or RAG pipeline during MVP1;
+- require a vector database before there is a demonstrated product need;
 - introduce multi-agent orchestration merely for architectural novelty.
 
 ## Future possibilities

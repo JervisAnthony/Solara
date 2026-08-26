@@ -10,7 +10,6 @@ from urllib.request import Request
 import pytest
 
 from solara_travel.infrastructure.http import (
-    BinaryHttpResponse,
     JsonHttpDecodeError,
     JsonHttpResponse,
     UrllibJsonHttpTransport,
@@ -25,11 +24,9 @@ class FakeUrlResponse:
         *,
         status_code: int,
         body: bytes,
-        content_type: str | None = None,
     ) -> None:
         self.status_code = status_code
         self.body = body
-        self.content_type = content_type
 
     def __enter__(self) -> "FakeUrlResponse":
         """Enter the fake response context."""
@@ -55,11 +52,6 @@ class FakeUrlResponse:
         """Return the configured response body."""
 
         return self.body
-
-    def getheader(self, name: str, default: str | None = None) -> str | None:
-        """Return the configured content type for binary transport tests."""
-
-        return self.content_type if name.casefold() == "content-type" else default
 
 
 class RecordingOpener:
@@ -112,50 +104,6 @@ def test_json_http_response_preserves_values() -> None:
 
     assert response.status_code == 200
     assert response.payload is payload
-
-
-def test_binary_http_response_preserves_values_and_is_immutable() -> None:
-    response = BinaryHttpResponse(200, b"image", "image/webp")
-    assert response == BinaryHttpResponse(200, b"image", "image/webp")
-    with pytest.raises(FrozenInstanceError):
-        response.status_code = 500  # type: ignore[misc]
-
-
-def test_get_bytes_uses_server_only_get_and_returns_media_metadata() -> None:
-    opener = RecordingOpener(
-        response=FakeUrlResponse(
-            status_code=200,
-            body=b"image",
-            content_type="image/webp",
-        )
-    )
-    transport = UrllibJsonHttpTransport(opener=opener)
-
-    response = transport.get_bytes(
-        url="https://images.example/photo",
-        headers={"Accept": "image/webp"},
-        timeout_seconds=4.0,
-    )
-
-    assert response == BinaryHttpResponse(200, b"image", "image/webp")
-    assert opener.requests[0].get_method() == "GET"
-    assert opener.requests[0].get_header("Accept") == "image/webp"
-    assert opener.timeouts == [4.0]
-
-
-def test_get_bytes_preserves_http_error_without_decoding_body() -> None:
-    error = HTTPError(
-        url="https://images.example/photo",
-        code=429,
-        msg="rate limited",
-        hdrs=None,
-        fp=BytesIO(b"binary error"),
-    )
-    transport = UrllibJsonHttpTransport(opener=RecordingOpener(error=error))
-
-    assert transport.get_bytes(
-        url="https://images.example/photo", headers={}, timeout_seconds=4.0
-    ) == BinaryHttpResponse(429, b"binary error", None)
 
 
 def test_json_http_response_uses_value_equality() -> None:
@@ -556,7 +504,9 @@ def test_post_json_preserves_http_error_status_and_json_payload(
         code=status_code,
         msg="provider error",
         hdrs=None,
-        fp=BytesIO(json.dumps(payload).encode("utf-8")),
+        fp=BytesIO(
+            json.dumps(payload).encode("utf-8")
+        ),
     )
     opener = RecordingOpener(
         error=http_error,
@@ -621,6 +571,7 @@ def test_post_json_propagates_url_error() -> None:
         )
 
     assert exc_info.value is error
+
 
 
 def test_post_json_propagates_timeout_error() -> None:

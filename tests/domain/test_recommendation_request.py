@@ -269,21 +269,11 @@ def test_recommendation_request_requires_destination_query_values() -> None:
         )
 
 
-@pytest.mark.parametrize("count", [0, 1, 5, 6, 12, 15])
-def test_recommendation_request_accepts_up_to_fifteen_queries(count: int) -> None:
-    request = RecommendationRequest(
-        TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
-        destination_queries=tuple(DestinationQuery(str(index)) for index in range(count)),
-    )
-
-    assert len(request.destination_queries) == count
-
-
-def test_recommendation_request_rejects_sixteen_queries() -> None:
-    with pytest.raises(ValueError, match="at most 15"):
+def test_recommendation_request_rejects_more_than_five_queries() -> None:
+    with pytest.raises(ValueError, match="at most 5"):
         RecommendationRequest(
             TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
-            destination_queries=tuple(DestinationQuery(str(index)) for index in range(16)),
+            destination_queries=tuple(DestinationQuery(str(index)) for index in range(6)),
         )
 
 

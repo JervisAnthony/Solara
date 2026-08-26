@@ -14,7 +14,6 @@ from solara_travel.analytics.seasonality import (
 from solara_travel.application.results import (
     DestinationRecommendation,
     RecommendationEvidence,
-    RecommendationOrigin,
     RecommendationResult,
 )
 from solara_travel.domain.attraction import Attraction
@@ -23,7 +22,6 @@ from solara_travel.domain.destination import Destination
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.recommendation import RecommendationRequest
 from solara_travel.domain.travel import TravelPeriod
-from solara_travel.domain.travel_scope import TravelScope, TravelScopeKind
 from solara_travel.domain.weather import WeatherObservation
 
 
@@ -173,7 +171,10 @@ def test_recommendation_evidence_preserves_attraction_tuple(
     assert evidence.attractions is attractions
     assert evidence.attractions == attractions
     assert isinstance(evidence.seasonal_weather, SeasonalWeatherProfile)
-    assert evidence.seasonal_temperature_comfort.profile == evidence.seasonal_weather
+    assert (
+        evidence.seasonal_temperature_comfort.profile
+        == evidence.seasonal_weather
+    )
 
 
 def test_recommendation_evidence_is_immutable_hashable_value() -> None:
@@ -315,7 +316,6 @@ def test_destination_recommendation_is_immutable_hashable_value() -> None:
         ("destination", "Kyoto", "destination must be a Destination"),
         ("suitability", 0.8, "suitability must be a SuitabilityScore"),
         ("evidence", {}, "evidence must be RecommendationEvidence"),
-        ("origin", "France", "origin must be RecommendationOrigin or None"),
     ],
 )
 def test_destination_recommendation_rejects_invalid_field_type(
@@ -389,7 +389,9 @@ def test_destination_recommendation_supports_generic_component_interop() -> None
 
     evidence = _evidence(temperature=22.0)
     suitability = _suitability(evidence, generic_score=0.4)
-    recommendation = DestinationRecommendation(_destination(), suitability, evidence)
+    recommendation = DestinationRecommendation(
+        _destination(), suitability, evidence
+    )
 
     assert tuple(component.name for component in recommendation.components) == (
         "seasonal_temperature_comfort",
@@ -528,7 +530,9 @@ def test_recommendation_result_allows_same_name_for_distinct_destinations() -> N
     """Destination uniqueness uses full equality rather than names alone."""
 
     period = _period()
-    united_states = _destination("Springfield", "United States", 39.7817, -89.6501)
+    united_states = _destination(
+        "Springfield", "United States", 39.7817, -89.6501
+    )
     canada = _destination("Springfield", "Canada", 45.0, -75.0)
 
     result = RecommendationResult(
@@ -569,60 +573,4 @@ def test_recommendation_result_public_imports() -> None:
 
     assert application.DestinationRecommendation is DestinationRecommendation
     assert application.RecommendationEvidence is RecommendationEvidence
-    assert application.RecommendationOrigin is RecommendationOrigin
     assert application.RecommendationResult is RecommendationResult
-
-
-def test_recommendation_result_validates_geographic_discovery_metadata() -> None:
-    request = RecommendationRequest(_period())
-    scope = TravelScope("Portugal", TravelScopeKind.COUNTRY, "Portugal", "PT")
-    result = RecommendationResult(
-        request,
-        (),
-        destination_mode="scope_discovery",
-        travel_scope=scope,
-    )
-    assert result.travel_scope is scope
-    with pytest.raises(ValueError, match="destination_mode is not supported"):
-        RecommendationResult(request, (), destination_mode="ai_ranked")
-    with pytest.raises(TypeError, match="travel_scope must be"):
-        RecommendationResult(request, (), travel_scope="Portugal")  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match="scope_discovery requires"):
-        RecommendationResult(request, (), destination_mode="scope_discovery")
-
-
-def test_recommendation_origin_normalizes_provider_independent_context() -> None:
-    origin = RecommendationOrigin(
-        "  Philippines  ",
-        TravelScopeKind.COUNTRY,
-        ("  Palawan  ",),
-    )
-    assert origin.requested_scope == "Philippines"
-    assert origin.administrative_context == ("Palawan",)
-
-
-@pytest.mark.parametrize(
-    ("values", "error", "message"),
-    [
-        ({"requested_scope": None}, TypeError, "must be a string"),
-        ({"requested_scope": " "}, ValueError, "must not be blank"),
-        ({"requested_scope_kind": "country"}, TypeError, "TravelScopeKind"),
-        ({"administrative_context": []}, TypeError, "must be a tuple"),
-        ({"administrative_context": ("",)}, ValueError, "non-blank"),
-        ({"administrative_context": ("Palawan", "palawan")}, ValueError, "duplicates"),
-        ({"was_explicit_locality": 1}, TypeError, "must be a bool"),
-        ({"was_explicit_locality": True}, ValueError, "locality scope kind"),
-    ],
-)
-def test_recommendation_origin_rejects_invalid_context(
-    values: dict[str, object],
-    error: type[Exception],
-    message: str,
-) -> None:
-    arguments: dict[str, object] = {
-        "requested_scope": "Philippines",
-        "requested_scope_kind": TravelScopeKind.COUNTRY,
-    }
-    arguments.update(values)
-    with pytest.raises(error, match=message):
-        RecommendationOrigin(**arguments)  # type: ignore[arg-type]

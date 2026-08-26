@@ -5,7 +5,6 @@ from typing import Protocol, runtime_checkable
 from solara_travel.domain.attraction import Attraction
 from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.recommendation import RecommendationRequest
-from solara_travel.domain.travel_scope import TravelScope, TravelScopeSuggestion
 
 
 @runtime_checkable
@@ -38,27 +37,6 @@ class DestinationResolutionPort(Protocol):
 
     def resolve_destination(self, query: DestinationQuery) -> Destination | None:
         """Return one normalized destination, or ``None`` for no match."""
-        ...
-
-
-@runtime_checkable
-class TravelScopeResolutionPort(Protocol):
-    """Contract for resolving locality, region, or country input."""
-
-    def resolve_travel_scope(self, query: DestinationQuery) -> TravelScope | None:
-        """Return normalized geographic meaning, or ``None`` for no match."""
-        ...
-
-
-@runtime_checkable
-class TravelScopeSuggestionPort(Protocol):
-    """Contract for bounded geographic typeahead suggestions."""
-
-    def suggest_travel_scopes(
-        self,
-        query: DestinationQuery,
-    ) -> tuple[TravelScopeSuggestion, ...]:
-        """Return at most five display-safe locality/region/country suggestions."""
         ...
 
 
