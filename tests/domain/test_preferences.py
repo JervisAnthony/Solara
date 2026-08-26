@@ -304,3 +304,23 @@ def test_traveller_preferences_is_immutable() -> None:
 
     with pytest.raises(FrozenInstanceError):
         preferences.preferred_pace = "fast"
+
+
+def test_trip_description_normalizes_unicode_and_blank_values() -> None:
+    assert TravellerPreferences(
+        trip_description="  Café and museums — slowly.  "
+    ).trip_description == ("Café and museums — slowly.")
+    assert TravellerPreferences(trip_description="  ").trip_description is None
+
+
+@pytest.mark.parametrize("value", [1, [], object()])
+def test_trip_description_rejects_non_string_values(value: object) -> None:
+    with pytest.raises(TypeError, match="trip description must be a string or None"):
+        TravellerPreferences(trip_description=value)  # type: ignore[arg-type]
+
+
+def test_trip_description_rejects_excess_length_and_control_characters() -> None:
+    with pytest.raises(ValueError, match="must not exceed 1000"):
+        TravellerPreferences(trip_description="x" * 1001)
+    with pytest.raises(ValueError, match="control characters"):
+        TravellerPreferences(trip_description="Quiet trip\u0000please")

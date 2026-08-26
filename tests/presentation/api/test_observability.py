@@ -89,6 +89,26 @@ class NarrationProvider:
         return self.outcome
 
 
+def _wayfinder_json() -> str:
+    names = ("Sunspire Bay", "Mistral Hollow", "Frostglass Vale")
+    return json.dumps(
+        {
+            "opening": "A grounded seasonal shortlist.",
+            "destination_notes": [
+                {
+                    "destination": name,
+                    "why_it_fits": f"{name} is worth considering for these dates.",
+                    "seasonal_feel": "Historically, this is a distinct seasonal window.",
+                    "good_to_know": "Validated landmarks offer useful anchors for wandering.",
+                    "signature_highlights": [],
+                }
+                for name in names
+            ],
+            "comparison_note": "Compare all three before choosing.",
+        }
+    )
+
+
 def test_handled_responses_receive_distinct_server_owned_uuid_request_ids() -> None:
     client = TestClient(create_app())
 
@@ -334,7 +354,7 @@ def test_recommendation_success_events_include_safe_stage_timings(
 @pytest.mark.parametrize(
     ("outcome", "has_narration"),
     [
-        ("Fixed narration", True),
+        (_wayfinder_json(), True),
         (ProviderUnavailableError("private narration failure"), False),
     ],
 )

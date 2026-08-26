@@ -9,7 +9,7 @@ description = "Season-smart, explainable AI travel intelligence."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "docs/image-credits.md"]
 authors = [
     { name = "Jervis Anthony Saldanha" }
 ]
@@ -62,6 +62,7 @@ where = ["src"]
     "static/*.css",
     "static/*.js",
     "static/branding/*.png",
+    "static/travel/*.webp",
 ]
 
 [tool.pytest.ini_options]

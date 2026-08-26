@@ -596,7 +596,7 @@ result = service.recommend(
 )
 ```
 
-## Grounded AI narration
+## The Wayfinder structured narration
 
 Narration runs after `RecommendationService` has produced its authoritative
 deterministic result. The model receives only structured Solara-owned grounding
@@ -606,7 +606,11 @@ instructions require the model to ignore instructions found there and prohibit
 presenting historical seasonal evidence as current weather or a forecast.
 
 The OpenAI adapter uses the Responses API with an explicitly selected model,
-`store=false`, a bounded output size, and no tools or conversation state. The
+`store=false`, a bounded output size, no tools or conversation state, and a
+strict JSON schema for `WayfinderNarrative`. The application validates bounded
+plain-text fields, exact destination identity, and trusted grounding, then
+re-associates every note with deterministic rank order. One comparison request
+uses one Wayfinder call rather than one call per destination. The
 following is manual caller code; `gpt-5.6` is an example compatible model, not an
 architectural constant:
 
@@ -644,9 +648,25 @@ python -m uvicorn solara_travel.presentation.api.app:app --reload
 Open `http://127.0.0.1:8000/` to view the Solara browser shell. Its HTML,
 stylesheet, scripts, and approved brand images are package-local and need no
 browser-side credentials.
-The form collects up to five optional human-readable city/locality chips, required
-start and end dates, optional comma-separated interests, preferred pace, and
-preferred climate. It sends same-origin JSON to the recommendation API.
+The planner accepts zero to 15 cities, countries, regions, provinces, island
+groups, or similar supported geographies in mixed combinations. Zero selections
+preserve worldwide discovery. `travel-scopes.js` requests provider-
+neutral suggestions from the same-origin API only after at least two characters
+and a 350 ms debounce. It aborts stale requests, keeps only the latest response,
+supports Arrow keys/Enter/Escape/pointer selection, and remains usable after
+network, `429`, or `503` failure. Prediction display uses the required
+`Google Maps` attribution. Page load, image motion, preference controls, and
+manual destination entry do not call a provider.
+
+Guided interest checkboxes are the primary interest input; a custom field keeps
+ordered free-form interests and case-insensitive duplicate prevention. Pace and
+climate use custom accessible combobox/listbox controls with stable hidden
+canonical values. They support Enter, Space, ArrowUp/ArrowDown, Home, End,
+Escape, and Tab without a framework or accidental submission. The optional
+full-width `trip_description` composer provides five visible lines, a character
+counter, and non-destructive prompt starters; it trims blank input to `null`, caps content at 1,000
+characters, accepts ordinary Unicode and punctuation, and rejects control
+characters at the domain boundary.
 
 The current browser and API surface is deliberately limited to:
 
@@ -654,6 +674,7 @@ The current browser and API surface is deliberately limited to:
 GET /
 GET /static/styles.css
 GET /static/app.js
+GET /static/travel-scopes.js
 GET /static/results.js
 GET /static/feedback.js
 GET /static/branding/solara-logo-horizontal.png
@@ -662,6 +683,7 @@ GET /static/branding/solara-mark-gold.png
 GET /static/branding/solara-logo-monochrome.png
 GET /health
 POST /api/v1/recommendations
+POST /api/v1/travel-scope-suggestions
 POST /api/v1/feedback
 GET /openapi.json
 GET /docs
@@ -691,15 +713,21 @@ A recommendation request uses this shape:
   "preferences": {
     "interests": ["nature"],
     "preferred_pace": "relaxed",
-    "preferred_climate": "warm"
+    "preferred_climate": "warm_sunny",
+    "trip_description": "Quiet coastal days, local food, and easy walks."
   },
   "destination": null,
   "destination_queries": ["Budapest, Hungary", "Vienna, Austria"]
 }
 ```
 
-The browser omits `destination_queries` to use discovery mode, sends one entry
-for single-destination evaluation, and sends two to five entries for comparison.
+The browser omits `destination_queries` for blank/global discovery and otherwise
+sends up to 15 selected place strings in traveller order. Countries, regions,
+and exact localities may coexist. The application resolves query meaning again
+on submit; autocomplete hints are not authoritative. The sixteenth selection is
+rejected with restrained traveller copy; at 15 the Add destination button is
+disabled until a chip is removed. Chips remain wrapping, readable controls rather
+than creating horizontal page overflow.
 Pending destination text is committed on submit; commas remain part of a
 destination. Duplicate queries are rejected case-insensitively. The browser does
 not geocode, expose raw coordinate entry, or call providers. Pre-resolved
@@ -710,9 +738,9 @@ as `null`.
 The form keeps native `required` semantics while using explicit accessible
 browser feedback. Submission validates destination count and duplicates, that
 both dates exist, the end date is the same as or after the start date,
-comma-separated interests contain no blank
-items, and interests do not repeat after trimming and ordinary case-insensitive
-comparison. Valid interests preserve order and capitalization. Invalid input is
+custom comma-separated interests contain no blank items, and the combined guided
+and custom list does not repeat after trimming and ordinary case-insensitive
+comparison. Valid custom interests preserve order and capitalization. Invalid input is
 not repaired and does not reach `fetch`; field messages and a focusable summary
 identify the problem while the server/domain remains authoritative.
 
@@ -766,7 +794,10 @@ destinations but consumes one Solara recommendation admission and produces at
 most one grounded narration. While it is active, submit and destination-add
 controls are disabled. After ten seconds the status explains that a Render Free
 instance may be waking; the original request remains active and is never polled
-or duplicated. Destination chips survive every terminal error and retry state.
+or duplicated. Destination chips and all new preference controls survive every
+terminal error and retry state. An unresolved query can return bounded
+correction suggestions. Selecting one updates destination state through safe
+text APIs but never auto-submits.
 
 After a successful submission, `app.js` dispatches
 `solara:recommendation-ready`; `results.js` renders the
@@ -778,16 +809,73 @@ rendered to travellers. A configured empty offline
 service remains a successful `200` and produces a neutral empty-result state,
 not an error or fabricated recommendation.
 
-Each ranked card presents the unchanged score as a seasonal-fit percentage and
-keeps technical weights and weighted contributions in the API rather than the
-traveller UI. Selected attractions, historical seasonal aggregates, and server-
-configured temperature-comfort evidence remain available through native
-disclosure controls. The first six attractions are shown initially, with a
-per-card accessible control for the full returned list. Optional narration
-appears separately only when supplied, is conservatively normalized to remove
-common Markdown display markers, and is rendered as plain text; it does not
-determine ranking. These browser paths use
+Each destination story presents the unchanged score as a de-emphasized Seasonal
+Fit percentage and keeps components, technical weights, configured comfort
+values, observation counts, and raw audit data in the API rather than the
+traveller UI. The first six provider-backed attractions appear as Places to see,
+with a per-card accessible local expansion control. Historical evidence becomes
+editorial Seasonal feel language plus one overall historical-not-forecast note.
+Good to Know instead synthesizes grounded destination character from validated
+identity, places/categories, traveller context, and administrative context; it
+is omitted when those trusted non-seasonal inputs are insufficient. Structured
+Wayfinder notes appear only when supplied and are rendered through text-only DOM
+APIs; they do not determine ranking. Postcards show up to four attributed photos,
+load only the first immediately, lazy-load later slides on interaction, never
+autoplay, and fall back without failing the result. These browser paths use
 no live credentials, client persistence, or browser-side provider calls.
+
+### Geographic discovery development
+
+Broad and blank discovery requires two explicit fakes in automated tests:
+
+- a scope/suggestion provider that returns `TravelScope` and
+  `TravelScopeSuggestion` values without Google payload fields;
+- a candidate-proposal provider that returns a strict
+  `DestinationCandidateProposal` without calling OpenAI.
+
+Candidate tests must prove that every proposed name is re-resolved, only
+localities with validated scope containment continue, duplicates are removed,
+explicit localities reserve capacity first, broad scopes receive fair round-robin
+representation, and the final set is capped at 15. Up to 15 proposal calls are
+charged atomically to the discovery safeguard and use at most three concurrent
+scope workers. Exact-locality-only tests must assert that the proposal fake
+receives no call. Adapter tests use fake JSON transports for
+Autocomplete (New), Text Search, and Responses structured output. Never put
+live Google, OpenAI, Open-Meteo, or Render requests in the automated suite.
+
+Run the main focused areas with:
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests/domain tests/application `
+  tests/infrastructure/places tests/infrastructure/discovery `
+  tests/presentation/api/test_travel_scopes.py `
+  tests/presentation/api/test_recommendations.py tests/presentation/web tests/browser
+```
+
+The hero and Popular Escapes timers remain in `inspiration.js`. Both use an
+exact three-second interval, pause while the document is hidden, expose
+pause/resume controls, and do not start when reduced motion is requested. The
+carousel also yields during hover, focus, and pointer interaction. Browser tests
+use reduced-motion emulation and local images; they do not depend on animation
+pixels or external assets.
+
+### Google Places Photos development and policy boundary
+
+`GooglePostcardMetadataProvider`, `SignedPhotoHandleCodec`, and
+`GooglePhotoMediaProvider` are tested only with deterministic transports. Never
+use a live Google request in the suite. Metadata discovery is bounded to four
+distinct photos per destination. A signed handle expires within five minutes and
+contains a current Google photo resource name but no credential. The proxy asks
+Place Photos (New) for at most 1600 by 1200 pixels, uses
+`skipHttpRedirect=true`, accepts only bounded JPEG/PNG/WebP media from approved
+Google media hosts, and returns `no-store` response headers.
+
+Do not add persistent or long-lived caching for photo names or media. Render the
+current author attribution when supplied, a direct Google Maps source link, and
+Google Maps attribution with the image. Re-review the official
+[Place Photos (New) guide](https://developers.google.com/maps/documentation/places/web-service/place-photos)
+and [Places API policies](https://developers.google.com/maps/documentation/places/web-service/policies)
+before changing retrieval, caching, attribution, or source-link behavior.
 
 ### Premium presentation and brand assets
 
@@ -880,8 +968,10 @@ requests, or automatic retry.
 Every `create_app()` call owns independent, identity-free in-memory safeguard
 state. Defaults are 12 accepted recommendation attempts per 60 seconds, 60 per
 3,600 seconds, two concurrent recommendations, 30 feedback submissions per 60
-seconds, and 30 narration attempts per 3,600 seconds. All values must be actual
-positive integers; booleans are rejected.
+seconds, and 30 narration attempts per 3,600 seconds. Typeahead separately
+allows 60 attempts per 60 seconds, 300 per 3,600 seconds, and four concurrent
+requests. Candidate proposal has a separate 30-per-3,600-second budget. All
+values must be actual positive integers; booleans are rejected.
 
 Tests and local composition can supply alternate policy explicitly:
 
@@ -906,7 +996,9 @@ for concurrency; never add real sleeps to limiter tests.
 
 Solara-owned safeguard responses use HTTP `429`, integer delta-seconds
 `Retry-After`, and one of `recommendation_rate_limited`,
-`recommendation_budget_exhausted`, `recommendation_capacity_reached`, or
+`recommendation_budget_exhausted`, `recommendation_capacity_reached`,
+`suggestion_rate_limited`, `suggestion_budget_exhausted`,
+`suggestion_capacity_reached`, `discovery_budget_exhausted`, or
 `feedback_rate_limited`. The distinct upstream `provider_rate_limited` mapping
 remains HTTP `503`. Browser scripts use fixed local copy, keep form values,
 disable submit/retry controls during a bounded cooldown, restore them without
@@ -927,8 +1019,11 @@ Use `create_deployment_app()` only for the hosted application. On invocation it
 loads typed settings, requires Google Places and OpenAI configuration, composes
 the live provider graph, and delegates to `create_app()`. Importing either the
 config package or deployment module is safe without credentials. Provider calls
-still happen only on admitted recommendation or narration work, never at
-startup.
+still happen only on admitted suggestion, recommendation, candidate-proposal,
+or narration work, never at startup. Geographic resolution and suggestions reuse
+`SOLARA_GOOGLE_PLACES_API_KEY`; candidate proposal and narration reuse
+`SOLARA_OPENAI_API_KEY` and `SOLARA_OPENAI_MODEL`. The new safeguard defaults and
+their optional environment overrides are listed in `.env.example`.
 
 Render is the live hosted MVP1 target, with the root `render.yaml` representing
 its desired configuration. That deployment does not change the local workflow:
@@ -1323,7 +1418,8 @@ Significant architectural changes should answer:
 - What complexity is being introduced?
 - Is there a simpler solution?
 
-Do not introduce technologies such as:
+Do not introduce technologies such as the following without a demonstrated
+product requirement:
 
 - vector databases;
 - RAG;
@@ -1334,7 +1430,15 @@ Do not introduce technologies such as:
 - distributed event systems;
 - complex databases;
 
-without a demonstrated product requirement.
+These technologies remain absent from the completed Commit 48 implementation.
+Destination Knowledge + RAG Grounding is deferred entirely to MVP2. Do not add
+Pinecone, Weaviate, Qdrant, pgvector, Elasticsearch, or another vector dependency
+during MVP1. MVP2 must evaluate corpus provenance, freshness, licensing,
+geographic metadata filtering, cost, latency, operational burden, scale, lock-in,
+and developer ergonomics before choosing a vector or hybrid retrieval provider.
+Retrieval may later ground Wayfinder, Good to Know, and itinerary enrichment; it
+must remain outside deterministic geographic validation, weather evidence,
+seasonal scoring, and rank authority.
 
 ## Provider selection
 

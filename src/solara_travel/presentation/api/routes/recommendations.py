@@ -5,7 +5,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from solara_travel.application import DestinationNotFoundError
+from solara_travel.application import (
+    DestinationDiscoveryUnavailableError,
+    DestinationNotFoundError,
+)
 from solara_travel.domain import RecommendationRequest
 from solara_travel.ports import (
     ProviderAuthenticationError,
@@ -32,6 +35,7 @@ from solara_travel.presentation.api.safeguards import (
     ApiSafeguards,
     RecommendationLease,
     SafeguardRejection,
+    SuggestionLease,
 )
 from solara_travel.presentation.api.schemas import ApiErrorResponse
 
@@ -120,7 +124,24 @@ def _run_recommendation(
     assert recommendation_service is not None
     recommendation_started_at = perf_counter()
     try:
-        result = recommendation_service.recommend(domain_request)
+        plan = recommendation_service.prepare(domain_request)
+        if plan.requires_candidate_proposal:
+            discovery_admission = safeguards.admit_discovery(plan.proposal_call_count)
+            if isinstance(discovery_admission, SafeguardRejection):
+                emit_event(
+                    "recommendation.rejected",
+                    request_id=request_id_from_request(request),
+                    code=discovery_admission.code,
+                    stage="discovery_safeguard",
+                    retry_after_seconds=discovery_admission.retry_after_seconds,
+                )
+                raise _api_error(
+                    status.HTTP_429_TOO_MANY_REQUESTS,
+                    discovery_admission.code,
+                    "Solara has reached its current destination-discovery allowance.",
+                    retry_after_seconds=discovery_admission.retry_after_seconds,
+                )
+        result = recommendation_service.recommend_plan(plan)
     except DestinationNotFoundError as exc:
         emit_event(
             "recommendation.failed",
@@ -130,13 +151,24 @@ def _run_recommendation(
             duration_ms=elapsed_milliseconds(recommendation_started_at),
             destination_count=len(domain_request.destination_queries),
         )
+        suggestions = _correction_suggestions(exc, dependencies, safeguards)
         raise _api_error(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             "destination_not_found",
             (
-                f'Solara couldn\'t resolve "{exc.query.value}" as a city or locality. '
-                "Enter a city and, if helpful, its country — for example, Budapest, Hungary."
+                f'Solara couldn\'t find "{exc.query.value}" as a city, country or region. '
+                "Review the spelling or choose one of the suggested places."
             ),
+            suggestions=suggestions or None,
+        ) from exc
+    except DestinationDiscoveryUnavailableError as exc:
+        _emit_recommendation_failure(
+            request, "destination_discovery_unavailable", recommendation_started_at
+        )
+        raise _api_error(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "destination_discovery_unavailable",
+            "Solara couldn't explore new destinations just now. Your trip details are still here.",
         ) from exc
     except ProviderAuthenticationError as exc:
         _emit_recommendation_failure(
@@ -180,6 +212,12 @@ def _run_recommendation(
 
     recommendation_duration_ms = elapsed_milliseconds(recommendation_started_at)
     narration = None
+    wayfinder = None
+    postcards = (
+        None
+        if dependencies.postcard_enrichment_service is None
+        else dependencies.postcard_enrichment_service.enrich(result)
+    )
     narration_duration_ms = None
     narration_attempted = (
         dependencies.narration_service is not None and safeguards.admit_narration()
@@ -191,6 +229,7 @@ def _run_recommendation(
         narration_duration_ms = elapsed_milliseconds(narration_started_at)
         result = narrated.recommendation_result
         narration = narrated.narration
+        wayfinder = narrated.wayfinder
     elif dependencies.narration_service is not None:
         emit_event(
             "narration.skipped",
@@ -199,7 +238,12 @@ def _run_recommendation(
             stage="safeguard",
         )
 
-    response = recommendation_result_to_response(result, narration)
+    response = recommendation_result_to_response(
+        result,
+        narration,
+        wayfinder=wayfinder,
+        postcards=postcards,
+    )
     emit_event(
         "recommendation.completed",
         request_id=request_id_from_request(request),
@@ -224,6 +268,10 @@ _SAFEGUARD_MESSAGES = {
     "recommendation_capacity_reached": (
         "Solara is already processing the maximum number of recommendation requests. "
         "Please try again shortly."
+    ),
+    "discovery_budget_exhausted": (
+        "This public preview has reached its destination-discovery allowance. "
+        "Please try again later."
     ),
 }
 
@@ -260,10 +308,38 @@ def _api_error(
     message: str,
     *,
     retry_after_seconds: int | None = None,
+    suggestions: tuple[str, ...] | None = None,
 ) -> HTTPException:
     headers = {"Retry-After": str(retry_after_seconds)} if retry_after_seconds is not None else None
     return HTTPException(
         status_code=status_code,
-        detail={"code": code, "message": message},
+        detail={
+            "code": code,
+            "message": message,
+            **({"suggestions": list(suggestions)} if suggestions else {}),
+        },
         headers=headers,
     )
+
+
+def _correction_suggestions(
+    error: DestinationNotFoundError,
+    dependencies: ApiDependencies,
+    safeguards: ApiSafeguards,
+) -> tuple[str, ...]:
+    """Attempt bounded spelling assistance without exposing provider failures."""
+
+    if error.suggestions:
+        return error.suggestions
+    service = dependencies.travel_scope_suggestion_service
+    if service is None:
+        return ()
+    admission = safeguards.admit_suggestion()
+    if isinstance(admission, SafeguardRejection):
+        return ()
+    assert isinstance(admission, SuggestionLease)
+    try:
+        with admission:
+            return tuple(item.display_name for item in service.suggest(error.query))
+    except (ProviderError, TypeError, ValueError):
+        return ()

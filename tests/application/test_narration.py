@@ -31,12 +31,14 @@ from solara_travel.ports import (
 )
 from solara_travel.workflows import build_offline_recommendation_service
 
+_DEFAULT_OUTCOME = object()
+
 
 class FakeNarrationProvider:
     """Capture prompts and return or raise one configured outcome."""
 
-    def __init__(self, outcome: object = "Grounded narration") -> None:
-        self.outcome = outcome
+    def __init__(self, outcome: object = _DEFAULT_OUTCOME) -> None:
+        self.outcome = _wayfinder_json() if outcome is _DEFAULT_OUTCOME else outcome
         self.prompts: list[NarrationPrompt] = []
 
     def generate(self, prompt: NarrationPrompt) -> str:
@@ -44,6 +46,30 @@ class FakeNarrationProvider:
         if isinstance(self.outcome, BaseException):
             raise self.outcome
         return self.outcome  # type: ignore[return-value]
+
+
+def _wayfinder_json(*destinations: str) -> str:
+    names = destinations or ("Sunspire Bay", "Mistral Hollow", "Frostglass Vale")
+    return json.dumps(
+        {
+            "opening": "A grounded seasonal shortlist for these dates.",
+            "destination_notes": [
+                {
+                    "destination": name,
+                    "why_it_fits": f"{name} offers a useful season-led option for this trip.",
+                    "seasonal_feel": (
+                        "Around this time of year, the destination tends to feel comfortable."
+                    ),
+                    "good_to_know": "Validated landmarks offer useful anchors for wandering.",
+                    "signature_highlights": [],
+                }
+                for name in names
+            ],
+            "comparison_note": "Compare the seasonal feel before choosing."
+            if len(names) > 1
+            else None,
+        }
+    )
 
 
 def _recommendation_result(*, preferences: TravellerPreferences | None = None):
@@ -112,6 +138,15 @@ def test_narrated_result_requires_narration_or_none() -> None:
         NarratedRecommendationResult(_recommendation_result(), "prose")  # type: ignore[arg-type]
 
 
+def test_narrated_result_requires_wayfinder_or_none() -> None:
+    with pytest.raises(TypeError, match="wayfinder must be WayfinderNarrative or None"):
+        NarratedRecommendationResult(
+            _recommendation_result(),
+            None,
+            "story",  # type: ignore[arg-type]
+        )
+
+
 def test_narrated_result_is_frozen() -> None:
     narrated = NarratedRecommendationResult(_recommendation_result(), None)
 
@@ -149,25 +184,44 @@ def test_empty_result_skips_provider_call() -> None:
 
 def test_successful_narration_preserves_result_and_captures_grounding() -> None:
     result = _recommendation_result()
-    provider = FakeNarrationProvider("Useful grounded prose")
+    provider = FakeNarrationProvider(_wayfinder_json())
 
     narrated = RecommendationNarrationService(provider).narrate(result)
 
     assert narrated.recommendation_result is result
     assert narrated.recommendation_result.recommendations == result.recommendations
-    assert narrated.narration == RecommendationNarration("Useful grounded prose")
+    assert narrated.wayfinder is not None
+    assert all(note.good_to_know is None for note in narrated.wayfinder.destination_notes)
+    assert narrated.narration == RecommendationNarration(narrated.wayfinder.as_plain_text())
     assert narrated.has_narration
     assert len(provider.prompts) == 1
 
 
-def test_generated_markdown_markers_are_normalized_to_plain_text() -> None:
+def test_good_to_know_is_retained_only_when_it_names_trusted_grounding() -> None:
+    result = _recommendation_result()
+    payload = json.loads(_wayfinder_json())
+    for raw_note, recommendation in zip(
+        payload["destination_notes"], result.recommendations, strict=True
+    ):
+        raw_note["good_to_know"] = (
+            f"{recommendation.evidence.attractions[0].name} is a useful anchor for wandering."
+        )
+
+    narrated = RecommendationNarrationService(FakeNarrationProvider(json.dumps(payload))).narrate(
+        result
+    )
+
+    assert narrated.wayfinder is not None
+    assert all(note.good_to_know is not None for note in narrated.wayfinder.destination_notes)
+
+
+def test_invalid_unstructured_markdown_output_degrades_nonfatally() -> None:
     provider = FakeNarrationProvider("## Overall\n\n**Seasonal fit**\n\n### Rankings\n\n`Budapest`")
 
     narrated = RecommendationNarrationService(provider).narrate(_recommendation_result())
 
-    assert narrated.narration == RecommendationNarration(
-        "Overall\n\nSeasonal fit\n\nRankings\n\nBudapest"
-    )
+    assert narrated.narration is None
+    assert narrated.wayfinder is None
 
 
 def test_narration_instructions_require_plain_text_and_correct_policy_attribution() -> None:
@@ -184,6 +238,9 @@ def test_narration_instructions_require_plain_text_and_correct_policy_attributio
         "traveller interests, pace, or preferred-climate words",
         "Solara's configured scoring policy",
         "Never describe configured comfort values",
+        'Never repeat "Historically"',
+        "Return null rather than filler",
+        "provider-backed administrative context",
     ):
         assert requirement in instructions
 
@@ -209,17 +266,13 @@ def test_provider_failures_degrade_without_changing_result(error: ProviderError)
     assert not narrated.has_narration
 
 
-@pytest.mark.parametrize(
-    ("outcome", "error_type"),
-    [(None, TypeError), (["prose"], TypeError), ("   ", ValueError)],
-)
-def test_programming_contract_errors_remain_visible(
-    outcome: object, error_type: type[Exception]
-) -> None:
+@pytest.mark.parametrize("outcome", [None, ["prose"], "   "])
+def test_invalid_provider_output_degrades_nonfatally(outcome: object) -> None:
     service = RecommendationNarrationService(FakeNarrationProvider(outcome))
 
-    with pytest.raises(error_type):
-        service.narrate(_recommendation_result())
+    narrated = service.narrate(_recommendation_result())
+    assert narrated.narration is None
+    assert narrated.wayfinder is None
 
 
 def test_grounding_contains_ranked_deterministic_evidence() -> None:
@@ -240,6 +293,7 @@ def test_grounding_contains_ranked_deterministic_evidence() -> None:
             "interests": ["history", "gardens"],
             "preferred_climate": "mild",
             "preferred_pace": "relaxed",
+            "trip_description": None,
         },
         "preselected_destination": None,
         "travel_period": {"end_date": "2026-04-12", "start_date": "2026-04-10"},
@@ -255,6 +309,7 @@ def test_grounding_contains_ranked_deterministic_evidence() -> None:
         [1.0, 0.68, 0.0]
     )
     first = recommendations[0]
+    assert first["recommendation_origin"] is None
     assert first["destination"] == {"country": "Fixtureland", "name": "Sunspire Bay"}
     assert first["score_components"] == [
         {"name": "seasonal_temperature_comfort", "score": 1.0, "weight": 1.0}

@@ -34,15 +34,16 @@ def test_form_exposes_initially_hidden_accessible_validation_feedback() -> None:
     assert "hidden" in summary
     assert 'id="recommendation-validation-list"' in html
 
-    for field_id, error_id in (
-        ("travel-start-date", "travel-start-date-error"),
-        ("travel-end-date", "travel-end-date-error"),
-        ("destination-input", "destination-error"),
-        ("interests", "interests-error"),
-        ("preferred-pace", "preferred-pace-error"),
-        ("preferred-climate", "preferred-climate-error"),
+    for tag, field_id, error_id in (
+        ("input", "travel-start-date", "travel-start-date-error"),
+        ("input", "travel-end-date", "travel-end-date-error"),
+        ("input", "destination-input", "destination-error"),
+        ("input", "interests", "interests-error"),
+        ("button", "preferred-pace", "preferred-pace-error"),
+        ("button", "preferred-climate", "preferred-climate-error"),
+        ("textarea", "trip-description", "trip-description-error"),
     ):
-        field = _tag_with_id(html, "input", field_id)
+        field = _tag_with_id(html, tag, field_id)
         error = _tag_with_id(html, "p", error_id)
         assert error_id in field
         assert "hidden" in error
@@ -88,8 +89,8 @@ def test_app_script_protects_validation_and_loading_lifecycle() -> None:
         "requestInFlight",
         "aria-busy",
         ".disabled",
-        "COMPARE DESTINATIONS",
-        "FIND DESTINATIONS",
+        "EXPLORE MY OPTIONS",
+        "FIND PLACES FOR ME",
         "EXPLORE",
         "Comparing",
         "solara:recommendation-request-start",
@@ -167,13 +168,13 @@ def test_destination_script_preserves_state_and_prevents_duplicate_requests() ->
 
     for marker in (
         "destinationQueries",
-        "maximumDestinations = 5",
+        "maximumDestinations = 15",
         "commitPendingDestination",
         "toLowerCase()",
         'event.key === "Enter"',
         "event.preventDefault()",
         "requestInFlight || cooldownActive",
-        "destinationAddButton.disabled = loading",
+        "destinationQueries.length >= maximumDestinations",
         "destination_queries",
         "coldStartThresholdMilliseconds = 10000",
         "Solara may be waking up",

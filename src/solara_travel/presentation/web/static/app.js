@@ -20,9 +20,11 @@
   const destinationAddButton = document.querySelector("#destination-add");
   const destinationChips = document.querySelector("#destination-chips");
   const destinationStatus = document.querySelector("#destination-status");
+  const tripDescription = document.querySelector("#trip-description");
+  const tripDescriptionCount = document.querySelector("#trip-description-count");
   const recommendationEndpoint = "/api/v1/recommendations";
   const loadingSubmitLabel = "Comparing…";
-  const maximumDestinations = 5;
+  const maximumDestinations = 15;
   const coldStartThresholdMilliseconds = 10000;
   const defaultCooldownSeconds = 60;
   const maximumCooldownSeconds = 86400;
@@ -39,6 +41,7 @@
     interests: "interests-error",
     "preferred-pace": "preferred-pace-error",
     "preferred-climate": "preferred-climate-error",
+    "trip-description": "trip-description-error",
   };
 
   function shortenedDestination(value) {
@@ -48,12 +51,14 @@
 
   function idleSubmitLabel() {
     if (destinationQueries.length === 0) {
-      return "FIND DESTINATIONS →";
+      return "FIND PLACES FOR ME →";
     }
     if (destinationQueries.length === 1) {
-      return `EXPLORE ${shortenedDestination(destinationQueries[0]).toUpperCase()} →`;
+      return destinationQueries[0].kind === "country" || destinationQueries[0].kind === "region"
+        ? "EXPLORE THIS PLACE →"
+        : "EXPLORE THIS DESTINATION →";
     }
-    return "COMPARE DESTINATIONS →";
+    return "EXPLORE MY OPTIONS →";
   }
 
   function updateSubmitLabel() {
@@ -71,6 +76,7 @@
       requestId = null,
       retryAfterSeconds = null,
       responseMessage = null,
+      suggestions = [],
     ) {
       super("Recommendation request failed.");
       this.name = "RecommendationRequestError";
@@ -81,6 +87,7 @@
       this.requestId = requestId;
       this.retryAfterSeconds = retryAfterSeconds;
       this.responseMessage = responseMessage;
+      this.suggestions = suggestions;
     }
   }
 
@@ -104,6 +111,21 @@
   function parseInterests(value) {
     const trimmed = value.trim();
     return trimmed === "" ? null : trimmed.split(",").map((interest) => interest.trim());
+  }
+
+  function selectedInterests(targetForm) {
+    const interests = [
+      ...targetForm.querySelectorAll('input[name="guided-interest"]:checked'),
+    ].map((control) => control.value);
+    const custom = parseInterests(targetForm.elements.namedItem("interests").value) ?? [];
+    const seen = new Set(interests.map((interest) => interest.toLowerCase()));
+    custom.forEach((interest) => {
+      if (!seen.has(interest.toLowerCase())) {
+        interests.push(interest);
+        seen.add(interest.toLowerCase());
+      }
+    });
+    return interests.length === 0 ? null : interests;
   }
 
   function validationError(fieldId, message) {
@@ -140,11 +162,16 @@
 
   function renderDestinationChips() {
     const fragment = document.createDocumentFragment();
-    destinationQueries.forEach((query, index) => {
+    destinationQueries.forEach(({ query, kind }, index) => {
       const item = document.createElement("li");
       item.className = "destination-chip";
       const label = document.createElement("span");
       label.textContent = query;
+      if (kind === "country" || kind === "region") {
+        const kindLabel = document.createElement("small");
+        kindLabel.textContent = kind;
+        label.append(" ", kindLabel);
+      }
       const remove = document.createElement("button");
       remove.type = "button";
       remove.dataset.destinationIndex = String(index);
@@ -154,7 +181,39 @@
       fragment.append(item);
     });
     destinationChips.replaceChildren(fragment);
+    destinationAddButton.disabled =
+      requestInFlight || destinationQueries.length >= maximumDestinations;
+    if (destinationQueries.length >= maximumDestinations) {
+      destinationStatus.textContent = "You've added 15 places — that's plenty to explore.";
+    }
     updateSubmitLabel();
+  }
+
+  function addDestinationQuery(query, kind = null) {
+    const normalizedQuery = query.trim();
+    clearDestinationValidation();
+    if (normalizedQuery === "") {
+      showDestinationValidation("Enter a destination to add.");
+      return false;
+    }
+    if (destinationQueries.length >= maximumDestinations) {
+      showDestinationValidation("Add up to 15 places you'd like Solara to consider.");
+      return false;
+    }
+    if (
+      destinationQueries.some(
+        (value) => value.query.toLowerCase() === normalizedQuery.toLowerCase(),
+      )
+    ) {
+      showDestinationValidation("That destination is already included.");
+      return false;
+    }
+    destinationQueries.push({ query: normalizedQuery, kind });
+    destinationInput.value = "";
+    delete destinationInput.dataset.scopeKind;
+    destinationStatus.textContent = `${normalizedQuery} added.`;
+    renderDestinationChips();
+    return true;
   }
 
   function commitPendingDestination({ allowBlank = false } = {}) {
@@ -167,19 +226,7 @@
       }
       return true;
     }
-    if (destinationQueries.length >= maximumDestinations) {
-      showDestinationValidation("You can compare up to five destinations.");
-      return false;
-    }
-    if (destinationQueries.some((value) => value.toLowerCase() === query.toLowerCase())) {
-      showDestinationValidation("That destination is already included.");
-      return false;
-    }
-    destinationQueries.push(query);
-    destinationInput.value = "";
-    destinationStatus.textContent = `${query} added.`;
-    renderDestinationChips();
-    return true;
+    return addDestinationQuery(query, destinationInput.dataset.scopeKind ?? null);
   }
 
   function showValidation(errors) {
@@ -256,16 +303,21 @@
         end_date: targetForm.elements.namedItem("travel-end-date").value,
       },
       preferences: {
-        interests: parseInterests(targetForm.elements.namedItem("interests").value),
-        preferred_pace: optionalText(targetForm.elements.namedItem("preferred-pace").value),
+        interests: selectedInterests(targetForm),
+        preferred_pace: optionalText(
+          targetForm.querySelector('input[name="preferred-pace"]').value,
+        ),
         preferred_climate: optionalText(
-          targetForm.elements.namedItem("preferred-climate").value,
+          targetForm.querySelector('input[name="preferred-climate"]').value,
+        ),
+        trip_description: optionalText(
+          targetForm.elements.namedItem("trip-description").value,
         ),
       },
       destination: null,
     };
     if (destinationQueries.length > 0) {
-      request.destination_queries = [...destinationQueries];
+      request.destination_queries = destinationQueries.map(({ query }) => query);
     }
     return request;
   }
@@ -286,6 +338,11 @@
         "preferences.preferred_climate",
         "preferred-climate",
         "Review your preferred climate.",
+      ],
+      [
+        "preferences.trip_description",
+        "trip-description",
+        "Review your trip description.",
       ],
     ];
     for (const issue of detail) {
@@ -333,6 +390,14 @@
         ),
       ];
     }
+    if (detail.message.includes("trip description")) {
+      return [
+        validationError(
+          "trip-description",
+          "Keep the trip description under 1,000 characters and remove control characters.",
+        ),
+      ];
+    }
     if (detail.message.includes("destination_queries")) {
       return [validationError("destination-input", "Review your destinations.")];
     }
@@ -367,6 +432,10 @@
       code === "destination_not_found" && typeof detail.message === "string"
         ? detail.message
         : null;
+    const suggestions =
+      code === "destination_not_found" && Array.isArray(detail?.suggestions)
+        ? detail.suggestions.filter((value) => typeof value === "string").slice(0, 5)
+        : [];
     return new RecommendationRequestError(
       "http",
       response.status,
@@ -375,6 +444,7 @@
       requestId,
       retryAfterSeconds,
       responseMessage,
+      suggestions,
     );
   }
 
@@ -438,7 +508,11 @@
     requestInFlight = loading;
     submitButton.disabled = loading || cooldownActive;
     submitButton.textContent = loading ? loadingSubmitLabel : idleSubmitLabel();
-    destinationAddButton.disabled = loading;
+    destinationAddButton.disabled =
+      loading || destinationQueries.length >= maximumDestinations;
+    form.querySelectorAll("input, select, textarea, .premium-select-trigger, .prompt-starter").forEach((control) => {
+      control.disabled = loading;
+    });
     if (loading) {
       form.setAttribute("aria-busy", "true");
     } else {
@@ -464,6 +538,7 @@
     requestErrorTitle.replaceChildren();
     requestErrorMessage.replaceChildren();
     retryButton.hidden = true;
+    requestError.querySelector(".destination-corrections")?.remove();
   }
 
   function classifyRequestError(error) {
@@ -515,6 +590,12 @@
         message:
           "Solara couldn't find one of those destinations. Review your destination and try again.",
         retry: false,
+      },
+      destination_discovery_unavailable: {
+        title: "Destination discovery is temporarily unavailable",
+        message:
+          "Solara couldn't prepare a discovery shortlist right now. Please try again shortly.",
+        retry: true,
       },
       recommendation_rate_limited: {
         title: "Solara is taking a short pause",
@@ -588,6 +669,35 @@
     const presentation = classifyRequestError(error);
     requestErrorTitle.textContent = presentation.title;
     requestErrorMessage.textContent = presentation.message;
+    if (error.suggestions.length > 0) {
+      const choices = document.createElement("div");
+      choices.className = "destination-corrections";
+      const prompt = document.createElement("p");
+      prompt.textContent = "Did you mean:";
+      choices.append(prompt);
+      error.suggestions.forEach((suggestion) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = suggestion;
+        button.addEventListener("click", () => {
+          const unresolvedIndex = destinationQueries.findIndex(({ query }) =>
+            error.responseMessage?.includes(`"${query}"`),
+          );
+          if (unresolvedIndex >= 0) {
+            destinationQueries[unresolvedIndex] = { query: suggestion, kind: null };
+            destinationInput.value = "";
+            destinationStatus.textContent = `${suggestion} selected. Review your trip, then submit when ready.`;
+            renderDestinationChips();
+          } else {
+            destinationInput.value = suggestion;
+          }
+          clearRequestError();
+          destinationInput.focus();
+        });
+        choices.append(button);
+      });
+      requestErrorMessage.after(choices);
+    }
     retryButton.hidden = !presentation.retry;
     requestError.hidden = false;
     if (error.status === 429) {
@@ -679,11 +789,19 @@
     destinationInput &&
     destinationAddButton &&
     destinationChips &&
-    destinationStatus
+    destinationStatus &&
+    tripDescription &&
+    tripDescriptionCount
   ) {
     renderDestinationChips();
     form.addEventListener("submit", handleSubmit);
     retryButton.addEventListener("click", () => form.requestSubmit());
+    form.addEventListener("solara:add-destination", (event) => {
+      const query = event.detail?.query;
+      if (!requestInFlight && typeof query === "string") {
+        addDestinationQuery(query, event.detail?.kind ?? null);
+      }
+    });
     destinationAddButton.addEventListener("click", () => {
       if (!requestInFlight && commitPendingDestination()) {
         destinationInput.focus();
@@ -705,10 +823,14 @@
       const index = Number.parseInt(button.dataset.destinationIndex, 10);
       if (Number.isInteger(index) && index >= 0 && index < destinationQueries.length) {
         const [removed] = destinationQueries.splice(index, 1);
-        destinationStatus.textContent = `${removed} removed.`;
+        destinationStatus.textContent = `${removed.query} removed.`;
         renderDestinationChips();
         destinationInput.focus();
       }
+    });
+    form.addEventListener("solara:scope-selected", () => clearDestinationValidation());
+    tripDescription.addEventListener("input", () => {
+      tripDescriptionCount.textContent = String(tripDescription.value.length);
     });
   }
 })();
