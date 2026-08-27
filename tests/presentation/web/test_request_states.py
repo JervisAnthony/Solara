@@ -185,7 +185,12 @@ def test_destination_script_preserves_state_and_prevents_duplicate_requests() ->
 
 
 def test_browser_scripts_avoid_unsafe_dom_and_persistence_apis() -> None:
-    for asset in ("/static/app.js", "/static/results.js", "/static/feedback.js"):
+    for asset in (
+        "/static/app.js",
+        "/static/results.js",
+        "/static/itinerary.js",
+        "/static/feedback.js",
+    ):
         script = _asset(asset)
         for forbidden in (
             "innerHTML",

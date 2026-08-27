@@ -892,7 +892,7 @@ Commit 45 - deployment configuration
 Commit 46 - hosted MVP1 deployment
 Commit 47 - public-alpha integration, smoke, and browser testing (complete)
 Commit 48 - visual travel experience (complete)
-Commit 49 - itinerary studio / Build This Trip (pending)
+Commit 49 - itinerary studio / Build This Trip (complete)
 Commit 50 - partner + journey capabilities (pending)
 Commit 51 - MVP1 release documentation + launch readiness (pending)
 ```
@@ -1230,7 +1230,7 @@ The active MVP1 sequence is:
 
 - Commit 47 - public-alpha integration, smoke, and browser testing (complete);
 - Commit 48 - visual travel experience (complete);
-- Commit 49 - Itinerary Studio / Build This Trip (pending);
+- Commit 49 - Itinerary Studio / Build This Trip (complete);
 - Commit 50 - Partner + Journey Capabilities (pending);
 - Commit 51 - MVP1 Release Documentation + Launch Readiness (pending).
 
@@ -1286,13 +1286,27 @@ editorial qualification instead of repetitive historical templates. Good to
 Know uses trusted non-seasonal grounding or is omitted, and the generic
 historical disclaimer appears once per result experience.
 
-Commit 49 owns Itinerary Studio / Build This Trip only. Its roadmap includes
-day-by-day construction; morning, afternoon, and evening organization;
-add/remove/reorder/replace controls; destination sequencing; allocation of days
-across destinations; accommodation suggestions; transport-leg representation;
-an itinerary summary; Wayfinder itinerary narration; and an initial session-based
-experience without accounts. It contains no destination corpus, ingestion,
-embeddings, retrieval infrastructure, provenance pipeline, or vector database.
+Commit 49 - Itinerary Studio / Build This Trip is complete. It adds typed
+traveller-party, pace, practical travel requirement, destination-stay,
+ItineraryDay, DayPeriod, ItineraryActivity, DurationEstimate, TravelLeg, and
+FeasibilityAssessment concepts. The premium active-session studio supports
+destination sequencing, coherent day allocation, planning-only route modes,
+Morning/Afternoon/Evening construction, trusted activity discovery, and
+add/remove/move/reorder/replace controls. Day-load guidance deterministically
+accounts for estimated activity time, transitions, a meal/rest block, travel
+time or an explicit unknown, pace, party composition, and declared mobility or
+rest buffers. The Wayfinder summary remains non-authoritative.
+
+Commit 49 also corrects climate eligibility: hard cold-or-snowy requirements use
+absolute historical seasonal evidence for the requested dates before ranking.
+Incompatible candidates are excluded, including tropical Thailand/Philippines
+results without credible cold evidence; a successful zero-match response is
+preferred to a false match. Soft preferences do not become hard exclusions.
+
+The implementation contains no accommodation or booking inventory, live
+schedule, price, cart, payment, partner integration, account, persistence,
+destination corpus, ingestion, embeddings, retrieval infrastructure, provenance
+pipeline, or vector database.
 
 Commit 50 plans multi-country dated journeys, journey legs, partner/agency
 integration boundaries, embedded or white-label deployment boundaries,

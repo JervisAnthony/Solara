@@ -4,6 +4,14 @@ from solara_travel.application.errors import (
     DestinationDiscoveryUnavailableError,
     DestinationNotFoundError,
 )
+from solara_travel.application.itinerary import (
+    MAX_ACTIVITY_OPTIONS,
+    ActivityDiscoveryService,
+    FeasibilityService,
+    ItineraryEditor,
+    ItineraryPlanningService,
+    ItinerarySummaryService,
+)
 from solara_travel.application.narration import (
     NarratedRecommendationResult,
     RecommendationNarration,
@@ -36,6 +44,12 @@ from solara_travel.application.wayfinder import (
 
 __all__ = [
     "DestinationRecommendation",
+    "ActivityDiscoveryService",
+    "FeasibilityService",
+    "ItineraryEditor",
+    "ItineraryPlanningService",
+    "ItinerarySummaryService",
+    "MAX_ACTIVITY_OPTIONS",
     "RecommendationOrigin",
     "DestinationDiscoveryUnavailableError",
     "DestinationNotFoundError",

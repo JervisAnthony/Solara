@@ -19,6 +19,7 @@
     <script src="/static/selects.js" defer></script>
     <script src="/static/app.js" defer></script>
     <script src="/static/results.js" defer></script>
+    <script src="/static/itinerary.js" defer></script>
     <script src="/static/feedback.js" defer></script>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
@@ -111,6 +112,83 @@
             >Pause</button>
           </figcaption>
         </figure>
+      </section>
+
+      <section id="itinerary-studio" class="itinerary-studio" aria-labelledby="itinerary-studio-title" hidden>
+        <div class="shell studio-shell">
+          <header class="studio-hero">
+            <div>
+              <p class="section-label">Itinerary Studio</p>
+              <h2 id="itinerary-studio-title" tabindex="-1">Build this trip</h2>
+              <p>Shape a realistic route with trusted places, honest estimates and calm day-load guidance.</p>
+            </div>
+            <button id="studio-close" class="studio-close" type="button" aria-label="Close Itinerary Studio">Close</button>
+          </header>
+
+          <div class="studio-grid">
+            <aside class="studio-setup" aria-labelledby="studio-setup-title">
+              <p class="studio-step">01 / Traveller setup</p>
+              <h3 id="studio-setup-title">Who is travelling?</h3>
+              <div id="party-presets" class="studio-segments" aria-label="Party type">
+                <button type="button" data-party="solo" aria-pressed="true">Solo</button>
+                <button type="button" data-party="couple" aria-pressed="false">Couple</button>
+                <button type="button" data-party="family" aria-pressed="false">Family</button>
+                <button type="button" data-party="group" aria-pressed="false">Group</button>
+              </div>
+              <div id="party-counters" class="party-counters"></div>
+
+              <h3>Your travel rhythm</h3>
+              <div id="pace-options" class="studio-choice-grid" aria-label="Trip pace">
+                <button type="button" data-pace="relaxed" aria-pressed="false"><strong>Relaxed</strong><span>Generous pauses</span></button>
+                <button type="button" data-pace="balanced" aria-pressed="true"><strong>Balanced</strong><span>Room to explore</span></button>
+                <button type="button" data-pace="active" aria-pressed="false"><strong>Active</strong><span>More in each day</span></button>
+              </div>
+
+              <h3>Travel considerations</h3>
+              <div id="requirement-options" class="requirement-chips" aria-label="Practical travel considerations">
+                <button type="button" data-requirement="wheelchair_access" aria-pressed="false">Wheelchair access</button>
+                <button type="button" data-requirement="reduced_walking" aria-pressed="false">Reduced walking</button>
+                <button type="button" data-requirement="frequent_breaks" aria-pressed="false">Frequent breaks</button>
+                <button type="button" data-requirement="stroller" aria-pressed="false">Stroller</button>
+                <button type="button" data-requirement="slower_transitions" aria-pressed="false">Slower transitions</button>
+              </div>
+              <p class="studio-trust-note">These choices guide pacing only. Solara does not infer medical capability.</p>
+            </aside>
+
+            <div class="studio-workspace">
+              <section class="route-builder" aria-labelledby="route-builder-title">
+                <div class="studio-section-heading">
+                  <div><p class="studio-step">02 / Destination route</p><h3 id="route-builder-title">Arrange your journey</h3></div>
+                  <p id="route-duration" class="route-duration"></p>
+                </div>
+                <div id="destination-route" class="destination-route"></div>
+              </section>
+
+              <section class="day-builder" aria-labelledby="day-builder-title">
+                <div class="studio-section-heading">
+                  <div><p class="studio-step">03 / Build each day</p><h3 id="day-builder-title">Morning to evening</h3></div>
+                  <p id="studio-status" class="studio-status" role="status" aria-live="polite"></p>
+                </div>
+                <div id="itinerary-days" class="itinerary-days"></div>
+              </section>
+
+              <section class="activity-drawer" aria-labelledby="activity-drawer-title">
+                <div class="studio-section-heading">
+                  <div><p class="studio-step">Trusted places palette</p><h3 id="activity-drawer-title">Choose an experience</h3></div>
+                  <p id="active-day-label"></p>
+                </div>
+                <div id="activity-categories" class="requirement-chips" aria-label="Activity categories"></div>
+                <div id="activity-options" class="activity-options"></div>
+                <p class="studio-trust-note">Visit times are clearly labelled planning estimates. Accessibility remains unknown unless a trusted source confirms it.</p>
+              </section>
+
+              <section class="wayfinder-itinerary" aria-labelledby="wayfinder-itinerary-title">
+                <img src="/static/branding/solara-mark-gold.png" alt="" width="1254" height="1254">
+                <div><p class="studio-step">The Wayfinder</p><h3 id="wayfinder-itinerary-title">Your route, in one view</h3><p id="wayfinder-itinerary-copy"></p></div>
+              </section>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section
@@ -492,7 +570,7 @@
                       <div id="preferred-climate-option-dry" class="premium-select-option" role="option" aria-selected="false" data-value="warm_dry"><strong>Warm &amp; dry</strong><span>Warm weather with lower humidity.</span></div>
                       <div id="preferred-climate-option-mild" class="premium-select-option" role="option" aria-selected="false" data-value="mild"><strong>Mild &amp; comfortable</strong><span>Easy daytime temperatures and light layers.</span></div>
                       <div id="preferred-climate-option-cool" class="premium-select-option" role="option" aria-selected="false" data-value="cool"><strong>Cool &amp; crisp</strong><span>Fresh air and cooler days.</span></div>
-                      <div id="preferred-climate-option-cold" class="premium-select-option" role="option" aria-selected="false" data-value="cold_snowy"><strong>Cold &amp; snowy</strong><span>Winter conditions and snow where seasonally appropriate.</span></div>
+                      <div id="preferred-climate-option-cold" class="premium-select-option" role="option" aria-selected="false" data-value="cold_snowy"><strong>Cold or snowy &mdash; required</strong><span>Only show places with credible cold seasonal evidence for your dates.</span></div>
                     </div>
                   </div>
                   <p id="preferred-climate-help" class="field-help">
@@ -584,9 +662,14 @@
             No destinations returned this time
           </h3>
           <p id="recommendation-empty-message">
-            Solara didn't receive destination matches for this request. Adjust your
-            trip details and compare again.
+            No selected destination has credible seasonal evidence for every mandatory
+            requirement. Solara will not substitute a merely less-incompatible match.
           </p>
+          <div class="empty-recovery-actions">
+            <button type="button" data-recovery-target="preferred-climate">Change climate</button>
+            <button type="button" data-recovery-target="destination-search">Change destinations</button>
+            <button type="button" data-recovery-target="destination-search">Broaden my search</button>
+          </div>
         </article>
 
         <ol id="recommendation-list" class="recommendation-list"></ol>

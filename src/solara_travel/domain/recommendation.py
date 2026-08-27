@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from solara_travel.domain.constraints import ClimateConstraint
 from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.preferences import TravellerPreferences
 from solara_travel.domain.travel import TravelPeriod
@@ -24,6 +25,7 @@ class RecommendationRequest:
     preferences: TravellerPreferences = field(default_factory=TravellerPreferences)
     destination: Destination | None = None
     destination_queries: tuple[DestinationQuery, ...] = ()
+    climate_constraint: ClimateConstraint | None = None
 
     def __post_init__(self) -> None:
         """Validate recommendation-request domain values."""
@@ -50,6 +52,11 @@ class RecommendationRequest:
             )
         if self.destination is not None and self.destination_queries:
             raise ValueError("destination and destination_queries are mutually exclusive")
+
+        if self.climate_constraint is not None and not isinstance(
+            self.climate_constraint, ClimateConstraint
+        ):
+            raise TypeError("climate_constraint must be ClimateConstraint or None")
 
         normalized_queries = tuple(query.value.casefold() for query in self.destination_queries)
         if len(normalized_queries) != len(set(normalized_queries)):

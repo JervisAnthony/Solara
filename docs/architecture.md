@@ -823,8 +823,15 @@ again; no silent rewrite occurs. Submitted geography, preferences, description,
 proposals, and raw model output are excluded from operational logs.
 
 Current deterministic scoring is season-led. Interests, preferred pace, and
-preferred climate travel through the request but are not yet separate score
-components. Browser validation supplements the authoritative domain validation:
+soft preferred climate travel through the request but are not separate score
+components. An explicit `ClimateConstraint` has independent hard/soft severity.
+The mandatory cold-or-snowy UI choice creates a hard constraint: trusted
+historical seasonal evidence is gathered for the requested date window, an
+absolute cold threshold is applied, and incompatible candidates are removed
+before deterministic sorting. Temperature evidence can establish cold; Solara
+does not infer or claim snowfall without a snowfall source. A zero-candidate
+result is a successful truthful outcome. Browser validation supplements the
+authoritative domain validation:
 it reports known date and interest problems but never silently repairs malformed
 input. After validation, `app.js` owns busy state, fetching, safe status/code
 classification, and fixed local error copy. Raw backend error text never reaches
@@ -841,6 +848,33 @@ there is no automatic retry or backoff. On success, the existing
 consumes the parsed response without fetching independently, preserves response
 array order and rank, never rescores, and owns both ranked and successful-empty
 rendering.
+
+### Commit 49 itinerary architecture
+
+The itinerary domain is provider-independent. `TravellerParty`,
+`TravellerProfile`, `DestinationStay`, `Itinerary`, `ItineraryDay`, `DayPeriod`,
+`ActivityOption`, `ItineraryActivity`, `DurationEstimate`, `TravelLeg`, and
+`FeasibilityAssessment` contain no Google payload or partner-commerce fields.
+Duration carries a range, provenance, and confidence; accessibility supports
+confirmed, unavailable, and unknown rather than optimistic inference.
+
+Application services remain separated by responsibility. Activity discovery
+maps at most twelve normalized Places attractions into stable options and only
+applies documented category duration heuristics. Planning builds coherent route
+days, the immutable editor owns add/remove/replace/move/reorder behavior, and the
+feasibility service owns deterministic time budgets. Activity duration,
+transition buffers, meal/rest time, inbound travel, pace, children/seniors, and
+declared practical requirements contribute visibly. Unknown travel or visit
+duration produces guidance rather than fabricated precision. A 24-hour overflow
+is a hard violation; ordinary overload remains calm guidance and traveller
+choice.
+
+`POST /api/v1/itinerary-activities` resolves submitted geography again as a
+canonical locality, shares the existing process-local discovery safeguard, and
+returns a bounded provider-neutral palette. The browser studio itself is an
+active-session configurator; it uses DOM `textContent`/node construction and no
+cookies, storage, tracking, account, or hidden persistence. Its deterministic
+Wayfinder fallback summarizes only the authoritative structured itinerary.
 
 Traveller-facing destination stories preserve deterministic order while showing
 Postcards, destination identity and administrative context, a de-emphasized

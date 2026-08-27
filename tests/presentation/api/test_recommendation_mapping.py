@@ -6,6 +6,9 @@ import pytest
 
 from solara_travel.application import RecommendationNarration
 from solara_travel.domain import (
+    ClimateCondition,
+    ClimateConstraint,
+    ConstraintSeverity,
     Destination,
     DestinationQuery,
     GeoCoordinates,
@@ -82,6 +85,16 @@ def test_request_schema_accepts_explicit_null_destination_queries() -> None:
     assert body.destination_queries is None
 
 
+def test_request_mapping_preserves_explicit_hard_climate_constraint() -> None:
+    body = _request_body(
+        climate_constraint={"condition": "cold_or_snowy", "severity": "hard"}
+    )
+    mapped = to_domain_recommendation_request(body)
+    assert mapped.climate_constraint == ClimateConstraint(
+        ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD
+    )
+
+
 def test_request_schema_accepts_exactly_fifteen_destination_queries() -> None:
     queries = [str(index) for index in range(15)]
     body = RecommendationRequestBody.model_validate(
@@ -108,6 +121,9 @@ def test_response_mapping_preserves_authoritative_order_values_and_selected_evid
     request = RecommendationRequest(
         TravelPeriod(date(2026, 4, 10), date(2026, 4, 12)),
         TravellerPreferences(TravellerInterests(("nature",)), "relaxed", "warm"),
+        climate_constraint=ClimateConstraint(
+            ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.SOFT
+        ),
     )
     result = build_offline_recommendation_service(
         comfort_range=TemperatureComfortRange(18.0, 28.0, 10.0)
@@ -123,6 +139,8 @@ def test_response_mapping_preserves_authoritative_order_values_and_selected_evid
     assert response.request.destination is None
     assert response.request.destination_queries == []
     assert response.request.destination_mode == "discovery"
+    assert response.request.climate_constraint is not None
+    assert response.request.climate_constraint.severity == "soft"
     assert response.recommendation_count == 3
     assert response.has_recommendations
     assert response.has_narration

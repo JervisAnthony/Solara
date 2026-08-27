@@ -5,6 +5,11 @@ from datetime import date
 
 import pytest
 
+from solara_travel.domain.constraints import (
+    ClimateCondition,
+    ClimateConstraint,
+    ConstraintSeverity,
+)
 from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.preferences import (
@@ -301,4 +306,23 @@ def test_recommendation_request_rejects_both_destination_input_forms() -> None:
             TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
             destination=Destination("Kyoto", "Japan", GeoCoordinates(35.0, 135.0)),
             destination_queries=(DestinationQuery("Budapest"),),
+        )
+
+
+def test_recommendation_request_accepts_typed_climate_constraint() -> None:
+    constraint = ClimateConstraint(
+        ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD
+    )
+    request = RecommendationRequest(
+        TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
+        climate_constraint=constraint,
+    )
+    assert request.climate_constraint == constraint
+
+
+def test_recommendation_request_rejects_untyped_climate_constraint() -> None:
+    with pytest.raises(TypeError, match="climate_constraint"):
+        RecommendationRequest(
+            TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),
+            climate_constraint=object(),  # type: ignore[arg-type]
         )

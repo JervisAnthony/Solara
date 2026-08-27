@@ -261,3 +261,11 @@ start with one worker and one container/instance. Horizontal replicas would
 multiply effective limits and require a future shared or distributed safeguard
 design. These limits reduce abuse and spend risk but are not a guaranteed cost
 ceiling.
+
+Commit 49 adds no deployment environment variables or external booking
+dependency. `POST /api/v1/itinerary-activities` reuses the configured Places
+provider, resolves one canonical locality, caps the returned palette at twelve,
+and shares the existing process-local suggestion safeguard. The active itinerary
+is not stored by the server or browser. Hosted operators should not describe its
+travel-leg modes or duration estimates as live schedules, inventory, or booking
+availability.
