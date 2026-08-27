@@ -277,7 +277,7 @@ class ItineraryEditor:
 
 @dataclass(frozen=True, slots=True)
 class FeasibilityService:
-    """Calculate transparent day budgets without AI or arbitrary item limits."""
+    """Calculate transparent day budgets without AI or invented travel time."""
 
     _PACE_CAPACITY: ClassVar[dict[Pace, int]] = {
         Pace.RELAXED: 480,
@@ -317,17 +317,22 @@ class FeasibilityService:
             else:
                 activity_minutes += activity.duration.typical_minutes
         travel_minutes = 0
+        unresolved_travel = False
         if day.inbound_travel_leg is not None:
-            travel_minutes += day.inbound_travel_leg.planning_buffer_minutes
             if day.inbound_travel_leg.duration is None:
+                unresolved_travel = True
                 warnings.append(
-                    "Travel duration is unknown; allow additional time before finalizing."
+                    "Travel time is needed before this arrival day's load can be assessed."
                 )
             else:
-                travel_minutes += day.inbound_travel_leg.duration.typical_minutes
+                # Arrival-day planning deliberately uses the conservative upper bound.
+                travel_minutes += day.inbound_travel_leg.duration.maximum_minutes
+                travel_minutes += day.inbound_travel_leg.planning_buffer_minutes
         occupied = activity_minutes + travel_minutes + buffer
         ratio = occupied / available
-        if ratio <= 0.45:
+        if unresolved_travel:
+            level = FeasibilityLevel.UNRESOLVED
+        elif ratio <= 0.45:
             level = FeasibilityLevel.RELAXED
         elif ratio <= 0.70:
             level = FeasibilityLevel.COMFORTABLE
@@ -338,9 +343,15 @@ class FeasibilityService:
             warnings.append(
                 "This day is becoming quite full for the selected pace and travel needs."
             )
-        violations = (
-            ("The planned day exceeds a complete 24-hour window.",) if occupied > 1440 else ()
-        )
+        violations: tuple[str, ...] = ()
+        if not unresolved_travel and travel_minutes >= available:
+            violations = (
+                "Known travel consumes the usable planning window for this arrival day.",
+            )
+        elif not unresolved_travel and day.inbound_travel_leg is not None and occupied > available:
+            violations = (
+                "Known travel, activities, and required buffers exceed this day's planning window.",
+            )
         return FeasibilityAssessment(
             day.number,
             level,

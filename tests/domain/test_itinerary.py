@@ -229,17 +229,31 @@ def test_itinerary_activity_rejects_invalid_values(
 def test_travel_leg_represents_estimated_and_unknown_transitions() -> None:
     origin = destination()
     target = destination("Chiang Mai")
-    estimated = TravelLeg(origin, target, TravelMode.FLIGHT, duration(), 90)
-    unknown = TravelLeg(origin, target, TravelMode.RAIL)
+    estimated = TravelLeg(
+        origin,
+        target,
+        TravelMode.FLIGHT,
+        duration(),
+        90,
+        "trusted routing provider",
+        580.5,
+        True,
+    )
+    unknown = TravelLeg(origin, target)
     assert estimated.planning_buffer_minutes == 90
+    assert estimated.evidence_provenance == "trusted routing provider"
+    assert estimated.distance_kilometers == 580.5
+    assert estimated.verified is True
+    assert unknown.mode is None
     assert unknown.duration is None
+    assert unknown.verified is False
 
 
 @pytest.mark.parametrize(
     ("args", "error", "message"),
     [
-        ((object(), destination("Other"), TravelMode.ROAD), TypeError, "endpoints"),
-        ((destination(), destination(), TravelMode.ROAD), ValueError, "different"),
+        ((object(), destination("Other")), TypeError, "endpoints"),
+        ((destination(), destination()), ValueError, "different"),
         ((destination(), destination("Other"), "road"), TypeError, "mode must"),
         (
             (destination(), destination("Other"), TravelMode.ROAD, object()),
@@ -248,6 +262,36 @@ def test_travel_leg_represents_estimated_and_unknown_transitions() -> None:
         ),
         ((destination(), destination("Other"), TravelMode.ROAD, None, 1.0), TypeError, "buffer"),
         ((destination(), destination("Other"), TravelMode.ROAD, None, -1), ValueError, "negative"),
+        (
+            (destination(), destination("Other"), None, None, 0, " "),
+            ValueError,
+            "non-blank",
+        ),
+        (
+            (destination(), destination("Other"), None, None, 0, None, "far"),
+            TypeError,
+            "must be a number",
+        ),
+        (
+            (destination(), destination("Other"), None, None, 0, None, 0),
+            ValueError,
+            "must be positive",
+        ),
+        (
+            (destination(), destination("Other"), None, None, 0, None, None, 1),
+            TypeError,
+            "must be a boolean",
+        ),
+        (
+            (destination(), destination("Other"), None, None, 0, None, None, True),
+            ValueError,
+            "require a mode",
+        ),
+        (
+            (destination(), destination("Other"), TravelMode.ROAD),
+            ValueError,
+            "require verified evidence",
+        ),
     ],
 )
 def test_travel_leg_rejects_invalid_values(
@@ -260,7 +304,7 @@ def test_travel_leg_rejects_invalid_values(
 def test_itinerary_day_accepts_ordered_activities_and_matching_leg() -> None:
     origin = destination("Phuket")
     target = destination()
-    leg = TravelLeg(origin, target, TravelMode.FLIGHT)
+    leg = TravelLeg(origin, target)
     day = ItineraryDay(1, target, (activity(),), leg)
     assert day.inbound_travel_leg == leg
 
@@ -288,7 +332,7 @@ def test_itinerary_day_accepts_ordered_activities_and_matching_leg() -> None:
         (
             {
                 "inbound_travel_leg": TravelLeg(
-                    destination(), destination("Chiang Mai"), TravelMode.ROAD
+                    destination(), destination("Chiang Mai")
                 )
             },
             ValueError,

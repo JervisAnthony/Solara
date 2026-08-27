@@ -146,7 +146,15 @@ def test_activity_discovery_rejects_invalid_configuration(
 def test_planning_service_initializes_route_and_travel_arrival_day() -> None:
     bangkok = destination()
     chiang_mai = destination("Chiang Mai")
-    leg = TravelLeg(bangkok, chiang_mai, TravelMode.FLIGHT, estimate(180), 90)
+    leg = TravelLeg(
+        bangkok,
+        chiang_mai,
+        TravelMode.FLIGHT,
+        estimate(180),
+        90,
+        "trusted routing provider",
+        verified=True,
+    )
     trip = ItineraryPlanningService().initialize(
         date(2026, 11, 1),
         date(2026, 11, 3),
@@ -173,13 +181,13 @@ def test_planning_service_initializes_route_and_travel_arrival_day() -> None:
         ),
         (
             (DestinationStay(destination(), 1), DestinationStay(destination("Other"), 1)),
-            (TravelLeg(destination(), destination("Other"), TravelMode.ROAD),) * 2,
+            (TravelLeg(destination(), destination("Other")),) * 2,
             ValueError,
             "must align",
         ),
         (
             (DestinationStay(destination(), 1), DestinationStay(destination("Other"), 1)),
-            (TravelLeg(destination("Wrong"), destination("Other"), TravelMode.ROAD),),
+            (TravelLeg(destination("Wrong"), destination("Other")),),
             ValueError,
             "must follow",
         ),
@@ -293,7 +301,7 @@ def test_feasibility_levels_are_deterministic(
 def test_feasibility_accounts_for_party_needs_unknowns_travel_and_hard_impossibility() -> None:
     origin = destination("Origin")
     target = destination()
-    unknown_leg = TravelLeg(origin, target, TravelMode.FERRY, None, 90)
+    unknown_leg = TravelLeg(origin, target)
     needs = tuple(TravelRequirement)
     selected_profile = profile(
         Pace.RELAXED,
@@ -307,12 +315,53 @@ def test_feasibility_accounts_for_party_needs_unknowns_travel_and_hard_impossibi
     )
     assert len(unknown_result.warnings) >= 2
     assert unknown_result.buffer_minutes > 200
+    assert unknown_result.level is FeasibilityLevel.UNRESOLVED
+    assert unknown_result.hard_violations == ()
 
-    known_leg = replace(unknown_leg, duration=estimate(900))
+    known_leg = TravelLeg(
+        origin,
+        target,
+        TravelMode.FLIGHT,
+        estimate(900),
+        90,
+        "trusted routing provider",
+        verified=True,
+    )
     impossible = FeasibilityService().assess(
         populated_day(4, minutes=180, travel_leg=known_leg), selected_profile
     )
-    assert impossible.hard_violations == ("The planned day exceeds a complete 24-hour window.",)
+    assert impossible.occupied_minutes >= 900 + 90
+    assert impossible.hard_violations == (
+        "Known travel consumes the usable planning window for this arrival day.",
+    )
+
+
+def test_feasibility_uses_conservative_route_duration_and_real_day_window() -> None:
+    origin = destination("Origin")
+    target = destination()
+    route_duration = DurationEstimate(
+        240,
+        360,
+        DurationProvenance.PROVIDER,
+        EstimateConfidence.MEDIUM,
+    )
+    leg = TravelLeg(
+        origin,
+        target,
+        TravelMode.RAIL,
+        route_duration,
+        45,
+        "trusted routing provider",
+        verified=True,
+    )
+    result = FeasibilityService().assess(
+        populated_day(2, minutes=90, travel_leg=leg), profile()
+    )
+    assert result.occupied_minutes == 360 + 45 + 180 + 120
+    assert result.level is FeasibilityLevel.VERY_FULL
+    assert result.hard_violations == (
+        "Known travel, activities, and required buffers exceed this day's planning window.",
+    )
 
 
 def test_feasibility_rejects_invalid_inputs_and_summary_is_non_authoritative() -> None:

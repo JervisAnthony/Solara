@@ -2149,6 +2149,8 @@ h4 {
 .travel-leg-copy small { color: #687773; }
 .travel-modes { display: flex; flex-wrap: wrap; gap: .35rem; }
 .travel-modes button { border-radius: 999px; font-size: .72rem; min-height: 2rem; padding: .35rem .65rem; text-transform: capitalize; }
+.travel-option-duration { display: block; font-size: .62rem; margin-top: .15rem; opacity: .8; }
+.route-unverified { background: #efe5d5; border: 1px solid rgb(145 107 47 / 20%); border-radius: 999px; color: #6b5a40; font-size: .72rem; padding: .5rem .75rem; }
 .itinerary-days { display: grid; gap: 1rem; }
 .itinerary-day { background: #fffdf8; border: 1px solid rgb(24 51 47 / 14%); border-radius: 1rem; overflow: hidden; transition: border-color 180ms ease, transform 180ms ease; }
 .itinerary-day.is-active { border-color: #b88a3b; box-shadow: 0 14px 40px rgb(84 67 36 / 10%); }
@@ -2160,9 +2162,11 @@ h4 {
 .feasibility { display: grid; font-size: .7rem; gap: .15rem; text-align: right; text-transform: uppercase; }
 .feasibility strong { color: #315e4c; letter-spacing: .12em; }
 .feasibility-very-full strong { color: #984b3f; }
+.feasibility-travel-time-needed strong { color: #805d27; }
 .feasibility-track { background: #e4dfd3; border-radius: 999px; height: .35rem; margin-top: .25rem; overflow: hidden; }
 .feasibility-fill { background: #4d806b; border-radius: inherit; display: block; height: 100%; transition: width 300ms ease; width: var(--day-load); }
 .feasibility-very-full .feasibility-fill { background: #ad5c4e; }
+.feasibility-travel-time-needed .feasibility-fill { background: #b88a3b; }
 .day-periods { border-top: 1px solid rgb(24 51 47 / 10%); display: grid; grid-template-columns: repeat(3, 1fr); }
 .day-period { min-width: 0; padding: 1rem; }
 .day-period + .day-period { border-left: 1px solid rgb(24 51 47 / 10%); }
@@ -2187,6 +2191,8 @@ h4 {
 .activity-add { background: #18332f; border: 1px solid #b88a3b; border-radius: 999px; color: #fff; cursor: pointer; font: inherit; font-size: .75rem; font-weight: 700; padding: .6rem .8rem; }
 .activity-add:disabled { cursor: default; opacity: .45; }
 .activity-empty { color: #66746f; grid-column: 1 / -1; }
+.activity-loading { color: #66746f; grid-column: 1 / -1; }
+.activity-loading-card { background: linear-gradient(100deg, #f0e8da, #faf6ee, #f0e8da); border: 1px solid rgb(24 51 47 / 8%); border-radius: 1rem; min-height: 6rem; }
 .wayfinder-itinerary { align-items: center; background: #17332e; color: #fffaf0; display: flex; gap: 1rem; padding: 1.5rem; }
 .wayfinder-itinerary img { filter: drop-shadow(0 7px 18px rgb(0 0 0 / 18%)); height: 4.5rem; object-fit: contain; width: 4.5rem; }
 .wayfinder-itinerary h3 { font-family: var(--font-serif, Georgia, serif); margin: .25rem 0; }

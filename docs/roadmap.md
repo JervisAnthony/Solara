@@ -1290,12 +1290,20 @@ Commit 49 - Itinerary Studio / Build This Trip is complete. It adds typed
 traveller-party, pace, practical travel requirement, destination-stay,
 ItineraryDay, DayPeriod, ItineraryActivity, DurationEstimate, TravelLeg, and
 FeasibilityAssessment concepts. The premium active-session studio supports
-destination sequencing, coherent day allocation, planning-only route modes,
+destination sequencing, coherent day allocation, evidence-gated travel legs,
 Morning/Afternoon/Evening construction, trusted activity discovery, and
 add/remove/move/reorder/replace controls. Day-load guidance deterministically
 accounts for estimated activity time, transitions, a meal/rest block, travel
-time or an explicit unknown, pace, party composition, and declared mobility or
-rest buffers. The Wayfinder summary remains non-authoritative.
+time, pace, party composition, and declared mobility or rest buffers. No routing
+provider is configured, so no generic transport modes or default road journey
+are shown. An unknown transfer duration makes arrival-day feasibility unresolved
+without a 90-minute assumption; a verified range uses its conservative upper
+bound. The browser loads bounded activity palettes through the canonical
+`POST /api/v1/itinerary-activities` boundary, trusts server identities and
+duration/accessibility metadata, caches per destination only in memory, rejects
+stale responses, and preserves the route through empty or unavailable states.
+No live schedule or booking claim is made. The Wayfinder summary remains
+non-authoritative.
 
 Commit 49 also corrects climate eligibility: hard cold-or-snowy requirements use
 absolute historical seasonal evidence for the requested dates before ranking.

@@ -856,7 +856,11 @@ The itinerary domain is provider-independent. `TravellerParty`,
 `ActivityOption`, `ItineraryActivity`, `DurationEstimate`, `TravelLeg`, and
 `FeasibilityAssessment` contain no Google payload or partner-commerce fields.
 Duration carries a range, provenance, and confidence; accessibility supports
-confirmed, unavailable, and unknown rather than optimistic inference.
+confirmed, unavailable, and unknown rather than optimistic inference. A
+`TravelLeg` may remain structurally present with no mode, duration, distance,
+buffer, or provenance claim. A mode or other route claim is valid only when the
+leg is marked verified and carries evidence provenance. The repository has no
+configured routing adapter: Google Places does not provide this capability.
 
 Application services remain separated by responsibility. Activity discovery
 maps at most twelve normalized Places attractions into stable options and only
@@ -865,16 +869,27 @@ days, the immutable editor owns add/remove/replace/move/reorder behavior, and th
 feasibility service owns deterministic time budgets. Activity duration,
 transition buffers, meal/rest time, inbound travel, pace, children/seniors, and
 declared practical requirements contribute visibly. Unknown travel or visit
-duration produces guidance rather than fabricated precision. A 24-hour overflow
-is a hard violation; ordinary overload remains calm guidance and traveller
-choice.
+duration produces guidance rather than fabricated precision. Inbound travel
+with unknown duration makes the complete arrival-day assessment explicitly
+unresolved; it is never converted to zero or a generic 90-minute journey. For a
+verified duration range, feasibility conservatively consumes the upper bound and
+adds a separately evidenced planning buffer. Known travel that consumes the
+usable planning window, or known travel plus activities and required buffers
+that exceed it, is a hard conflict; ordinary fullness remains calm guidance and
+traveller choice.
 
 `POST /api/v1/itinerary-activities` resolves submitted geography again as a
 canonical locality, shares the existing process-local discovery safeguard, and
-returns a bounded provider-neutral palette. The browser studio itself is an
-active-session configurator; it uses DOM `textContent`/node construction and no
-cookies, storage, tracking, account, or hidden persistence. Its deterministic
-Wayfinder fallback summarizes only the authoritative structured itinerary.
+returns a bounded provider-neutral palette. It is the browser's primary activity
+discovery boundary: server identities, duration provenance/confidence, and
+accessibility states remain authoritative. Per-destination loading, success,
+empty, and unavailable states are cached only in an in-memory map; request
+abortion and identity checks prevent stale responses from crossing destinations.
+Provider failure leaves the route and day allocation usable. The browser studio
+itself is an active-session configurator; it uses DOM `textContent`/node
+construction and no cookies, storage, tracking, account, or hidden persistence.
+Its deterministic Wayfinder fallback summarizes only the authoritative
+structured itinerary.
 
 Traveller-facing destination stories preserve deterministic order while showing
 Postcards, destination identity and administrative context, a de-emphasized

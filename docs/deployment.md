@@ -266,6 +266,9 @@ Commit 49 adds no deployment environment variables or external booking
 dependency. `POST /api/v1/itinerary-activities` reuses the configured Places
 provider, resolves one canonical locality, caps the returned palette at twelve,
 and shares the existing process-local suggestion safeguard. The active itinerary
-is not stored by the server or browser. Hosted operators should not describe its
-travel-leg modes or duration estimates as live schedules, inventory, or booking
-availability.
+is not stored by the server or browser; activity palettes are cached only in page
+memory. The deployment configures no routing provider. Unverified travel modes
+are therefore not shown, and unknown travel time leaves arrival-day feasibility
+unresolved without a generic 90-minute assumption. Hosted operators should not
+describe any future verified route mode or duration estimate as a live schedule,
+inventory, fare, or booking availability.

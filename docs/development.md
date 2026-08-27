@@ -834,6 +834,26 @@ budget, and concurrency safeguard. Provider failure does not invalidate an
 already configured route. No raw provider response, credential, live schedule,
 booking availability, or price crosses the boundary.
 
+The browser requests this endpoint when a destination/day becomes active. The
+query is the validated recommendation identity (`name, country`), never new free
+text. Server-returned activity identity, duration range/provenance/confidence,
+and accessibility state are authoritative; `itinerary.js` contains no duplicate
+category-duration table or alternate identity algorithm. Palettes have explicit
+loading, success, empty, and temporarily unavailable states, are capped by the
+server at twelve, and are cached in an in-memory per-destination map only.
+`AbortController` plus current-request identity checks prevent a late response
+from rendering into another destination. Failure leaves the existing route and
+day structure usable.
+
+There is currently no configured routing provider or route secret. A structural
+`TravelLeg` without verified evidence exposes no transport mode and selects no
+default road option. Unknown journey duration is not assigned a generic
+90-minute hold: arrival-day feasibility is unresolved until trustworthy travel
+time exists. When a verified range is available, the deterministic feasibility
+rule uses its upper bound and adds any evidenced planning buffer separately. No
+mode, duration, distance, live schedule, inventory, fare, or booking availability
+may be inferred from the global `TravelMode` enum or from a Places API key.
+
 The browser keeps its itinerary in the active page only. It does not use cookies,
 local/session storage, analytics, geolocation, or persistent identity. It uses
 node construction and `textContent` for provider/traveller strings. Known choices

@@ -185,10 +185,21 @@ validated recommendations and selected canonical localities. It organizes
 Morning, Afternoon, and Evening; supports trusted activity add, remove, replace,
 move, and reorder operations; sequences destinations with positive allocations;
 and represents planning-only transport legs without implying live schedules.
+Activity palettes load through `POST /api/v1/itinerary-activities` for the
+validated destination identity, use server-owned identity/duration/accessibility
+semantics, and are cached only in page memory. Loading, empty, and temporary
+provider failure never destroy the itinerary.
+
 Traveller party, pace, children/senior context, and declared practical mobility
 or rest needs modify a deterministic day-time budget. Duration ranges declare
 provider, bounded category-heuristic, or traveller-selected provenance; unknown
-duration and accessibility remain explicitly unknown.
+duration and accessibility remain explicitly unknown. No routing provider is
+currently configured, so unverified flight, rail, road, and ferry options are
+not shown and no default road journey is selected. Unknown travel time makes the
+arrival-day feasibility unresolved rather than comfortable or full; it is not
+represented by a generic 90-minute placeholder. Verified duration ranges use
+their conservative upper bound plus a separate supported planning buffer. Solara
+makes no live schedule, availability, fare, inventory, or booking claim.
 
 Hard eligibility constraints are separate from soft style preferences. The
 mandatory cold-or-snowy choice uses trusted historical evidence for the requested

@@ -22,6 +22,7 @@
       !activityOptions || !activeDayLabel || !status || !summary || !title) return;
 
   const PERIODS = ["morning", "afternoon", "evening"];
+  const ACTIVITY_ENDPOINT = "/api/v1/itinerary-activities";
   const CAPACITY = { relaxed: 480, balanced: 600, active: 720 };
   const REQUIREMENT_BUFFER = {
     wheelchair_access: 30,
@@ -38,6 +39,7 @@
   };
 
   let state = null;
+  let activityRequest = null;
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -67,33 +69,22 @@
       Math.floor(total / usableCount) + (index < total % usableCount ? 1 : 0));
   }
 
-  function estimate(category) {
-    const normalized = String(category).toLowerCase();
-    const rules = [
-      [["museum", "gallery", "temple", "church", "cultural"], [60, 120]],
-      [["beach", "park", "nature", "garden", "hiking"], [120, 180]],
-      [["market", "food", "restaurant"], [90, 120]],
-      [["night", "entertainment"], [90, 150]],
-      [["landmark", "attraction", "viewpoint"], [60, 90]],
-    ];
-    const match = rules.find(([words]) => words.some((word) => normalized.includes(word)));
-    return match ? { minimum: match[1][0], maximum: match[1][1], provenance: "category heuristic" } : null;
+  function canonicalDestination(destination) {
+    return `${destination.name}, ${destination.country}`;
   }
 
-  function prepareActivity(attraction, destination, index) {
-    const coordinates = attraction.coordinates || {};
-    return {
-      identity: `${destination.name}-${coordinates.latitude ?? "x"}-${coordinates.longitude ?? index}-${attraction.name}`,
-      name: attraction.name,
-      category: attraction.category,
-      destination: destination.name,
-      duration: estimate(attraction.category),
-      accessibility: "unknown",
-    };
+  function cancelActivityRequest() {
+    if (!activityRequest) return;
+    activityRequest.controller.abort();
+    if (state?.activityCache.get(activityRequest.key)?.status === "loading") {
+      state.activityCache.delete(activityRequest.key);
+    }
+    activityRequest = null;
   }
 
   function openStudio(detail) {
     if (!detail?.response || !Array.isArray(detail.recommendations) || detail.recommendations.length === 0) return;
+    cancelActivityRequest();
     const total = tripDays(detail.response);
     const selected = detail.recommendations.slice(0, total);
     const allocations = distributeDays(total, selected.length);
@@ -103,14 +94,18 @@
       destinations: selected.map((recommendation, index) => ({
         ...recommendation.destination,
         days: allocations[index],
-        activities: (recommendation.evidence?.attractions || []).map((activity, activityIndex) =>
-          prepareActivity(activity, recommendation.destination, activityIndex)),
       })),
       party: { ...PRESETS.solo },
       pace: "balanced",
       requirements: new Set(),
       selectedActivities: [],
-      travelModes: Array.from({ length: Math.max(0, selected.length - 1) }, () => "road"),
+      travelLegs: Array.from({ length: Math.max(0, selected.length - 1) }, (_, index) => ({
+        origin: selected[index].destination,
+        destination: selected[index + 1].destination,
+        options: [],
+        selectedIdentity: null,
+      })),
+      activityCache: new Map(),
       activeDay: 1,
       category: "all",
       replacement: null,
@@ -129,7 +124,7 @@
         plan.push({
           number,
           destination,
-          travelMode: destinationIndex > 0 && localDay === 0 ? state.travelModes[destinationIndex - 1] : null,
+          travelLeg: destinationIndex > 0 && localDay === 0 ? state.travelLegs[destinationIndex - 1] : null,
         });
         number += 1;
       }
@@ -191,7 +186,7 @@
     const target = index + direction;
     if (target < 0 || target >= state.destinations.length) return;
     [state.destinations[index], state.destinations[target]] = [state.destinations[target], state.destinations[index]];
-    state.travelModes = Array.from({ length: state.destinations.length - 1 }, (_, modeIndex) => state.travelModes[modeIndex] || "road");
+    rebuildUnknownTravelLegs();
     state.selectedActivities = [];
     state.activeDay = 1;
     announce("Route reordered. Selected activities were cleared so day geography remains valid.");
@@ -204,11 +199,20 @@
     const receiver = index === state.destinations.length - 1 ? index - 1 : index + 1;
     state.destinations[receiver].days += removed.days;
     state.destinations.splice(index, 1);
-    state.travelModes = Array.from({ length: state.destinations.length - 1 }, (_, modeIndex) => state.travelModes[modeIndex] || "road");
+    rebuildUnknownTravelLegs();
     state.selectedActivities = state.selectedActivities.filter((activity) => activity.destination !== removed.name);
     state.activeDay = 1;
     announce(`${removed.name} removed. Its days were reassigned.`);
     render();
+  }
+
+  function rebuildUnknownTravelLegs() {
+    state.travelLegs = Array.from({ length: Math.max(0, state.destinations.length - 1) }, (_, index) => ({
+      origin: state.destinations[index],
+      destination: state.destinations[index + 1],
+      options: [],
+      selectedIdentity: null,
+    }));
   }
 
   function renderRoute() {
@@ -240,18 +244,32 @@
   }
 
   function renderTravelLeg(index) {
+    const evidence = state.travelLegs[index];
+    const verifiedOptions = evidence.options.filter((option) => option.verified === true);
     const leg = element("div", "travel-leg");
     const copy = element("div", "travel-leg-copy");
-    copy.append(element("span", "travel-line", ""), element("strong", "", "Travel leg"), element("small", "", "Duration unavailable · hold transfer time before finalising"));
+    copy.append(
+      element("span", "travel-line", ""),
+      element("strong", "", `Travel between ${evidence.origin.name} and ${evidence.destination.name}`),
+      element(
+        "small",
+        "",
+        verifiedOptions.length
+          ? "Verified planning options only · no live schedule or booking availability"
+          : "Route options are not yet verified. Travel time is needed before arrival-day feasibility can be assessed.",
+      ),
+    );
     const modes = element("div", "travel-modes");
-    ["flight", "rail", "road", "ferry"].forEach((mode) => {
-      const option = button(mode, "", () => {
-        state.travelModes[index] = mode;
+    verifiedOptions.forEach((routeOption) => {
+      const option = button(routeOption.mode, "", () => {
+        evidence.selectedIdentity = routeOption.identity;
         render();
       });
-      option.setAttribute("aria-pressed", String(state.travelModes[index] === mode));
+      option.setAttribute("aria-pressed", String(evidence.selectedIdentity === routeOption.identity));
+      option.append(element("span", "travel-option-duration", durationLabel(routeOption.duration)));
       modes.append(option);
     });
+    if (!verifiedOptions.length) modes.append(element("span", "route-unverified", "Travel time needed"));
     leg.append(copy, modes);
     return leg;
   }
@@ -262,18 +280,32 @@
     if (state.party.children) buffer += 30;
     if (state.party.seniors) buffer += 30;
     state.requirements.forEach((requirement) => { buffer += REQUIREMENT_BUFFER[requirement] || 0; });
-    let occupied = buffer + (day.travelMode ? 90 : 0);
+    let occupied = buffer;
+    let travelMinutes = 0;
+    let unresolvedTravel = false;
     const warnings = [];
     selected.forEach((activity) => {
-      if (activity.duration) occupied += Math.ceil((activity.duration.minimum + activity.duration.maximum) / 2);
+      if (activity.duration) occupied += activity.duration.typical_minutes;
       else warnings.push(`Duration is unknown for ${activity.name}.`);
     });
-    if (day.travelMode) warnings.push("Travel duration is unknown; the day includes only a 90-minute planning hold.");
+    if (day.travelLeg) {
+      const routeOption = day.travelLeg.options.find((option) =>
+        option.verified === true && option.identity === day.travelLeg.selectedIdentity);
+      if (!routeOption?.duration) {
+        unresolvedTravel = true;
+        warnings.push("Travel time is needed before Solara can fully assess this arrival day.");
+      } else {
+        travelMinutes = routeOption.duration.maximum_minutes + (routeOption.planning_buffer_minutes || 0);
+        occupied += travelMinutes;
+      }
+    }
     const available = CAPACITY[state.pace];
     const ratio = occupied / available;
-    const level = ratio <= 0.45 ? "relaxed" : ratio <= 0.70 ? "comfortable" : ratio <= 0.90 ? "full" : "very full";
-    if (ratio > 0.90) warnings.push("This day is becoming quite full for your pace and travel needs. Consider moving one activity.");
-    return { occupied, available, buffer, level, warnings, impossible: occupied > 1440 };
+    const level = unresolvedTravel ? "travel time needed" : ratio <= 0.45 ? "relaxed" : ratio <= 0.70 ? "comfortable" : ratio <= 0.90 ? "full" : "very full";
+    if (!unresolvedTravel && ratio > 0.90) warnings.push("This day is becoming quite full for your pace and travel needs. Consider moving one activity.");
+    const impossible = !unresolvedTravel && day.travelLeg &&
+      (travelMinutes >= available || occupied > available);
+    return { occupied, available, buffer, level, warnings, impossible, unresolvedTravel };
   }
 
   function renderDays() {
@@ -289,10 +321,18 @@
       }, `Choose Day ${day.number}, ${day.destination.name}`);
       choose.setAttribute("aria-pressed", String(state.activeDay === day.number));
       heading.append(choose, element("div", "", undefined));
-      heading.lastChild.append(element("strong", "", day.destination.name), element("span", "", day.travelMode ? `Arrival day · ${day.travelMode}` : "A full destination day"));
+      heading.lastChild.append(
+        element("strong", "", day.destination.name),
+        element("span", "", day.travelLeg ? "Arrival day · route evidence pending" : "A full destination day"),
+      );
       const load = assessment(day);
       const meter = element("div", `feasibility feasibility-${load.level.replace(" ", "-")}`);
-      meter.append(element("strong", "", load.level), element("span", "", `${load.occupied} of ${load.available} planning minutes`));
+      meter.append(
+        element("strong", "", load.level),
+        element("span", "", load.unresolvedTravel
+          ? `${load.occupied} known planning minutes · transfer excluded`
+          : `${load.occupied} of ${load.available} planning minutes`),
+      );
       const bar = element("span", "feasibility-track");
       const fill = element("span", "feasibility-fill");
       fill.style.setProperty("--day-load", `${Math.min(100, Math.round(load.occupied / load.available * 100))}%`);
@@ -306,7 +346,7 @@
       card.append(periods);
       if (load.warnings.length) {
         const guidance = element("div", "feasibility-guidance");
-        guidance.append(element("strong", "", load.impossible ? "Hard timing conflict" : "Planning guidance"));
+        guidance.append(element("strong", "", load.impossible ? "Hard timing conflict" : load.unresolvedTravel ? "Feasibility pending" : "Planning guidance"));
         load.warnings.forEach((warning) => guidance.append(element("p", "", warning)));
         card.append(guidance);
       }
@@ -325,6 +365,7 @@
     if (!selected.length) section.append(element("p", "period-empty", "Open space for discovery or rest."));
     selected.forEach((activity, index) => {
       const item = element("div", "planned-activity");
+      item.dataset.activityIdentity = activity.identity;
       const copy = element("div", "");
       copy.append(element("strong", "", activity.name), element("span", "", durationLabel(activity.duration)));
       const actions = element("div", "planned-actions");
@@ -344,13 +385,40 @@
   function durationLabel(duration) {
     if (!duration) return "Duration unavailable";
     const format = (minutes) => minutes % 60 ? `${Math.floor(minutes / 60)}½ hr` : `${minutes / 60} hr`;
-    return `Est. ${format(duration.minimum)}–${format(duration.maximum)} · ${duration.provenance}`;
+    const provenance = duration.provenance.replaceAll("_", " ");
+    return `Est. ${format(duration.minimum_minutes)}–${format(duration.maximum_minutes)} · ${provenance} · ${duration.confidence} confidence`;
   }
 
   function renderPalette() {
     const day = dayPlan().find((candidate) => candidate.number === state.activeDay) || dayPlan()[0];
+    const key = canonicalDestination(day.destination);
     activeDayLabel.textContent = `Adding to Day ${day.number} · ${day.destination.name}`;
-    const available = day.destination.activities;
+    const cached = state.activityCache.get(key);
+    if (!cached) {
+      categories.replaceChildren();
+      activityOptions.replaceChildren(
+        element("div", "activity-loading", "Gathering trusted activity ideas…"),
+        element("div", "activity-loading-card", ""),
+        element("div", "activity-loading-card", ""),
+      );
+      void loadActivityPalette(day.destination);
+      return;
+    }
+    if (cached.status === "loading") {
+      categories.replaceChildren();
+      activityOptions.replaceChildren(
+        element("div", "activity-loading", "Gathering trusted activity ideas…"),
+        element("div", "activity-loading-card", ""),
+        element("div", "activity-loading-card", ""),
+      );
+      return;
+    }
+    if (cached.status === "unavailable") {
+      categories.replaceChildren();
+      activityOptions.replaceChildren(element("p", "activity-empty", "Activity ideas are temporarily unavailable for this destination. Your itinerary is still here."));
+      return;
+    }
+    const available = cached.activities;
     const uniqueCategories = ["all", ...new Set(available.map((activity) => activity.category))];
     const categoryFragment = document.createDocumentFragment();
     uniqueCategories.forEach((category) => {
@@ -366,17 +434,65 @@
     const optionsFragment = document.createDocumentFragment();
     available.filter((activity) => state.category === "all" || activity.category === state.category).forEach((activity) => {
       const card = element("article", "activity-option-card");
+      card.dataset.activityIdentity = activity.identity;
       const icon = element("span", "activity-option-mark", "✦");
       const copy = element("div", "activity-option-copy");
-      copy.append(element("span", "activity-category", activity.category), element("h4", "", activity.name), element("p", "", durationLabel(activity.duration)), element("small", "", "Accessibility information unavailable"));
+      const accessibility = {
+        confirmed: "Accessibility confirmed by trusted data",
+        unavailable: "Accessibility unavailable",
+        unknown: "Accessibility information unavailable",
+      }[activity.accessibility];
+      copy.append(element("span", "activity-category", activity.category), element("h4", "", activity.name), element("p", "", durationLabel(activity.duration)), element("small", "", accessibility));
       const alreadySelected = state.selectedActivities.some((selected) => selected.identity === activity.identity);
       const add = button(alreadySelected ? "Selected" : state.replacement ? "Use as replacement" : "Add", "activity-add", () => addActivity(activity));
       add.disabled = alreadySelected;
       card.append(icon, copy, add);
       optionsFragment.append(card);
     });
-    if (!available.length) optionsFragment.append(element("p", "activity-empty", "No trusted place options were returned for this destination. Your route and day structure remain available."));
+    if (!available.length) optionsFragment.append(element("p", "activity-empty", "No trusted activity suggestions are available for this destination yet. Your route and day structure remain available."));
     activityOptions.replaceChildren(optionsFragment);
+  }
+
+  async function loadActivityPalette(destination) {
+    const key = canonicalDestination(destination);
+    if (state.activityCache.has(key)) return;
+    cancelActivityRequest();
+    const controller = new AbortController();
+    const requestIdentity = Symbol(key);
+    activityRequest = { key, controller, identity: requestIdentity };
+    state.activityCache.set(key, { status: "loading", activities: [] });
+    renderPalette();
+    try {
+      const response = await fetch(ACTIVITY_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ destination_query: key }),
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("activity discovery unavailable");
+      const payload = await response.json();
+      if (!Array.isArray(payload.activities)) throw new Error("invalid activity palette");
+      const activities = payload.activities.slice(0, 12).map((activity) => ({
+        identity: activity.identity,
+        name: activity.name,
+        category: activity.category,
+        destination: destination.name,
+        duration: activity.duration,
+        accessibility: activity.accessibility,
+      }));
+      if (activityRequest?.identity !== requestIdentity) return;
+      state.activityCache.set(key, {
+        status: activities.length ? "success" : "empty",
+        activities,
+      });
+    } catch (error) {
+      if (error.name === "AbortError" || activityRequest?.identity !== requestIdentity) return;
+      state.activityCache.set(key, { status: "unavailable", activities: [] });
+    } finally {
+      if (activityRequest?.identity === requestIdentity) activityRequest = null;
+    }
+    const activeDestination = dayPlan().find((day) => day.number === state.activeDay)?.destination;
+    if (activeDestination && canonicalDestination(activeDestination) === key) renderPalette();
   }
 
   function addActivity(activity) {
@@ -452,7 +568,7 @@
   function updateSummary() {
     const destinations = state.destinations.map((destination) => destination.name).join(", ");
     const count = state.selectedActivities.length;
-    summary.textContent = `A ${state.totalDays}-day route through ${destinations}, with ${count} selected ${count === 1 ? "experience" : "experiences"}. Feasibility remains deterministic; travel durations are unknown until supported by live route evidence.`;
+    summary.textContent = `A ${state.totalDays}-day route through ${destinations}, with ${count} selected ${count === 1 ? "experience" : "experiences"}. Arrival-day feasibility remains pending until trusted route evidence supplies travel time.`;
   }
 
   function render() {
@@ -482,6 +598,7 @@
     render();
   });
   closeButton.addEventListener("click", () => {
+    cancelActivityRequest();
     studio.hidden = true;
     document.querySelector("#recommendation-results")?.scrollIntoView();
   });

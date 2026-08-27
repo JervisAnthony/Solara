@@ -72,6 +72,7 @@ class TravelMode(StrEnum):
 class FeasibilityLevel(StrEnum):
     """Calm traveller-facing day-load states."""
 
+    UNRESOLVED = "unresolved"
     RELAXED = "relaxed"
     COMFORTABLE = "comfortable"
     FULL = "full"
@@ -150,7 +151,7 @@ class DurationEstimate:
 
     @property
     def typical_minutes(self) -> int:
-        """Return the deterministic midpoint used only for planning calculations."""
+        """Return the deterministic midpoint used for non-route planning estimates."""
 
         return (self.minimum_minutes + self.maximum_minutes + 1) // 2
 
@@ -240,13 +241,16 @@ class ItineraryActivity:
 
 @dataclass(frozen=True, slots=True)
 class TravelLeg:
-    """A first-class transition that consumes itinerary time."""
+    """A first-class transition backed only by verified route evidence."""
 
     origin: Destination
     destination: Destination
-    mode: TravelMode
+    mode: TravelMode | None = None
     duration: DurationEstimate | None = None
     planning_buffer_minutes: int = 0
+    evidence_provenance: str | None = None
+    distance_kilometers: float | None = None
+    verified: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.origin, Destination) or not isinstance(
@@ -255,14 +259,43 @@ class TravelLeg:
             raise TypeError("travel-leg endpoints must be Destination values")
         if self.origin == self.destination:
             raise ValueError("travel-leg endpoints must be different")
-        if not isinstance(self.mode, TravelMode):
-            raise TypeError("mode must be TravelMode")
+        if self.mode is not None and not isinstance(self.mode, TravelMode):
+            raise TypeError("mode must be TravelMode or None")
         if self.duration is not None and not isinstance(self.duration, DurationEstimate):
             raise TypeError("duration must be DurationEstimate or None")
         if type(self.planning_buffer_minutes) is not int:
             raise TypeError("planning_buffer_minutes must be an integer")
         if self.planning_buffer_minutes < 0:
             raise ValueError("planning_buffer_minutes must not be negative")
+        if self.evidence_provenance is not None and (
+            not isinstance(self.evidence_provenance, str)
+            or not self.evidence_provenance.strip()
+        ):
+            raise ValueError("evidence_provenance must be a non-blank string or None")
+        if self.distance_kilometers is not None and (
+            isinstance(self.distance_kilometers, bool)
+            or not isinstance(self.distance_kilometers, int | float)
+        ):
+            raise TypeError("distance_kilometers must be a number or None")
+        if self.distance_kilometers is not None and self.distance_kilometers <= 0:
+            raise ValueError("distance_kilometers must be positive")
+        if type(self.verified) is not bool:
+            raise TypeError("verified must be a boolean")
+        has_route_claim = any(
+            value is not None
+            for value in (
+                self.mode,
+                self.duration,
+                self.evidence_provenance,
+                self.distance_kilometers,
+            )
+        ) or self.planning_buffer_minutes > 0
+        if self.verified and (
+            self.mode is None or self.evidence_provenance is None
+        ):
+            raise ValueError("verified travel legs require a mode and evidence provenance")
+        if has_route_claim and not self.verified:
+            raise ValueError("route claims require verified evidence")
 
 
 @dataclass(frozen=True, slots=True)
