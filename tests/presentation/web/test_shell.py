@@ -24,6 +24,7 @@ def test_packaged_web_resources_resolve_from_the_web_package() -> None:
     assert (STATIC_DIRECTORY / "inspiration.js").is_file()
     assert (STATIC_DIRECTORY / "app.js").is_file()
     assert (STATIC_DIRECTORY / "results.js").is_file()
+    assert (STATIC_DIRECTORY / "itinerary.js").is_file()
     assert (STATIC_DIRECTORY / "feedback.js").is_file()
     branding_directory = STATIC_DIRECTORY / "branding"
     assert branding_directory.is_dir()
@@ -147,6 +148,7 @@ def test_root_and_static_mount_are_excluded_from_openapi() -> None:
     assert set(paths) == {
         "/health",
         "/api/v1/recommendations",
+        "/api/v1/itinerary-activities",
         "/api/v1/feedback",
         "/api/v1/travel-scope-suggestions",
     }

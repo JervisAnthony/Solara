@@ -185,6 +185,7 @@ def test_offline_http_pipeline_returns_ranked_deterministic_evidence() -> None:
         "destination_queries": [],
         "destination_mode": "discovery",
         "travel_scope": None,
+        "climate_constraint": None,
     }
     assert body["recommendation_count"] == 3
     assert body["has_recommendations"] is True
@@ -237,6 +238,7 @@ def test_preselected_destination_and_preferences_are_preserved() -> None:
         "destination_queries": [],
         "destination_mode": "pre_resolved",
         "travel_scope": None,
+        "climate_constraint": None,
     }
     assert body["recommendation_count"] == 1
     assert body["recommendations"][0]["destination"] == payload["destination"]

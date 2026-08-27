@@ -143,7 +143,12 @@ def test_feedback_429_preserves_input_and_applies_safe_bounded_cooldown() -> Non
 
 
 def test_all_browser_scripts_avoid_unsafe_dom_tracking_and_external_requests() -> None:
-    for path in ("/static/app.js", "/static/results.js", "/static/feedback.js"):
+    for path in (
+        "/static/app.js",
+        "/static/results.js",
+        "/static/itinerary.js",
+        "/static/feedback.js",
+    ):
         script = _client().get(path).text
         for forbidden in (
             "innerHTML",

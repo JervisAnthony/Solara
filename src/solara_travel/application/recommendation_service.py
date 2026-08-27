@@ -20,6 +20,7 @@ from solara_travel.application.results import (
     RecommendationResult,
 )
 from solara_travel.domain.climate import TemperatureComfortRange
+from solara_travel.domain.constraints import ClimateCondition, ConstraintSeverity
 from solara_travel.domain.destination import (
     DESTINATION_QUERY_MAX_LENGTH,
     Destination,
@@ -270,6 +271,13 @@ class RecommendationService:
             )
             for index, destination in enumerate(candidates)
         )
+        constraint = request.climate_constraint
+        if constraint is not None and constraint.severity is ConstraintSeverity.HARD:
+            recommendations = tuple(
+                recommendation
+                for recommendation in recommendations
+                if self._meets_climate_constraint(recommendation, constraint.condition)
+            )
         ranked = tuple(
             sorted(
                 recommendations,
@@ -282,6 +290,24 @@ class RecommendationService:
             recommendations=ranked,
             destination_mode=plan.destination_mode,
             travel_scope=plan.travel_scope,
+        )
+
+    @staticmethod
+    def _meets_climate_constraint(
+        recommendation: DestinationRecommendation,
+        condition: ClimateCondition,
+    ) -> bool:
+        """Apply an absolute, date-sensitive eligibility threshold before ranking."""
+
+        if condition is not ClimateCondition.COLD_OR_SNOWY:
+            raise ValueError("unsupported climate condition")
+        weather = recommendation.evidence.seasonal_weather
+        # Historical temperature evidence can establish genuinely cold conditions.
+        # Solara has no snowfall provider, so it never claims snow from temperature
+        # alone. A candidate passes this combined choice only on the cold branch.
+        return (
+            weather.mean_temperature_celsius <= 12.0
+            and weather.minimum_temperature_celsius <= 5.0
         )
 
     def _scope_resolution_port(self) -> TravelScopeResolutionPort | None:

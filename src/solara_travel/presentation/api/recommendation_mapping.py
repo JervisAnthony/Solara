@@ -8,6 +8,9 @@ from solara_travel.application import (
 )
 from solara_travel.domain import (
     Attraction,
+    ClimateCondition,
+    ClimateConstraint,
+    ConstraintSeverity,
     Destination,
     DestinationQuery,
     GeoCoordinates,
@@ -19,6 +22,7 @@ from solara_travel.domain import (
 )
 from solara_travel.presentation.api.recommendation_schemas import (
     AttractionResponse,
+    ClimateConstraintResponse,
     CoordinatesResponse,
     DestinationRecommendationResponse,
     DestinationResponse,
@@ -78,6 +82,14 @@ def to_domain_recommendation_request(
         destination=destination,
         destination_queries=tuple(
             DestinationQuery(value) for value in (request_body.destination_queries or [])
+        ),
+        climate_constraint=(
+            None
+            if request_body.climate_constraint is None
+            else ClimateConstraint(
+                condition=ClimateCondition(request_body.climate_constraint.condition),
+                severity=ConstraintSeverity(request_body.climate_constraint.severity),
+            )
         ),
     )
 
@@ -257,6 +269,14 @@ def _request_response(
             else TravelScopeResponse(
                 display_name=travel_scope.display_name,
                 kind=travel_scope.kind.value,
+            )
+        ),
+        climate_constraint=(
+            None
+            if request.climate_constraint is None
+            else ClimateConstraintResponse(
+                condition=request.climate_constraint.condition.value,
+                severity=request.climate_constraint.severity.value,
             )
         ),
     )

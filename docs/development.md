@@ -717,7 +717,11 @@ A recommendation request uses this shape:
     "trip_description": "Quiet coastal days, local food, and easy walks."
   },
   "destination": null,
-  "destination_queries": ["Budapest, Hungary", "Vienna, Austria"]
+  "destination_queries": ["Budapest, Hungary", "Vienna, Austria"],
+  "climate_constraint": {
+    "condition": "cold_or_snowy",
+    "severity": "hard"
+  }
 }
 ```
 
@@ -765,9 +769,13 @@ When narration is configured, an AI-provider failure still returns the complete
 deterministic result with no narration. Seasonal weather fields are aggregated
 historical evidence, not current conditions or forecasts.
 
-Current deterministic scoring is season-led. The optional interest, pace, and
-climate values are preserved in the request but are not yet independent score
-components. Browser request states are idle, validation error, loading, success,
+Current deterministic scoring is season-led. Optional interest, pace, and soft
+climate values are preserved but are not independent score components. The
+optional `climate_constraint` is different: hard `cold_or_snowy` eligibility is
+checked from absolute historical seasonal evidence for the requested dates
+before ranking. If nothing qualifies, HTTP 200 contains an empty recommendation
+list and the browser offers recovery actions. Browser request states are idle,
+validation error, loading, success,
 successful empty, and request error. A valid submission disables the submit
 button, marks the form busy, and announces loading. It dispatches
 `solara:recommendation-request-start` before the request; `results.js` clears
@@ -808,6 +816,49 @@ Technical weights and weighted contributions remain in the response but are not
 rendered to travellers. A configured empty offline
 service remains a successful `200` and produces a neutral empty-result state,
 not an error or fabricated recommendation.
+
+The Itinerary Studio activity boundary is deliberately small and non-chatty:
+
+```http
+POST /api/v1/itinerary-activities
+Content-Type: application/json
+
+{"destination_query": "Bangkok, Thailand"}
+```
+
+The server resolves the query again and accepts only a canonical locality. It
+returns at most twelve normalized Places options with display name, category,
+coordinates, accessibility knowledge state, and an optional duration range with
+provenance/confidence. The endpoint shares the process-local suggestion rate,
+budget, and concurrency safeguard. Provider failure does not invalidate an
+already configured route. No raw provider response, credential, live schedule,
+booking availability, or price crosses the boundary.
+
+The browser requests this endpoint when a destination/day becomes active. The
+query is the validated recommendation identity (`name, country`), never new free
+text. Server-returned activity identity, duration range/provenance/confidence,
+and accessibility state are authoritative; `itinerary.js` contains no duplicate
+category-duration table or alternate identity algorithm. Palettes have explicit
+loading, success, empty, and temporarily unavailable states, are capped by the
+server at twelve, and are cached in an in-memory per-destination map only.
+`AbortController` plus current-request identity checks prevent a late response
+from rendering into another destination. Failure leaves the existing route and
+day structure usable.
+
+There is currently no configured routing provider or route secret. A structural
+`TravelLeg` without verified evidence exposes no transport mode and selects no
+default road option. Unknown journey duration is not assigned a generic
+90-minute hold: arrival-day feasibility is unresolved until trustworthy travel
+time exists. When a verified range is available, the deterministic feasibility
+rule uses its upper bound and adds any evidenced planning buffer separately. No
+mode, duration, distance, live schedule, inventory, fare, or booking availability
+may be inferred from the global `TravelMode` enum or from a Places API key.
+
+The browser keeps its itinerary in the active page only. It does not use cookies,
+local/session storage, analytics, geolocation, or persistent identity. It uses
+node construction and `textContent` for provider/traveller strings. Known choices
+are buttons, chips, counters, and segmented controls with visible pressed/focus
+states; reduced motion removes non-essential transitions.
 
 Each destination story presents the unchanged score as a de-emphasized Seasonal
 Fit percentage and keeps components, technical weights, configured comfort

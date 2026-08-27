@@ -54,6 +54,13 @@ class TravellerPreferencesRequest(StrictRequestModel):
     )
 
 
+class ClimateConstraintRequest(StrictRequestModel):
+    """Explicit climate eligibility requested by the traveller."""
+
+    condition: Literal["cold_or_snowy"]
+    severity: Literal["hard", "soft"]
+
+
 class RecommendationRequestBody(StrictRequestModel):
     """Public request body for deterministic recommendations."""
 
@@ -67,6 +74,7 @@ class RecommendationRequestBody(StrictRequestModel):
             "Up to 15 selected cities, countries, regions, or other supported geographies."
         ),
     )
+    climate_constraint: ClimateConstraintRequest | None = None
 
     @field_validator("destination_queries")
     @classmethod
@@ -117,6 +125,13 @@ class TravellerPreferencesResponse(BaseModel):
     trip_description: str | None
 
 
+class ClimateConstraintResponse(BaseModel):
+    """Authoritative climate constraint applied to recommendation eligibility."""
+
+    condition: Literal["cold_or_snowy"]
+    severity: Literal["hard", "soft"]
+
+
 class TravelScopeResponse(BaseModel):
     """Selected broad discovery scope without provider implementation detail."""
 
@@ -139,6 +154,7 @@ class RecommendationRequestResponse(BaseModel):
         "mixed_scopes",
     ]
     travel_scope: TravelScopeResponse | None = None
+    climate_constraint: ClimateConstraintResponse | None = None
 
 
 class ScoreComponentResponse(BaseModel):

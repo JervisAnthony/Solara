@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import socket
 import time
 from collections.abc import Iterator
@@ -288,6 +289,44 @@ def _synthetic_response(scores: list[float]) -> dict[str, object]:
     }
 
 
+def _activity_palette(
+    destination: str,
+    *,
+    count: int = 6,
+    accessibility: str = "unknown",
+) -> dict[str, object]:
+    return {
+        "destination": {
+            "name": destination,
+            "country": "Example",
+            "coordinates": {"latitude": 1.0, "longitude": 1.0},
+        },
+        "activities": [
+            {
+                "identity": f"server-activity-{destination}-{index}",
+                "name": f"Trusted place {index}",
+                "category": "museum",
+                "coordinates": {"latitude": index, "longitude": index},
+                "duration": {
+                    "minimum_minutes": 60,
+                    "maximum_minutes": 120,
+                    "typical_minutes": 90,
+                    "provenance": "provider",
+                    "confidence": "high",
+                    "is_estimate": True,
+                },
+                "accessibility": (
+                    accessibility if index == 1 else "unavailable" if index == 2 else "unknown"
+                ),
+            }
+            for index in range(1, count + 1)
+        ],
+        "maximum_options": 12,
+        "duration_notice": "Planning estimates only.",
+        "accessibility_notice": "Unknown remains unknown.",
+    }
+
+
 def test_destination_autocomplete_is_debounced_accessible_and_confirmed_by_user(
     page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
 ) -> None:
@@ -436,6 +475,304 @@ def test_premium_selects_support_full_keyboard_contract_without_submitting(
     climate.press("Tab")
     assert climate.get_attribute("aria-expanded") == "false"
     assert requests == []
+
+
+def test_mandatory_cold_choice_sends_hard_constraint_and_has_zero_match_recovery(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    payloads: list[dict[str, object]] = []
+
+    def zero_match(route: object) -> None:
+        payloads.append(route.request.post_data_json)
+        response = _synthetic_response([])
+        response["has_recommendations"] = False
+        route.fulfill(status=200, content_type="application/json", body=json.dumps(response))
+
+    page.route("**/api/v1/recommendations", zero_match)
+    _open(page, base_url)
+    _fill_dates(page)
+    _select(page, "#preferred-climate", "cold_snowy")
+    page.locator("#recommendation-submit").click()
+    page.locator("#recommendation-empty").wait_for()
+
+    assert payloads[-1]["climate_constraint"] == {
+        "condition": "cold_or_snowy",
+        "severity": "hard",
+    }
+    assert "will not substitute" in page.locator("#recommendation-empty-message").inner_text()
+    page.get_by_role("button", name="Change climate").click()
+    assert page.evaluate("document.activeElement.id") == "preferred-climate"
+
+
+def test_itinerary_studio_setup_route_allocation_and_travel_legs(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    _open(page, base_url)
+    response = _synthetic_response([1.0, 0.8])
+    page.evaluate(
+        """response => document.querySelector('#recommendation-form').dispatchEvent(
+          new CustomEvent('solara:recommendation-ready', {detail: response})
+        )""",
+        response,
+    )
+    page.get_by_role("button", name="Build a multi-stop trip").click()
+
+    assert page.locator("#itinerary-studio").is_visible()
+    assert page.locator(".route-card").count() == 2
+    assert page.locator(".travel-leg").count() == 1
+    assert page.locator(".itinerary-day").count() == 3
+    page.get_by_role("button", name="Family", exact=True).click()
+    assert page.locator("#party-counters").get_by_text("2").count() >= 2
+    page.get_by_role("button", name="Relaxed Generous pauses").click()
+    page.get_by_role("button", name="Reduced walking").click()
+    assert (
+        page.get_by_role("button", name="Reduced walking").get_attribute("aria-pressed") == "true"
+    )
+    before = page.locator(".route-card").first.locator(".day-allocation strong").inner_text()
+    page.get_by_role("button", name="Allocate one fewer day to City 1").click()
+    assert (
+        page.locator(".route-card").first.locator(".day-allocation strong").inner_text() != before
+    )
+    travel_leg = page.locator(".travel-leg")
+    assert travel_leg.get_by_role("button").count() == 0
+    assert "Route options are not yet verified" in travel_leg.inner_text()
+    assert "Travel time needed" in travel_leg.inner_text()
+    arrival_day = page.locator(".itinerary-day").filter(has_text="route evidence pending")
+    assert "travel time needed" in arrival_day.locator(".feasibility").inner_text().lower()
+    assert "transfer excluded" in arrival_day.locator(".feasibility").inner_text().lower()
+    assert "Feasibility pending" in arrival_day.inner_text()
+
+
+def test_itinerary_activity_add_replace_move_reorder_remove_and_feasibility(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    _open(page, base_url)
+    response = _synthetic_response([1.0])
+    response["request"]["travel_period"] = {
+        "start_date": "2027-04-10",
+        "end_date": "2027-04-11",
+    }
+    activity_queries: list[str] = []
+
+    def activities(route: object) -> None:
+        activity_queries.append(route.request.post_data_json["destination_query"])
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps(_activity_palette("City 1", accessibility="confirmed")),
+        )
+
+    page.route("**/api/v1/itinerary-activities", activities)
+    recommendation = response["recommendations"][0]
+    recommendation["evidence"]["attractions"] = [
+        {
+            "name": "Client-only attraction must not render",
+            "category": "beach",
+            "coordinates": {"latitude": index, "longitude": index},
+        }
+        for index in range(1, 2)
+    ]
+    page.evaluate(
+        """response => document.querySelector('#recommendation-form').dispatchEvent(
+          new CustomEvent('solara:recommendation-ready', {detail: response})
+        )""",
+        response,
+    )
+    page.get_by_role("button", name="Build this trip").click()
+    cards = page.locator(".activity-option-card")
+    cards.first.wait_for()
+    assert activity_queries == ["City 1, Example"]
+    assert cards.first.get_attribute("data-activity-identity") == "server-activity-City 1-1"
+    assert "Est. 1 hr–2 hr · provider · high confidence" in cards.first.inner_text()
+    assert "Accessibility confirmed by trusted data" in cards.first.inner_text()
+    assert "Accessibility unavailable" in cards.nth(1).inner_text()
+    assert "Accessibility information unavailable" in cards.nth(2).inner_text()
+    assert cards.get_by_text("Client-only attraction must not render").count() == 0
+    cards.nth(0).get_by_role("button", name="Add").click()
+    cards.nth(1).get_by_role("button", name="Add").click()
+    cards.nth(2).get_by_role("button", name="Add").click()
+    cards.nth(3).get_by_role("button", name="Add").click()
+    assert page.locator(".planned-activity").count() == 4
+    assert (
+        page.locator(".planned-activity").first.get_attribute("data-activity-identity")
+        == "server-activity-City 1-1"
+    )
+    assert page.locator(".feasibility").first.inner_text().strip()
+
+    first_planned = page.locator(".planned-activity").first
+    first_planned.get_by_role("button", name="Replace Trusted place 1").click()
+    page.locator(".activity-option-card").nth(4).get_by_role(
+        "button", name="Use as replacement"
+    ).click()
+    assert page.locator(".planned-activity").get_by_text("Trusted place 5").count() == 1
+    moved = page.locator(".planned-activity").filter(has_text="Trusted place 2")
+    moved.get_by_role("button", name="Move Trusted place 2 to another day").click()
+    assert "moved to Day 2" in page.locator("#studio-status").inner_text()
+    page.locator(".planned-activity").first.get_by_role(
+        "button", name=re.compile("Move .* later")
+    ).click()
+    page.locator(".planned-activity").first.get_by_role(
+        "button", name=re.compile("Remove ")
+    ).click()
+    assert page.locator(".planned-activity").count() == 3
+
+
+def test_itinerary_activity_palette_is_cached_per_canonical_destination(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    queries: list[str] = []
+
+    def activities(route: object) -> None:
+        query = route.request.post_data_json["destination_query"]
+        queries.append(query)
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps(_activity_palette(query.split(",", 1)[0])),
+        )
+
+    page.route("**/api/v1/itinerary-activities", activities)
+    _open(page, base_url)
+    response = _synthetic_response([1.0, 0.8])
+    page.evaluate(
+        """response => document.querySelector('#recommendation-form').dispatchEvent(
+          new CustomEvent('solara:recommendation-ready', {detail: response})
+        )""",
+        response,
+    )
+    page.get_by_role("button", name="Build a multi-stop trip").click()
+    page.locator(".activity-option-card").first.wait_for()
+    page.get_by_role("button", name="Choose Day 3, City 2").click()
+    page.locator('[data-activity-identity="server-activity-City 2-1"]').wait_for()
+    page.get_by_role("button", name="Choose Day 1, City 1").click()
+    page.locator('[data-activity-identity="server-activity-City 1-1"]').wait_for()
+
+    assert queries == ["City 1, Example", "City 2, Example"]
+
+
+def test_itinerary_activity_empty_and_failure_states_preserve_the_route(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    calls = 0
+
+    def activities(route: object) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(_activity_palette("City 1", count=0)),
+            )
+        else:
+            route.fulfill(
+                status=503,
+                content_type="application/json",
+                body='{"detail":{"code":"provider_unavailable","message":"safe"}}',
+            )
+
+    page.route("**/api/v1/itinerary-activities", activities)
+    _open(page, base_url)
+    response = _synthetic_response([1.0])
+    page.evaluate(
+        """response => document.querySelector('#recommendation-form').dispatchEvent(
+          new CustomEvent('solara:recommendation-ready', {detail: response})
+        )""",
+        response,
+    )
+    page.get_by_role("button", name="Build this trip").click()
+    page.get_by_text("No trusted activity suggestions are available", exact=False).wait_for()
+    assert page.locator(".route-card").count() == 1
+    page.get_by_role("button", name="Close Itinerary Studio").click()
+    page.get_by_role("button", name="Build this trip").click()
+    page.get_by_text("Activity ideas are temporarily unavailable", exact=False).wait_for()
+    assert page.locator(".route-card").count() == 1
+    assert page.locator(".itinerary-day").count() == 3
+
+
+def test_stale_activity_response_cannot_replace_the_active_destination_palette(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    _open(page, base_url)
+    page.evaluate(
+        """() => {
+          const originalFetch = window.fetch.bind(window);
+          window.__activityRequests = [];
+          window.fetch = (url, options) => {
+            if (url !== '/api/v1/itinerary-activities') return originalFetch(url, options);
+            return new Promise((resolve) => {
+              window.__activityRequests.push({body: JSON.parse(options.body), resolve});
+            });
+          };
+        }"""
+    )
+    response = _synthetic_response([1.0, 0.8])
+    page.evaluate(
+        """response => document.querySelector('#recommendation-form').dispatchEvent(
+          new CustomEvent('solara:recommendation-ready', {detail: response})
+        )""",
+        response,
+    )
+    page.get_by_role("button", name="Build a multi-stop trip").click()
+    page.wait_for_function("window.__activityRequests.length === 1")
+    page.get_by_role("button", name="Choose Day 3, City 2").click()
+    page.wait_for_function("window.__activityRequests.length === 2")
+
+    page.evaluate(
+        """payload => window.__activityRequests[1].resolve({
+          ok: true,
+          json: () => Promise.resolve(payload),
+        })""",
+        _activity_palette("City 2"),
+    )
+    page.locator('[data-activity-identity="server-activity-City 2-1"]').wait_for()
+    page.evaluate(
+        """payload => window.__activityRequests[0].resolve({
+          ok: true,
+          json: () => Promise.resolve(payload),
+        })""",
+        _activity_palette("City 1"),
+    )
+    page.wait_for_timeout(50)
+
+    assert page.locator('[data-activity-identity^="server-activity-City 2-"]').count() == 6
+    assert page.locator('[data-activity-identity^="server-activity-City 1-"]').count() == 0
+
+
+def test_itinerary_studio_is_responsive_keyboard_visible_and_reduced_motion_safe(
+    chromium_browser: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    base_url, _ = local_public_alpha
+    context = chromium_browser.new_context(
+        viewport={"width": 390, "height": 844}, reduced_motion="reduce"
+    )
+    mobile = context.new_page()
+    try:
+        _open(mobile, base_url)
+        response = _synthetic_response([1.0])
+        mobile.evaluate(
+            """response => document.querySelector('#recommendation-form').dispatchEvent(
+              new CustomEvent('solara:recommendation-ready', {detail: response})
+            )""",
+            response,
+        )
+        mobile.get_by_role("button", name="Build this trip").focus()
+        mobile.keyboard.press("Enter")
+        assert mobile.locator("#itinerary-studio").is_visible()
+        assert mobile.evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches")
+        box = mobile.locator("#itinerary-studio").bounding_box()
+        assert box is not None and box["width"] <= 390
+        mobile.get_by_role("button", name="Close Itinerary Studio").focus()
+        mobile.keyboard.press("Enter")
+        assert mobile.locator("#itinerary-studio").is_hidden()
+    finally:
+        context.close()
 
 
 def test_intent_composer_is_full_width_and_starters_never_overwrite_text(

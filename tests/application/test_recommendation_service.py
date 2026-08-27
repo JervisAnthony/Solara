@@ -1,6 +1,6 @@
 """Tests for the deterministic recommendation application service."""
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from datetime import date
 from math import inf, nan
 
@@ -9,6 +9,11 @@ import pytest
 from solara_travel.application import DestinationNotFoundError, RecommendationService
 from solara_travel.domain.attraction import Attraction
 from solara_travel.domain.climate import TemperatureComfortRange
+from solara_travel.domain.constraints import (
+    ClimateCondition,
+    ClimateConstraint,
+    ConstraintSeverity,
+)
 from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
 from solara_travel.domain.recommendation import RecommendationRequest
@@ -150,6 +155,75 @@ def test_service_discovers_candidates_and_builds_ranked_results() -> None:
     assert places.destination_requests == [request]
     assert places.attraction_requests == [warm, cool]
     assert [destination for destination, _ in weather.requests] == [warm, cool]
+
+
+def test_hard_cold_constraint_excludes_tropical_candidates_before_ranking() -> None:
+    thailand = _destination("Bangkok", 13.75, 100.5, "Thailand")
+    philippines = _destination("Manila", 14.6, 121.0, "Philippines")
+    places = FakePlacesProvider((thailand, philippines))
+    weather = FakeWeatherProvider(
+        {thailand: _weather(28.0, 31.0), philippines: _weather(27.0, 30.0)}
+    )
+    hard_request = RecommendationRequest(
+        TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
+        climate_constraint=ClimateConstraint(
+            ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD
+        ),
+    )
+
+    result = _service(places, weather).recommend(hard_request)
+
+    assert result.recommendations == ()
+    assert result.has_recommendations is False
+    assert result.recommendation_count == 0
+
+
+def test_soft_or_relaxed_climate_constraint_keeps_candidates_and_cold_evidence_passes() -> None:
+    warm = _destination("Warm", 13.0, 100.0)
+    cold = _destination("Cold", 43.0, 142.0)
+    places = FakePlacesProvider((warm, cold))
+    weather = FakeWeatherProvider({warm: _weather(25.0), cold: _weather(2.0, 8.0)})
+    soft = RecommendationRequest(
+        TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
+        climate_constraint=ClimateConstraint(
+            ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.SOFT
+        ),
+    )
+    hard = replace(
+        soft,
+        climate_constraint=ClimateConstraint(
+            ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD
+        ),
+    )
+
+    assert len(_service(places, weather).recommend(soft).recommendations) == 2
+    assert tuple(
+        item.destination for item in _service(places, weather).recommend(hard).recommendations
+    ) == (cold,)
+    assert (
+        len(
+            _service(places, weather)
+            .recommend(replace(soft, climate_constraint=None))
+            .recommendations
+        )
+        == 2
+    )
+
+
+def test_unknown_climate_condition_fails_closed() -> None:
+    recommendation = (
+        _service(
+            FakePlacesProvider((_destination("Cold", 1, 1),)),
+            FakeWeatherProvider({_destination("Cold", 1, 1): _weather(1.0)}),
+        )
+        .recommend(_request())
+        .recommendations[0]
+    )
+    with pytest.raises(ValueError, match="unsupported climate condition"):
+        RecommendationService._meets_climate_constraint(
+            recommendation,
+            object(),  # type: ignore[arg-type]
+        )
 
 
 def test_service_resolves_explicit_queries_in_order_then_ranks_shared_evidence() -> None:

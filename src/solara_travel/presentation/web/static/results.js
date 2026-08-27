@@ -232,6 +232,16 @@
       storyGrid.append(good);
     }
     card.append(storyGrid);
+    const actions = element("div", "destination-story-actions");
+    const build = element("button", "build-trip-button", "Build this trip");
+    build.type = "button";
+    build.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("solara:build-trip", {
+        detail: { response, recommendations: [recommendation] },
+      }));
+    });
+    actions.append(build);
+    card.append(actions);
     item.append(card);
     return item;
   }
@@ -268,6 +278,14 @@
     nav.append(list);
     if (response.wayfinder?.opening) nav.append(element("p", "wayfinder-opening", response.wayfinder.opening));
     if (response.wayfinder?.comparison_note) nav.append(element("p", "comparison-note", response.wayfinder.comparison_note));
+    const buildRoute = element("button", "build-route-button", "Build a multi-stop trip");
+    buildRoute.type = "button";
+    buildRoute.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("solara:build-trip", {
+        detail: { response, recommendations: response.recommendations.slice(0, 5) },
+      }));
+    });
+    nav.append(buildRoute);
     item.append(nav);
     return item;
   }
@@ -306,6 +324,14 @@
   function handleReady(event) {
     try { renderResponse(event.detail); } catch { clearResults(); }
   }
+
+  emptyState?.querySelectorAll("[data-recovery-target]").forEach((control) => {
+    control.addEventListener("click", () => {
+      const target = document.querySelector(`#${control.dataset.recoveryTarget}`);
+      document.querySelector("#planner")?.scrollIntoView({ behavior: "smooth" });
+      target?.focus();
+    });
+  });
 
   if (form && resultsSection && resultsSummary && resultsTitle && historicalNote && recommendationList && emptyState && emptyTitle) {
     form.addEventListener("solara:recommendation-request-start", clearResults);

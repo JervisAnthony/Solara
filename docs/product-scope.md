@@ -180,15 +180,38 @@ text without claiming those preferences are independent numeric score factors.
 
 ### Commit 49 itinerary boundary
 
-Commit 48's public-alpha traveller experience is complete: intent collection,
-mixed geographic discovery, deterministic seasonal ranking, Postcards,
-Wayfinder, and traveller-first recommendation stories are implemented. Commit 49
-remains pending and contains only Itinerary Studio / Build This Trip. The future
-itinerary experience may organize morning, afternoon, and evening; add, remove,
-replace, and reorder activities; sequence destinations and allocate trip days;
-represent accommodation suggestions and transport legs; summarize the itinerary;
-and generate Wayfinder itinerary narration. Its initial implementation may be
-session-based without accounts. It must not invent booking inventory.
+Commit 49's Itinerary Studio / Build This Trip is implemented downstream of
+validated recommendations and selected canonical localities. It organizes
+Morning, Afternoon, and Evening; supports trusted activity add, remove, replace,
+move, and reorder operations; sequences destinations with positive allocations;
+and represents planning-only transport legs without implying live schedules.
+Activity palettes load through `POST /api/v1/itinerary-activities` for the
+validated destination identity, use server-owned identity/duration/accessibility
+semantics, and are cached only in page memory. Loading, empty, and temporary
+provider failure never destroy the itinerary.
+
+Traveller party, pace, children/senior context, and declared practical mobility
+or rest needs modify a deterministic day-time budget. Duration ranges declare
+provider, bounded category-heuristic, or traveller-selected provenance; unknown
+duration and accessibility remain explicitly unknown. No routing provider is
+currently configured, so unverified flight, rail, road, and ferry options are
+not shown and no default road journey is selected. Unknown travel time makes the
+arrival-day feasibility unresolved rather than comfortable or full; it is not
+represented by a generic 90-minute placeholder. Verified duration ranges use
+their conservative upper bound plus a separate supported planning buffer. Solara
+makes no live schedule, availability, fare, inventory, or booking claim.
+
+Hard eligibility constraints are separate from soft style preferences. The
+mandatory cold-or-snowy choice uses trusted historical evidence for the requested
+dates before ranking. If the evidence cannot establish cold conditions, the
+candidate is excluded; a successful zero-match result offers climate,
+destination, and search recovery actions. Seasonal Fit remains deterministic and
+historical, not a forecast. The Wayfinder itinerary overview explains only the
+already structured plan and cannot create facts or override feasibility.
+
+The studio is an active, privacy-preserving browser session without accounts or
+persistence. It contains no accommodation inventory, booking inventory, live
+price, cart, payment, or partner API.
 
 ### MVP2 destination knowledge and RAG boundary
 
@@ -215,7 +238,7 @@ The current public-alpha implementation does not:
 
 - book flights, hotels, activities, or transport;
 - process payments;
-- construct itineraries or multi-country dated journeys;
+- persist itineraries or provide multi-country journey management;
 - persist trips or provide traveller accounts;
 - provide partner booking inventory or booking-provider integrations;
 - operate the MVP2 destination corpus, RAG, or vector-retrieval layer;

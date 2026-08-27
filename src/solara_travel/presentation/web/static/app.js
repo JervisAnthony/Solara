@@ -319,6 +319,12 @@
     if (destinationQueries.length > 0) {
       request.destination_queries = destinationQueries.map(({ query }) => query);
     }
+    if (request.preferences.preferred_climate === "cold_snowy") {
+      request.climate_constraint = {
+        condition: "cold_or_snowy",
+        severity: "hard",
+      };
+    }
     return request;
   }
 

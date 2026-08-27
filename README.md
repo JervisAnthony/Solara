@@ -177,10 +177,26 @@ character Good to know. The generic historical-not-forecast note appears once
 for the result, and Good to know is omitted when trusted non-seasonal grounding
 is insufficient. No more than 15 concrete destinations proceed to evidence and
 scoring. Neither enrichment can rank or rescore, and either may fail without
-losing the deterministic result. The next planned milestone is Commit 49 -
-Itinerary Studio / Build This Trip. Destination Knowledge + RAG Grounding is
-deferred entirely to MVP2, and no vector database provider has been selected.
-Bookings and accounts remain pending.
+losing the deterministic result. Commit 49 is complete and adds the premium
+Itinerary Studio / Build This Trip flow downstream of validated recommendations:
+structured party and pace setup, multi-destination ordering and positive day
+allocation, first-class planning-only travel legs, trusted activity palettes,
+Morning/Afternoon/Evening editing, and transparent deterministic day-load
+guidance. The browser loads each canonical destination's bounded palette through
+`POST /api/v1/itinerary-activities`, caches it only in memory, and keeps the
+route usable through loading, empty, or temporary provider failure. Solara has
+no configured routing provider: unsupported flight, rail, road, or ferry modes
+are not shown, no road mode or 90-minute journey is assumed, and an arrival
+day's feasibility remains unresolved until trusted route evidence supplies its
+travel time. Known route ranges use their conservative upper bound plus any
+separate verified planning buffer. No live schedule or booking claim is made.
+Mandatory cold-or-snowy requests are now an absolute,
+date-sensitive eligibility constraint applied before ranking, so an incompatible
+search succeeds truthfully with zero matches and recovery choices. The studio is
+an active browser session only; it adds no account, persistence, booking,
+inventory, price, payment, or partner integration. Destination Knowledge + RAG
+Grounding is deferred entirely to MVP2, and no vector database provider has been
+selected.
 
 See the [deployment guide](docs/deployment.md) for local, container, and hosted
 operational details.

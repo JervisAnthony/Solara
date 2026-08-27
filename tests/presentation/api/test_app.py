@@ -84,6 +84,7 @@ def test_openapi_exposes_health_recommendation_and_feedback_contracts() -> None:
     assert set(schema["paths"]) == {
         "/health",
         "/api/v1/recommendations",
+        "/api/v1/itinerary-activities",
         "/api/v1/feedback",
         "/api/v1/travel-scope-suggestions",
     }
