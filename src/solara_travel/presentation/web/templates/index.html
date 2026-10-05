@@ -186,6 +186,23 @@
                 <img src="/static/branding/solara-mark-gold.png" alt="" width="1254" height="1254">
                 <div><p class="studio-step">The Wayfinder</p><h3 id="wayfinder-itinerary-title">Your route, in one view</h3><p id="wayfinder-itinerary-copy"></p></div>
               </section>
+
+              <section class="trip-handoff" aria-labelledby="trip-handoff-title">
+                <p class="studio-step">Take your plan with you</p>
+                <h3 id="trip-handoff-title">Your trip handoff</h3>
+                <p>Keep a copy for yourself or share it with a travel advisor you choose. Nothing is submitted, reserved or booked.</p>
+                <fieldset class="handoff-disclosure">
+                  <legend>Include travel requirements?</legend>
+                  <label><input type="radio" name="handoff-requirements" value="exclude" checked><span>Keep private</span></label>
+                  <label><input type="radio" name="handoff-requirements" value="include"><span>Include in my export</span></label>
+                </fieldset>
+                <p class="studio-trust-note">Party size and pace are included. Practical requirements are excluded unless you choose to include them. Your plan stays in this page until you export it.</p>
+                <div class="handoff-actions">
+                  <button type="button" id="export-trip-text">Download trip summary</button>
+                  <button type="button" id="export-trip-json">Download trip JSON</button>
+                </div>
+                <p id="handoff-status" role="status" aria-live="polite"></p>
+              </section>
             </div>
           </div>
         </div>

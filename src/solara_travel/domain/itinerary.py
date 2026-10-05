@@ -1,7 +1,7 @@
 """Provider-independent values for configuring a realistic itinerary."""
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from enum import StrEnum
 
 from solara_travel.domain.destination import Destination
@@ -77,6 +77,11 @@ class FeasibilityLevel(StrEnum):
     COMFORTABLE = "comfortable"
     FULL = "full"
     VERY_FULL = "very_full"
+
+
+class JourneyResolution(StrEnum):
+    UNRESOLVED = "unresolved"
+    VERIFIED_PLANNING = "verified_planning"
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,6 +175,19 @@ class DestinationStay:
             raise TypeError("days must be an integer")
         if self.days <= 0:
             raise ValueError("destination allocation must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class DatedDestinationStay:
+    """Derived allocation window; departure is exclusive, not a booked checkout."""
+
+    stay: DestinationStay
+    arrival_date: date
+    departure_date: date
+
+    @property
+    def allocated_days(self) -> int:
+        return self.stay.days
 
 
 @dataclass(frozen=True, slots=True)
@@ -297,6 +315,15 @@ class TravelLeg:
         if has_route_claim and not self.verified:
             raise ValueError("route claims require verified evidence")
 
+    @property
+    def resolution(self) -> JourneyResolution:
+        """A verified mode alone cannot resolve journey timing."""
+        return (
+            JourneyResolution.VERIFIED_PLANNING
+            if self.verified and self.duration
+            else JourneyResolution.UNRESOLVED
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ItineraryDay:
@@ -369,6 +396,17 @@ class Itinerary:
         )
         if tuple(day.destination for day in self.days) != expected_destinations:
             raise ValueError("itinerary days must follow destination allocations")
+
+    @property
+    def dated_stays(self) -> tuple[DatedDestinationStay, ...]:
+        """Recalculate disjoint allocation windows from current route order."""
+        arrival = self.start_date
+        result = []
+        for stay in self.stays:
+            departure = arrival + timedelta(days=stay.days)
+            result.append(DatedDestinationStay(stay, arrival, departure))
+            arrival = departure
+        return tuple(result)
 
 
 @dataclass(frozen=True, slots=True)

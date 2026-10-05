@@ -1320,6 +1320,62 @@ them, not because they are fashionable or technically interesting.
 
 ## Evolution
 
+### Commit 50: journey and partner boundaries
+
+`Itinerary` remains the trip authority. Its `dated_stays` derives arrival and
+exclusive departure boundaries from ordered positive allocations. Allocations
+cover the inclusive trip date range without overlapping destination days; the
+last boundary is the day after the final trip day. These boundaries are planning
+allocations, not hotel nights or checkout reservations. Reordering or reallocating
+stays recalculates downstream dates. `ItineraryPlanningService` creates structural
+unresolved `TravelLeg` values for transitions even with no routing adapter.
+
+`JourneyResolution` distinguishes unresolved timing from verified planning.
+`JourneyOption` adds stable identity and date applicability to verified route
+evidence; timing requires provider provenance. It is always planning-only.
+`JourneyEvidencePort` owns normalized route options, never provider payloads.
+`JourneyPlanningService` makes one explicit lookup with a limit of three, rejects
+misaligned/duplicate/oversized results, and falls back to no options on provider
+failure. Nothing invokes this port from a rendering loop. Production configures
+no routing provider. Google Places does not supply authoritative journey timing.
+
+`Partner`, `PartnerKind`, and `PartnerCapability` describe actual future
+capabilities. `PartnerOffer` is separate from itinerary truth and attaches by
+typed stay/activity/journey references. It requires explicit availability and an
+aware retrieval timestamp. Price/currency are optional and validated together;
+validity may be omitted. No offer or partner fixture is created in production.
+`PartnerOfferPort` is a bounded, read-only future booking-provider boundary.
+There are no transaction, payment, cancellation or arbitrary redirect actions.
+An itinerary remains valid without accommodation or commercial offers.
+
+`TripSnapshot` wraps the existing itinerary rather than competing with it.
+Schema version 1 has exactly `schema_version`, `requirements_included`, and
+`itinerary`. The itinerary contains typed dates, profile, ordered stays and days;
+activities and legs retain normalized trust metadata. Derived dates and feasibility
+can be recalculated; text export includes dated stays and unresolved journey states.
+Day-load labels appear only when requirements are disclosed; otherwise the handoff
+asks the traveller to review the full active plan. It never presents a load
+recalculated after stripping private requirements as the original assessment.
+Serialization is deterministic
+UTF-8 JSON, bounded to 1,000,000 bytes. Unknown/missing fields and unsupported
+versions are rejected recursively during round trip. Requirements are stripped
+unless explicitly included; prompts, raw payloads, free-form trip description,
+secrets, narration, and commercial offers are outside the schema.
+
+`TripHandoff` prepares a local text artifact; it does not send an agency request.
+The browser creates the same versioned snapshot using an explicit allowlist and
+local Blob/download APIs. Browser JSON is tested through the Python decoder.
+`TripRepositoryPort` permits future save/load of snapshots; only tests implement
+it. No runtime repository, database, account system, public share URL or browser
+storage exists. Future persistence still requires access-control and retention
+decisions. Export privacy selection resets to exclusion when a new studio opens.
+
+`BrandPresentation` is a text-only presentation boundary with Solara defaults.
+It lives outside the domain and is not wired as a runtime white-label or embed
+mode. Future adapters must validate configuration and retain recommendation
+authority. No logo URLs, external origin configuration, iframe permissions,
+postMessage handling, CORS changes or fake partner branding are deployed.
+
 This document describes Solara's intended architectural direction.
 
 Not every package, provider, model, or workflow described here currently exists.

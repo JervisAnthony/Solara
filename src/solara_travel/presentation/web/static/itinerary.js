@@ -73,6 +73,11 @@
     return `${destination.name}, ${destination.country}`;
   }
 
+  function destinationLabel(destination) {
+    return state.destinations.filter((item) => item.name === destination.name).length > 1
+      ? canonicalDestination(destination) : destination.name;
+  }
+
   function cancelActivityRequest() {
     if (!activityRequest) return;
     activityRequest.controller.abort();
@@ -110,6 +115,8 @@
       category: "all",
       replacement: null,
     };
+    document.querySelector('input[name="handoff-requirements"][value="exclude"]').checked = true;
+    document.querySelector("#handoff-status").textContent = "";
     studio.hidden = false;
     render();
     title.focus();
@@ -130,6 +137,12 @@
       }
     });
     return plan;
+  }
+
+  function dateForDay(offset) {
+    const value = new Date(`${state.response.request.travel_period.start_date}T00:00:00Z`);
+    value.setUTCDate(value.getUTCDate() + offset);
+    return value.toISOString().slice(0, 10);
   }
 
   function setPreset(preset) {
@@ -175,9 +188,7 @@
     if (delta < 0 && state.destinations[index].days <= 1) return;
     state.destinations[index].days += delta;
     state.destinations[receiver].days -= delta;
-    const validDays = new Set(dayPlan().map((day) => `${day.number}:${day.destination.name}`));
-    state.selectedActivities = state.selectedActivities.filter((activity) =>
-      validDays.has(`${activity.day}:${activity.destination}`));
+    reconcileActivities();
     state.activeDay = Math.min(state.activeDay, state.totalDays);
     render();
   }
@@ -187,9 +198,9 @@
     if (target < 0 || target >= state.destinations.length) return;
     [state.destinations[index], state.destinations[target]] = [state.destinations[target], state.destinations[index]];
     rebuildUnknownTravelLegs();
-    state.selectedActivities = [];
+    reconcileActivities();
     state.activeDay = 1;
-    announce("Route reordered. Selected activities were cleared so day geography remains valid.");
+    announce("Route reordered. Selected activities stayed with their destinations; review the new day loads.");
     render();
   }
 
@@ -200,7 +211,7 @@
     state.destinations[receiver].days += removed.days;
     state.destinations.splice(index, 1);
     rebuildUnknownTravelLegs();
-    state.selectedActivities = state.selectedActivities.filter((activity) => activity.destination !== removed.name);
+    reconcileActivities();
     state.activeDay = 1;
     announce(`${removed.name} removed. Its days were reassigned.`);
     render();
@@ -215,27 +226,43 @@
     }));
   }
 
+  function reconcileActivities() {
+    const days = dayPlan();
+    state.selectedActivities = state.selectedActivities.filter((activity) => {
+      const compatible = days.filter((day) => canonicalDestination(day.destination) === activity.destinationKey);
+      const target = compatible.find((day) => day.number === activity.day) || compatible[0];
+      if (!target) return false;
+      activity.day = target.number;
+      return true;
+    });
+    days.forEach((day) => PERIODS.forEach((period) => normalizeOrders(day.number, period)));
+  }
+
   function renderRoute() {
     const fragment = document.createDocumentFragment();
+    let offset = 0;
     state.destinations.forEach((destination, index) => {
+      const label = destinationLabel(destination);
       const card = element("article", "route-card");
       const header = element("div", "route-card-header");
       header.append(element("span", "route-order", String(index + 1)), element("div", "", undefined));
       header.lastChild.append(element("strong", "", destination.name), element("span", "", destination.country));
       const reorder = element("div", "route-actions");
       reorder.append(
-        button("↑", "route-icon", () => moveDestination(index, -1), `Move ${destination.name} earlier`),
-        button("↓", "route-icon", () => moveDestination(index, 1), `Move ${destination.name} later`),
-        button("×", "route-icon", () => removeDestination(index), `Remove ${destination.name}`),
+        button("↑", "route-icon", () => moveDestination(index, -1), `Move ${label} earlier`),
+        button("↓", "route-icon", () => moveDestination(index, 1), `Move ${label} later`),
+        button("×", "route-icon", () => removeDestination(index), `Remove ${label}`),
       );
       header.append(reorder);
       const allocation = element("div", "day-allocation");
       allocation.append(
-        button("−", "counter-button", () => updateAllocation(index, -1), `Allocate one fewer day to ${destination.name}`),
+        button("−", "counter-button", () => updateAllocation(index, -1), `Allocate one fewer day to ${label}`),
         element("strong", "", `${destination.days} ${destination.days === 1 ? "day" : "days"}`),
-        button("+", "counter-button", () => updateAllocation(index, 1), `Allocate one more day to ${destination.name}`),
+        button("+", "counter-button", () => updateAllocation(index, 1), `Allocate one more day to ${label}`),
       );
-      card.append(header, allocation);
+      const dates = element("p", "route-dates", `${dateForDay(offset)} → ${dateForDay(offset + destination.days)} · departure boundary`);
+      offset += destination.days;
+      card.append(header, dates, allocation);
       fragment.append(card);
       if (index < state.destinations.length - 1) fragment.append(renderTravelLeg(index));
     });
@@ -274,12 +301,12 @@
     return leg;
   }
 
-  function assessment(day) {
+  function assessment(day, requirements = state.requirements) {
     const selected = state.selectedActivities.filter((activity) => activity.day === day.number);
     let buffer = 90 + Math.max(0, selected.length - 1) * 30;
     if (state.party.children) buffer += 30;
     if (state.party.seniors) buffer += 30;
-    state.requirements.forEach((requirement) => { buffer += REQUIREMENT_BUFFER[requirement] || 0; });
+    requirements.forEach((requirement) => { buffer += REQUIREMENT_BUFFER[requirement] || 0; });
     let occupied = buffer;
     let travelMinutes = 0;
     let unresolvedTravel = false;
@@ -323,8 +350,10 @@
       heading.append(choose, element("div", "", undefined));
       heading.lastChild.append(
         element("strong", "", day.destination.name),
+        element("span", "day-date", dateForDay(day.number - 1)),
         element("span", "", day.travelLeg ? "Arrival day · route evidence pending" : "A full destination day"),
       );
+      if (day.travelLeg) heading.lastChild.append(element("span", "journey-day-route", `${day.travelLeg.origin.name} → ${day.travelLeg.destination.name}`));
       const load = assessment(day);
       const meter = element("div", `feasibility feasibility-${load.level.replace(" ", "-")}`);
       meter.append(
@@ -477,6 +506,8 @@
         name: activity.name,
         category: activity.category,
         destination: destination.name,
+        destinationKey: key,
+        coordinates: activity.coordinates,
         duration: activity.duration,
         accessibility: activity.accessibility,
       }));
@@ -532,7 +563,7 @@
   }
 
   function moveActivity(activity) {
-    const compatible = dayPlan().filter((day) => day.destination.name === activity.destination && day.number !== activity.day);
+    const compatible = dayPlan().filter((day) => canonicalDestination(day.destination) === activity.destinationKey && day.number !== activity.day);
     if (!compatible.length) {
       announce(`Allocate another day to ${activity.destination} before moving this activity.`);
       return;
@@ -579,6 +610,124 @@
     paceOptions.querySelectorAll("button").forEach((item) => item.setAttribute("aria-pressed", String(item.dataset.pace === state.pace)));
     requirementOptions.querySelectorAll("button").forEach((item) => item.setAttribute("aria-pressed", String(state.requirements.has(item.dataset.requirement))));
   }
+
+  function exportDestination(destination) {
+    return { name: destination.name, country: destination.country, coordinates: {
+      latitude: destination.coordinates.latitude, longitude: destination.coordinates.longitude,
+    } };
+  }
+
+  function exportLeg(leg) {
+    if (!leg) return null;
+    const option = leg.options.find((item) => item.verified === true && item.identity === leg.selectedIdentity);
+    return {
+      origin: exportDestination(leg.origin), destination: exportDestination(leg.destination),
+      mode: option?.mode || null, duration: exportDuration(option?.duration),
+      planning_buffer_minutes: option?.planning_buffer_minutes || 0,
+      evidence_provenance: option?.evidence_provenance || null,
+      distance_kilometers: option?.distance_kilometers || null, verified: Boolean(option),
+    };
+  }
+
+  function exportDuration(duration) {
+    return duration ? {
+      minimum_minutes: duration.minimum_minutes, maximum_minutes: duration.maximum_minutes,
+      provenance: duration.provenance, confidence: duration.confidence,
+    } : null;
+  }
+
+  function tripSnapshot(includeRequirements) {
+    return {
+      schema_version: 1, requirements_included: includeRequirements,
+      itinerary: {
+        start_date: state.response.request.travel_period.start_date,
+        end_date: state.response.request.travel_period.end_date,
+        traveller_profile: {
+          party: { ...state.party, young_adults: 0, infants: 0 }, pace: state.pace,
+          requirements: includeRequirements ? Array.from(state.requirements).sort() : [],
+        },
+        stays: state.destinations.map((destination) => ({ destination: exportDestination(destination), days: destination.days })),
+        days: dayPlan().map((day) => ({
+          number: day.number, destination: exportDestination(day.destination),
+          inbound_travel_leg: exportLeg(day.travelLeg),
+          activities: state.selectedActivities.filter((activity) => activity.day === day.number)
+            .sort((left, right) => PERIODS.indexOf(left.period) - PERIODS.indexOf(right.period) || left.order - right.order)
+            .map((activity) => ({
+              identity: activity.identity, name: activity.name, destination: exportDestination(day.destination),
+              category: activity.category, coordinates: activity.coordinates || null,
+              duration: exportDuration(activity.duration), day_number: day.number,
+              period: activity.period, order: activity.order, accessibility: activity.accessibility,
+            })),
+        })),
+      },
+    };
+  }
+
+  function tripText(snapshot) {
+    const trip = snapshot.itinerary;
+    const lines = ["SOLARA · TRIP HANDOFF", "Planning summary · not booked or submitted",
+      `${trip.start_date} to ${trip.end_date} · ${trip.traveller_profile.pace} pace`,
+      `Travellers: ${Object.values(trip.traveller_profile.party).reduce((sum, count) => sum + count, 0)}`,
+      "Stay departure dates below are exclusive allocation boundaries, not reservations."];
+    let offset = 0;
+    trip.stays.forEach((stay) => {
+      lines.push(`${stay.destination.name}, ${stay.destination.country}: ${dateForDay(offset)} to ${dateForDay(offset + stay.days)} · ${stay.days} days`);
+      offset += stay.days;
+    });
+    lines.push(snapshot.requirements_included
+      ? `Travel requirements: ${trip.traveller_profile.requirements.map((item) => item.replaceAll("_", " ")).join(", ")}`
+      : "Travel requirements: excluded by traveller");
+    trip.days.forEach((day) => {
+      lines.push(`Day ${day.number} · ${dateForDay(day.number - 1)} · ${day.destination.name}`);
+      const leg = day.inbound_travel_leg;
+      if (leg) {
+        lines.push(`Journey: ${leg.origin.name} → ${leg.destination.name} · ${leg.duration ? "verified_planning" : "unresolved"}`);
+        lines.push(leg.duration
+          ? `Verified planning estimate: ${leg.duration.minimum_minutes}–${leg.duration.maximum_minutes} minutes · ${leg.evidence_provenance}`
+          : "Travel time needed; arrival-day feasibility unresolved");
+      }
+      if (snapshot.requirements_included) {
+        const load = assessment(dayPlan()[day.number - 1]);
+        lines.push(`Feasibility: ${load.unresolvedTravel ? "unresolved" : load.level.replaceAll(" ", "_")}`);
+      } else {
+        lines.push("Day load: review in Solara with your full travel requirements.");
+      }
+      day.activities.forEach((activity) => lines.push(`  ${activity.period}: ${activity.name} · ${activity.duration ? `${activity.duration.minimum_minutes}–${activity.duration.maximum_minutes} minutes (${activity.duration.provenance})` : "duration unknown"}`));
+    });
+    return `${lines.join("\n")}\n`;
+  }
+
+  function canonicalJson(value) {
+    return JSON.stringify(value, (_key, item) => item && typeof item === "object" && !Array.isArray(item)
+      ? Object.fromEntries(Object.keys(item).sort().map((key) => [key, item[key]])) : item);
+  }
+
+  function downloadTrip(format) {
+    if (!state) return;
+    const feedback = document.querySelector("#handoff-status");
+    try {
+      const include = document.querySelector('input[name="handoff-requirements"]:checked').value === "include";
+      const snapshot = tripSnapshot(include);
+      const json = canonicalJson(snapshot);
+      if (new Blob([json]).size > 1000000) throw new Error("size");
+      const content = format === "json" ? json : tripText(snapshot);
+      const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `solara-trip-${snapshot.itinerary.start_date}.${format === "json" ? "json" : "txt"}`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      feedback.textContent = `Your trip ${format === "json" ? "JSON" : "summary"} is ready. Travel requirements ${include ? "included" : "kept private"}. Nothing was submitted.`;
+    } catch (_error) {
+      feedback.textContent = "Export could not be prepared. Your plan is still here; try again.";
+    }
+  }
+
+  document.querySelector("#export-trip-text").addEventListener("click", () => downloadTrip("text"));
+  document.querySelector("#export-trip-json").addEventListener("click", () => downloadTrip("json"));
 
   partyPresets.addEventListener("click", (event) => {
     const preset = event.target.closest("button")?.dataset.party;

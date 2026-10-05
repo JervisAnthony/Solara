@@ -1186,6 +1186,37 @@ and documented reason.
 
 ## Package builds
 
+### Commit 50 journey and export validation
+
+Core contracts live in `domain/journey.py`, `domain/partners.py`,
+`ports/journeys.py`, `application/journeys.py`, and `application/trip_export.py`.
+Presentation-only branding is in `presentation/web/branding.py`.
+No new dependency, secret or HTTP endpoint is required. Existing `/api/v1`
+request validation, bounds and security middleware remain unchanged.
+
+The studio downloads JSON (`application/json`) or structured text
+(`text/plain;charset=utf-8`) from the current in-memory itinerary. Filenames use
+only a fixed prefix and the ISO start date. JSON schema version 1 matches
+`TripSnapshot`; decoding checks all domain records and refuses unknown fields.
+Both outputs exclude requirements unless explicitly selected. Free-form request
+text and provider payloads are never copied. Blob URLs are revoked after download;
+downloads are not server persistence. Browser availability failure leaves the
+studio usable. No public import or server-side share link is exposed.
+
+Focused checks:
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests/application/test_partner_journeys.py
+.venv\Scripts\python.exe -m pytest tests/browser -k "handoff or dated_multi"
+```
+
+Run the full existing pytest/browser, 100% branch coverage, Ruff, pip, build,
+clean-install and packaged-asset gates as well. Tests use deterministic routing,
+commercial and repository fixtures only. Browser tests validate real downloads,
+MIME, filename, deterministic content, Python round trip, disclosure, local-only
+behavior, route recalculation, failure recovery, mobile controls and reduced
+motion. Hosted acceptance remains a separate operation.
+
 For packaging-related changes, verify that the package builds successfully:
 
 ```powershell
