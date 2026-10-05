@@ -198,6 +198,18 @@ inventory, price, payment, or partner integration. Destination Knowledge + RAG
 Grounding is deferred entirely to MVP2, and no vector database provider has been
 selected.
 
+Commit 50 adds dated multi-country journeys and local trip handoff. Ordered
+canonical destinations retain their country and deterministic allocation dates;
+arrival days explicitly show unresolved travel when routing evidence is absent.
+Download a structured text summary or versioned JSON snapshot from the studio.
+Practical travel requirements are excluded by default and included only by your
+selection. No export is submitted to an advisor or saved by Solara. Provider-neutral
+journey evidence, partner capabilities, optional offers, future snapshot storage,
+and presentation-only branding contracts exist without live adapters. See the
+[architecture](docs/architecture.md) and [development guide](docs/development.md)
+for schema and boundary details. No routing provider, booking, live inventory,
+payment, accounts, hidden persistence, RAG, or vector database is added.
+
 See the [deployment guide](docs/deployment.md) for local, container, and hosted
 operational details.
 

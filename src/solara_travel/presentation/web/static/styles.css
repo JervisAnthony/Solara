@@ -2705,3 +2705,35 @@ h4 {
     transition-duration: 0.01ms !important;
   }
 }
+.trip-handoff {
+  margin-top: 1.5rem;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  border: 1px solid rgba(186, 148, 79, .35);
+  border-radius: 1.25rem;
+  background: linear-gradient(130deg, #fffdf8, #f4efe4);
+  color: #263b3a;
+}
+.trip-handoff h3 { margin: .4rem 0 .8rem; font-size: 1.5rem; }
+.trip-handoff p { line-height: 1.6; }
+.handoff-disclosure { border: 0; padding: 0; margin: 1.25rem 0; }
+.handoff-disclosure legend { font-weight: 650; margin-bottom: .7rem; }
+.handoff-disclosure label { display: inline-flex; margin: .3rem .4rem .3rem 0; }
+.handoff-disclosure input { position: absolute; opacity: 0; }
+.handoff-disclosure span, .handoff-actions button {
+  display: inline-flex; align-items: center; min-height: 44px;
+  padding: .7rem 1rem; border: 1px solid #b8b4a7; border-radius: .65rem;
+  background: #fffdf8; color: #263b3a; cursor: pointer;
+}
+.handoff-disclosure input:checked + span { background: #263b3a; color: #fffdf8; border-color: #263b3a; }
+.handoff-disclosure input:focus-visible + span, .handoff-actions button:focus-visible {
+  outline: 3px solid #a5752d; outline-offset: 3px;
+}
+.handoff-actions { display: flex; flex-wrap: wrap; gap: .7rem; }
+.handoff-actions button:first-child { background: #263b3a; color: #fffdf8; }
+.route-dates { font-size: .8rem; color: #526360; overflow-wrap: anywhere; margin: .8rem 0; }
+.journey-day-route { font-weight: 600; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .handoff-actions button { flex: 1 1 100%; justify-content: center; }
+  .handoff-disclosure label { display: flex; }
+  .handoff-disclosure span { width: 100%; }
+}

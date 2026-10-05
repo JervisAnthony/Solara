@@ -136,6 +136,8 @@ class ItineraryPlanningService:
                 inbound = (
                     travel_legs[stay_index - 1]
                     if stay_index > 0 and local_day == 0 and travel_legs
+                    else TravelLeg(stays[stay_index - 1].destination, stay.destination)
+                    if stay_index > 0 and local_day == 0
                     else None
                 )
                 days.append(ItineraryDay(number, stay.destination, inbound_travel_leg=inbound))

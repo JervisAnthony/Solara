@@ -893,7 +893,7 @@ Commit 46 - hosted MVP1 deployment
 Commit 47 - public-alpha integration, smoke, and browser testing (complete)
 Commit 48 - visual travel experience (complete)
 Commit 49 - itinerary studio / Build This Trip (complete)
-Commit 50 - partner + journey capabilities (pending)
+Commit 50 - partner + journey capabilities (complete)
 Commit 51 - MVP1 release documentation + launch readiness (pending)
 ```
 
@@ -1231,7 +1231,7 @@ The active MVP1 sequence is:
 - Commit 47 - public-alpha integration, smoke, and browser testing (complete);
 - Commit 48 - visual travel experience (complete);
 - Commit 49 - Itinerary Studio / Build This Trip (complete);
-- Commit 50 - Partner + Journey Capabilities (pending);
+- Commit 50 - Partner + Journey Capabilities (complete);
 - Commit 51 - MVP1 Release Documentation + Launch Readiness (pending).
 
 Completing Commit 51 closes MVP1.
@@ -1316,14 +1316,24 @@ schedule, price, cart, payment, partner integration, account, persistence,
 destination corpus, ingestion, embeddings, retrieval infrastructure, provenance
 pipeline, or vector database.
 
-Commit 50 plans multi-country dated journeys, journey legs, partner/agency
-integration boundaries, embedded or white-label deployment boundaries,
-share/export, persistence architecture, and future booking-provider integration
-boundaries. Commit 51 plans MVP1 release documentation and launch readiness,
+Commit 50 is implemented and locally validated: multi-country dated allocation
+windows, explicit unresolved journey days, provider-neutral journey evidence,
+partner capabilities and optional commercial offer references, versioned private
+trip snapshots, local text/JSON handoff, a future repository port, and an
+architecture-only presentation branding/embed boundary. Production has no routing,
+booking, commercial inventory, accounts, trip storage, or deployed embedding.
+Activities retain canonical city-and-country identity through route edits.
+Final local validation: 1,815 tests, 44 Chromium tests, 4,221/4,221 statements,
+1,570/1,570 branches, 100% statement/branch coverage, Ruff and pip checks,
+wheel/sdist builds, fresh core/web installs, packaged export assets and existing
+security/privacy/static contracts passed. Docker's engine was unavailable; no
+container or hosted acceptance is claimed. Implementation is staged for owner
+review; no Commit 50 Git commit, push, PR or merge was created by Codex.
+
+Commit 51 remains pending and plans MVP1 release documentation and launch readiness,
 including the final production-readiness checklist, hosted acceptance record,
 operational limitations, deployment and tester guidance, known limitations,
-security/privacy summary, and launch checklist. These future commits are not
-implemented.
+security/privacy summary, and launch checklist.
 
 ## Release milestones
 

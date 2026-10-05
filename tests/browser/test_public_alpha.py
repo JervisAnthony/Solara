@@ -9,6 +9,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import Path
 from threading import Thread
 from urllib.request import urlopen
 
@@ -16,6 +17,7 @@ import pytest
 import uvicorn
 
 from solara_travel.application import RecommendationNarrationService, RecommendationService
+from solara_travel.application.trip_export import TripSnapshot
 from solara_travel.domain import (
     Attraction,
     Destination,
@@ -503,6 +505,178 @@ def test_mandatory_cold_choice_sends_hard_constraint_and_has_zero_match_recovery
     assert "will not substitute" in page.locator("#recommendation-empty-message").inner_text()
     page.get_by_role("button", name="Change climate").click()
     assert page.evaluate("document.activeElement.id") == "preferred-climate"
+
+
+def _open_handoff(page: object, base_url: str, locations=None) -> dict:
+    _open(page, base_url)
+    response = _synthetic_response([1.0, 0.8])
+    response["request"]["travel_period"] = {"start_date": "2027-04-10", "end_date": "2027-04-12"}
+    response["request"]["trip_description"] = "sentinel-private-narrative"
+    response["provider_payload"] = {"api_key": "sentinel-provider-secret"}
+    locations = locations or (("Singapore", "Singapore"), ("Bangkok", "Thailand"))
+    for item, (name, country) in zip(response["recommendations"], locations, strict=True):
+        item["destination"]["name"] = name
+        item["destination"]["country"] = country
+        item["destination"]["coordinates"] = {"latitude": 1.3, "longitude": 103.8}
+    page.route(
+        "**/api/v1/itinerary-activities",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps(_activity_palette("Singapore")),
+        ),
+    )
+    page.evaluate(
+        """response => document.querySelector('#recommendation-form').dispatchEvent(
+        new CustomEvent('solara:recommendation-ready', {detail: response}))""",
+        response,
+    )
+    page.get_by_role("button", name="Build a multi-stop trip").click()
+    return response
+
+
+def test_handoff_json_is_portable_private_deterministic_and_local(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    _open_handoff(page, local_public_alpha[0])
+    page.locator(".activity-option-card").first.wait_for()
+    page.locator(".activity-option-card").first.get_by_role("button", name="Add").click()
+    page.get_by_role("button", name="Reduced walking").click()
+    requests = []
+    page.on("request", lambda request: requests.append(request.url))
+    page.evaluate("""() => {
+      const original = URL.createObjectURL;
+      URL.createObjectURL = blob => { window.exportMime = blob.type; return original(blob); };
+    }""")
+    with page.expect_download() as download:
+        page.locator("#export-trip-json").focus()
+        page.keyboard.press("Enter")
+    assert download.value.suggested_filename == "solara-trip-2027-04-10.json"
+    content = Path(download.value.path()).read_text(encoding="utf-8")
+    snapshot = TripSnapshot.from_json(content)
+    assert json.loads(snapshot.to_json()) == json.loads(content)
+    assert snapshot.itinerary.days[0].activities
+    assert snapshot.itinerary.days[2].inbound_travel_leg.resolution == "unresolved"
+    assert "reduced_walking" not in content
+    assert "sentinel" not in content
+    assert page.evaluate("window.exportMime") == "application/json"
+    with page.expect_download() as second:
+        page.locator("#export-trip-json").click()
+    assert Path(second.value.path()).read_text(encoding="utf-8") == content
+    assert requests == []
+    assert page.evaluate("localStorage.length + sessionStorage.length") == 0
+    assert "kept private" in page.locator("#handoff-status").inner_text()
+
+
+def test_handoff_disclosure_text_and_reopened_session_defaults(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    _open_handoff(page, local_public_alpha[0])
+    page.get_by_role("button", name="Reduced walking").click()
+    page.get_by_role("radio", name="Include in my export").check()
+    with page.expect_download() as download:
+        page.locator("#export-trip-json").click()
+    included = TripSnapshot.from_json(Path(download.value.path()).read_text(encoding="utf-8"))
+    assert included.requirements_included
+    assert included.itinerary.traveller_profile.requirements
+    page.get_by_role("radio", name="Keep private").check()
+    with page.expect_download() as text_download:
+        page.locator("#export-trip-text").click()
+    text = Path(text_download.value.path()).read_text(encoding="utf-8")
+    assert text_download.value.suggested_filename.endswith(".txt")
+    assert "excluded by traveller" in text and "unresolved" in text
+    assert "Singapore, Singapore: 2027-04-10 to 2027-04-12" in text
+    assert "reduced walking" not in text
+    assert "not booked or submitted" in text
+    page.get_by_role("radio", name="Include in my export").check()
+    page.get_by_role("button", name="Close Itinerary Studio").click()
+    page.get_by_role("button", name="Build a multi-stop trip").click()
+    assert page.get_by_role("radio", name="Keep private").is_checked()
+
+
+def test_dated_multi_country_route_recalculates_and_shows_journey_days(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    _open_handoff(page, local_public_alpha[0])
+    assert "2027-04-10 → 2027-04-12" in page.locator(".route-dates").first.inner_text()
+    assert "Thailand" in page.locator(".route-card").last.inner_text()
+    assert page.locator(".journey-day-route").inner_text() == "Singapore → Bangkok"
+    assert page.locator(".day-date").last.inner_text() == "2027-04-12"
+    page.get_by_role("button", name="Allocate one fewer day to Singapore").click()
+    assert "2027-04-11" in page.locator(".route-dates").last.inner_text()
+    page.get_by_role("button", name="Move Bangkok earlier").click()
+    assert page.locator(".journey-day-route").inner_text() == "Bangkok → Singapore"
+    assert "2027-04-12" in page.locator(".route-dates").last.inner_text()
+    assert page.locator(".travel-modes button").count() == 0
+    assert "travel time needed" in page.locator(".itinerary-day").last.inner_text().lower()
+
+
+def test_route_edits_preserve_activity_country_identity(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    _open_handoff(
+        page,
+        local_public_alpha[0],
+        (("Springfield", "Test Country A"), ("Springfield", "Test Country B")),
+    )
+    page.locator(".activity-option-card").first.wait_for()
+    page.locator(".activity-option-card").first.get_by_role("button", name="Add").click()
+    page.get_by_role("button", name="Allocate one fewer day to Springfield, Test Country A").click()
+    page.get_by_role("button", name="Move Springfield, Test Country B earlier").click()
+    with page.expect_download() as download:
+        page.locator("#export-trip-json").click()
+    snapshot = TripSnapshot.from_json(Path(download.value.path()).read_text(encoding="utf-8"))
+    assert snapshot.itinerary.days[2].activities[0].destination.country == "Test Country A"
+    assert snapshot.itinerary.days[0].activities == ()
+    page.get_by_role("button", name="Remove Springfield, Test Country B").click()
+    with page.expect_download() as remaining:
+        page.locator("#export-trip-json").click()
+    kept = TripSnapshot.from_json(Path(remaining.value.path()).read_text(encoding="utf-8"))
+    assert sum(len(day.activities) for day in kept.itinerary.days) == 1
+    assert all(day.destination.country == "Test Country A" for day in kept.itinerary.days)
+
+
+def test_handoff_failure_keeps_plan_usable(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    _open_handoff(page, local_public_alpha[0])
+    page.evaluate("() => { URL.createObjectURL = () => { throw new Error('test failure'); }; }")
+    page.locator("#export-trip-json").click()
+    assert "Your plan is still here" in page.locator("#handoff-status").inner_text()
+    assert page.locator(".itinerary-day").count() == 3
+    page.locator('#pace-options [data-pace="active"]').click()
+    assert (
+        page.locator('#pace-options [data-pace="active"]').get_attribute("aria-pressed") == "true"
+    )
+
+
+def test_handoff_bounds_export_size(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    _open_handoff(page, local_public_alpha[0])
+    page.evaluate("""() => {
+      const Original = Blob;
+      window.Blob = class extends Original { get size() { return 1000001; } };
+    }""")
+    page.locator("#export-trip-text").click()
+    assert "Export could not be prepared" in page.locator("#handoff-status").inner_text()
+
+
+def test_handoff_mobile_touch_keyboard_and_reduced_motion(
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+) -> None:
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.emulate_media(reduced_motion="reduce")
+    _open_handoff(page, local_public_alpha[0])
+    for selector in ("#export-trip-text", "#export-trip-json", ".handoff-disclosure span"):
+        for box in page.locator(selector).all():
+            assert box.bounding_box()["height"] >= 44
+    radio = page.get_by_role("radio", name="Include in my export")
+    radio.focus()
+    page.keyboard.press("Space")
+    assert radio.is_checked()
+    assert page.locator(".trip-handoff").bounding_box()["width"] <= 390
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
 def test_itinerary_studio_setup_route_allocation_and_travel_legs(

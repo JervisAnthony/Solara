@@ -232,13 +232,36 @@ historical weather evidence, deterministic seasonal scoring, or rank authority.
 No vector provider is selected; vector and hybrid retrieval technology will be
 evaluated during MVP2.
 
+## Commit 50 journey and local handoff
+
+The studio supports dated multi-country routes across canonical destinations,
+country labels, coherent day allocations and visible transition days. The final
+stay's exclusive departure boundary is the day after the inclusive trip end;
+this expresses allocation rather than a reservation or a count of hotel nights.
+Unknown journey timing remains unresolved. No transport mode, travel duration,
+schedule, border rule, visa or health requirement is invented.
+
+Travellers can download their active itinerary as a useful text handoff or
+schema-versioned JSON. Party size and pace are disclosed; practical requirements
+default to exclusion and can be explicitly included. No free-form notes are
+automatically included. Nothing is sent to a travel advisor, saved to a server,
+placed in a URL, or retained in browser storage. The export is a planning artifact,
+not a booking request or reservation. Narration remains non-authoritative and is
+excluded from portable trip truth.
+
+Future route evidence, partner/agency capabilities, commercial offer lookup,
+snapshot repositories and presentation branding have clean contracts. Runtime
+providers, commerce, persistence and embedding are not enabled. Default branding
+remains Solara. Commit 51 release/launch readiness remains pending; Destination
+Knowledge + RAG remains MVP2.
+
 ## Out of scope for the current public alpha
 
 The current public-alpha implementation does not:
 
 - book flights, hotels, activities, or transport;
 - process payments;
-- persist itineraries or provide multi-country journey management;
+- persist itineraries or resolve live transport schedules;
 - persist trips or provide traveller accounts;
 - provide partner booking inventory or booking-provider integrations;
 - operate the MVP2 destination corpus, RAG, or vector-retrieval layer;

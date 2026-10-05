@@ -272,3 +272,19 @@ are therefore not shown, and unknown travel time leaves arrival-day feasibility
 unresolved without a generic 90-minute assumption. Hosted operators should not
 describe any future verified route mode or duration estimate as a live schedule,
 inventory, fare, or booking availability.
+
+## Commit 50 deployment boundary
+
+Commit 50 requires no new environment variables, provider credentials or services.
+Dated journeys and explicit local text/JSON exports are included in the packaged
+studio assets. Production still has no routing, commercial inventory, booking,
+payment, account or trip-persistence adapter. Journey evidence and offer ports
+must not be interpreted as configured integrations. Export content stays in browser
+memory until the traveller chooses a download; there is no server export storage
+or public share URL.
+
+`BrandPresentation` is an architecture-only presentation contract. Default runtime
+branding remains Solara; embedding is not enabled. Frame policy, same-origin
+requests, CORS and provider-secret boundaries are unchanged. Deploying a future
+embed mode requires a separately reviewed origin policy and validated configuration.
+No hosted acceptance claim is added by local Commit 50 validation.
