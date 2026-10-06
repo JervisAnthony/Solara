@@ -825,7 +825,7 @@ proposals, and raw model output are excluded from operational logs.
 Current deterministic scoring is season-led. Interests, preferred pace, and
 soft preferred climate travel through the request but are not separate score
 components. An explicit `ClimateConstraint` has independent hard/soft severity.
-The mandatory cold-or-snowy UI choice creates a hard constraint: trusted
+The mandatory cold UI choice creates a hard constraint: trusted
 historical seasonal evidence is gathered for the requested date window, an
 absolute cold threshold is applied, and incompatible candidates are removed
 before deterministic sorting. Temperature evidence can establish cold; Solara
@@ -1416,3 +1416,15 @@ Full pytest/browser, 100% statement/branch coverage, Ruff, dependency, JS syntax
 wheel/sdist and clean-install checks remain required. See [local validation](commit51-phase-a-validation.md),
 [release gates](mvp1-release.md) and [hosted acceptance](hosted-acceptance.md).
 Hosted acceptance remains PENDING and MVP1 remains NOT YET CLOSED in Phase A.
+
+### PR #48 climate authority correction
+
+The only authoritative climate condition is `ClimateCondition.COLD` / `cold`.
+Hard eligibility requires historical seasonal mean ≤12°C AND minimum ≤5°C per
+candidate, before ranking. Geography names and narrative context cannot override
+it. Soft preferences remain context. Eligibility and comfort score are separate.
+There is no snowfall source: temperature never establishes snowfall, snow cover,
+ski conditions or snow availability. Wayfinder's existing text-validation boundary
+rejects unsupported snow language and preserves deterministic results on fallback.
+See [the correction record](commit51-climate-correction.md). Hosted acceptance
+remains PENDING; Commit 51 and MVP1 remain open.

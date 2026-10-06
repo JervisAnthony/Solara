@@ -719,7 +719,7 @@ A recommendation request uses this shape:
   "destination": null,
   "destination_queries": ["Budapest, Hungary", "Vienna, Austria"],
   "climate_constraint": {
-    "condition": "cold_or_snowy",
+    "condition": "cold",
     "severity": "hard"
   }
 }
@@ -771,7 +771,7 @@ historical evidence, not current conditions or forecasts.
 
 Current deterministic scoring is season-led. Optional interest, pace, and soft
 climate values are preserved but are not independent score components. The
-optional `climate_constraint` is different: hard `cold_or_snowy` eligibility is
+optional `climate_constraint` is different: hard `cold` eligibility is
 checked from absolute historical seasonal evidence for the requested dates
 before ranking. If nothing qualifies, HTTP 200 contains an empty recommendation
 list and the browser offers recovery actions. Browser request states are idle,
@@ -1629,3 +1629,13 @@ Full pytest/browser, 100% statement/branch coverage, Ruff, dependency, JS syntax
 wheel/sdist and clean-install checks remain required. See [local validation](commit51-phase-a-validation.md),
 [release gates](mvp1-release.md) and [hosted acceptance](hosted-acceptance.md).
 Hosted acceptance remains PENDING and MVP1 remains NOT YET CLOSED in Phase A.
+
+### PR #48 climate contract correction
+
+Use `condition: "cold"`, `severity: "hard"`; legacy `cold_or_snowy` and unsupported
+snow conditions are rejected. Mean ≤12°C AND minimum ≤5°C remains the unchanged
+historical-temperature threshold. Never infer snowfall from temperature.
+Warm/mild/cool preferences remain soft; free text cannot override hard eligibility.
+Browser zero-match wording uses the authoritative response constraint, with generic
+copy for non-hard-cold empties. See [regressions and validation](commit51-climate-correction.md).
+Corrected candidate SHA is PENDING OWNER COMMIT; hosted acceptance remains PENDING.

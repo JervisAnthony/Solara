@@ -587,11 +587,12 @@
                       <div id="preferred-climate-option-dry" class="premium-select-option" role="option" aria-selected="false" data-value="warm_dry"><strong>Warm &amp; dry</strong><span>Warm weather with lower humidity.</span></div>
                       <div id="preferred-climate-option-mild" class="premium-select-option" role="option" aria-selected="false" data-value="mild"><strong>Mild &amp; comfortable</strong><span>Easy daytime temperatures and light layers.</span></div>
                       <div id="preferred-climate-option-cool" class="premium-select-option" role="option" aria-selected="false" data-value="cool"><strong>Cool &amp; crisp</strong><span>Fresh air and cooler days.</span></div>
-                      <div id="preferred-climate-option-cold" class="premium-select-option" role="option" aria-selected="false" data-value="cold_snowy"><strong>Cold or snowy &mdash; required</strong><span>Only show places with credible cold seasonal evidence for your dates.</span></div>
+                      <div id="preferred-climate-option-cold" class="premium-select-option" role="option" aria-selected="false" data-value="cold"><strong>Cold &mdash; required</strong><span>Only show places with credible cold historical temperature evidence for your dates.</span></div>
                     </div>
                   </div>
                   <p id="preferred-climate-help" class="field-help">
-                    For example warm, mild, or cool.
+                    Warm, mild and cool guide the search. Cold &mdash; required filters out
+                    places without credible cold evidence. Solara does not currently verify snowfall.
                   </p>
                   <p id="preferred-climate-error" class="field-error" hidden></p>
                 </div>
@@ -679,13 +680,12 @@
             No destinations returned this time
           </h3>
           <p id="recommendation-empty-message">
-            No selected destination has credible seasonal evidence for every mandatory
-            requirement. Solara will not substitute a merely less-incompatible match.
+            Try different destinations or broaden your search for these dates.
           </p>
           <div class="empty-recovery-actions">
             <button type="button" data-recovery-target="preferred-climate">Change climate</button>
-            <button type="button" data-recovery-target="destination-search">Change destinations</button>
-            <button type="button" data-recovery-target="destination-search">Broaden my search</button>
+            <button type="button" data-recovery-target="destination-input">Change destinations</button>
+            <button type="button" data-recovery-target="destination-input">Broaden my search</button>
           </div>
         </article>
 

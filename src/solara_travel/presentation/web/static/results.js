@@ -9,6 +9,7 @@
   const recommendationList = document.querySelector("#recommendation-list");
   const emptyState = document.querySelector("#recommendation-empty");
   const emptyTitle = document.querySelector("#recommendation-empty-title");
+  const emptyMessage = document.querySelector("#recommendation-empty-message");
 
   function element(tagName, className, text) {
     const node = document.createElement(tagName);
@@ -302,6 +303,14 @@
     clearResults();
     resultsTitle.textContent = heading(response);
     if (response.has_recommendations === false || response.recommendations.length === 0) {
+      const constraint = response.request?.climate_constraint;
+      const requiredCold = constraint?.condition === "cold" && constraint.severity === "hard";
+      emptyTitle.textContent = requiredCold
+        ? "No places match your required climate"
+        : "No destinations returned this time";
+      emptyMessage.textContent = requiredCold
+        ? "We couldn't find any evidence-supported destinations that meet your required cold conditions for these dates. Change the climate requirement, choose different destinations, or broaden your search."
+        : "Try different destinations or broaden your search for these dates.";
       resultsSection.hidden = false;
       emptyState.hidden = false;
       emptyTitle.focus();

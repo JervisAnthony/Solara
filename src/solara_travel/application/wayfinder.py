@@ -17,6 +17,9 @@ _SEASONAL_TEMPLATE_LANGUAGE = re.compile(
     r"historical window|the observation period|the evidence indicates)\b",
     re.IGNORECASE,
 )
+_UNSUPPORTED_SNOW_LANGUAGE = re.compile(
+    r"\b(?:snow(?:fall|y|ing|pack|flakes)?|ski conditions)\b", re.IGNORECASE
+)
 _GENERIC_GOOD_TO_KNOW_LANGUAGE = re.compile(
     r"\b(?:historical context|historical patterns?|seasonal signal|live (?:weather )?forecast|"
     r"not a forecast|rather than a forecast)\b",
@@ -36,6 +39,8 @@ def _plain_text(value: object, field_name: str, *, maximum_words: int) -> str:
         raise ValueError(f"{field_name} must be plain text")
     if _FORBIDDEN_LANGUAGE.search(normalized):
         raise ValueError(f"{field_name} contains unsupported claims or technical language")
+    if field_name != "destination" and _UNSUPPORTED_SNOW_LANGUAGE.search(normalized):
+        raise ValueError(f"{field_name} contains unsupported snowfall language")
     return normalized
 
 

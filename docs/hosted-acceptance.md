@@ -5,7 +5,7 @@
 | Release record | Value |
 | --- | --- |
 | Public service | https://solara-travel-mvp1.onrender.com |
-| Expected pushed candidate SHA | PENDING owner commit/push |
+| Expected corrected candidate SHA | PENDING OWNER COMMIT |
 | Render deployed SHA | PENDING verification |
 | `/release` SHA and version | PENDING verification; expected version 0.1.0 |
 | Acceptance date/operator/evidence | PENDING |
@@ -42,7 +42,10 @@ where possible; do not manufacture passes or exhaust provider quotas to test lim
 | Discovery: worldwide | Blank destination produces bounded discovery | PENDING |
 | Discovery: typo | Autocomplete recovery and confirmed selection | PENDING |
 | Discovery: maximum | 15-scope boundary, duplicates and over-limit recovery | PENDING |
-| Critical climate | Thailand and/or Philippines + Cold or snowy — required yields truthful zero matches, no tropical alternatives accepted | PENDING |
+| Climate A | Thailand + Philippines + Singapore, Cold — required: zero matches when historical temperatures fail the threshold; no tropical fallback | PENDING |
+| Climate B | Portugal + Thailand + Philippines + Singapore, Cold — required: only individually qualifying cold candidates survive | PENDING |
+| Climate C | Cold — required + warm/island/beach narrative: hard cold eligibility wins | PENDING |
+| Climate D | No snowfall, snow cover or ski-condition claim inferred from temperature evidence | PENDING |
 | Climate recovery | Change climate, Change destinations, Broaden search | PENDING |
 | Recommendation | Postcards and optional-media fallback | PENDING |
 | Recommendation | Wayfinder and narration failure fallback | PENDING |
@@ -69,8 +72,17 @@ where possible; do not manufacture passes or exhaust provider quotas to test lim
 | Public alpha | Rate-limit/cooldown UX where safe; request reference behavior | PENDING |
 | Resilience | Real cold-start experience and provider degradation | PENDING |
 
-No live hosted acceptance was performed in Phase A. Local fake-provider tests
-are recorded separately in [the validation report](commit51-phase-a-validation.md).
+The owner's pre-correction hosted testing identified the climate wording defect.
+This local correction pass establishes no corrected-build hosted acceptance.
+Local fake-provider tests are recorded in [the correction report](commit51-climate-correction.md);
+the original Phase A results remain [historical](commit51-phase-a-validation.md).
 Phase B fills this record with observed evidence, closes the [launch checklist](mvp1-release.md)
 and records GO/NO-GO only when justified. Final main deployment must also match
 its intended SHA and assets before launch.
+
+The old Phase A SHA `c66e3eba01bbf2f6f35bf780ffadba799184614f` is pre-correction
+history and cannot establish final acceptance. After owner commit/push, rerun CI,
+CodeQL and Dependency Review, deploy the new exact head and verify `/release` plus
+all asset bytes from that checkout before the corrected manual climate cases.
+Cold eligibility uses historical mean ≤12°C AND minimum ≤5°C; it never verifies
+snowfall. All results above remain PENDING. Commit 51 and MVP1 remain open.

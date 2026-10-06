@@ -197,7 +197,7 @@ are not shown, no road mode or 90-minute journey is assumed, and an arrival
 day's feasibility remains unresolved until trusted route evidence supplies its
 travel time. Known route ranges use their conservative upper bound plus any
 separate verified planning buffer. No live schedule or booking claim is made.
-Mandatory cold-or-snowy requests are now an absolute,
+Mandatory cold requests are now an absolute,
 date-sensitive eligibility constraint applied before ranking, so an incompatible
 search succeeds truthfully with zero matches and recovery choices. The studio is
 an active browser session only; it adds no account, persistence, booking,
@@ -269,3 +269,12 @@ Solara is licensed under the MIT License.
 ## Author
 
 Jervis Anthony Saldanha
+
+### PR #48 climate correction
+
+**Cold — required** is a historical-temperature requirement. Solara does not
+currently verify snowfall or infer snow from cold temperatures. Warm/mild/cool
+remain soft preferences; contradictory trip text cannot override hard eligibility.
+The old candidate `c66e3eba01bbf2f6f35bf780ffadba799184614f` is pre-correction
+history. Corrected SHA: **PENDING OWNER COMMIT**; [hosted acceptance](docs/hosted-acceptance.md)
+remains PENDING, Commit 51 IN PROGRESS and MVP1 NOT YET CLOSED.

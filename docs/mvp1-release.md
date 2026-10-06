@@ -16,7 +16,7 @@ and worldwide discovery, with up to 15 selected scopes and 15 concrete candidate
 Google Places validates locality identity and containment. Open-Meteo supplies
 historical seasonal evidence. Deterministic analytics own eligibility, Seasonal
 Fit and ordering. OpenAI proposes bounded discovery candidates and supplies
-optional narration; neither can override evidence or ranking. Hard cold/snow
+optional narration; neither can override evidence or ranking. Hard cold
 requirements exclude candidates without supporting evidence. Interests, pace
 and trip descriptions guide discovery and presentation without becoming invented
 numeric score components. Historical conditions are not a forecast.
@@ -104,3 +104,14 @@ secrets into source, force-push main or delete history.
 
 Phase B records the real accepted SHA/date/results, resolves defects and remaining
 checklist items, and justifies a GO decision before closing Commit 51 and MVP1.
+
+### Corrected candidate identity and climate boundary
+
+`c66e3eba01bbf2f6f35bf780ffadba799184614f` is the pre-correction Phase A candidate
+and must not be used for final acceptance. Corrected SHA: **PENDING OWNER COMMIT**.
+After owner push, repeat CI/CodeQL/Dependency Review, exact-head deployment,
+integrity smoke and the corrected pending climate cases. **Cold — required** uses
+historical mean ≤12°C AND minimum ≤5°C; temperature never establishes snowfall,
+snow cover or ski conditions. Soft preferences remain soft and narrative cannot
+override hard eligibility. See [the correction record](commit51-climate-correction.md).
+Hosted acceptance/launch remain PENDING; Commit 51 and MVP1 remain open.

@@ -51,6 +51,12 @@ def test_wayfinder_values_normalize_and_render_compatibility_text() -> None:
         narrative.opening = "changed"  # type: ignore[misc]
 
 
+def test_canonical_snow_place_name_is_identity_not_a_weather_claim():
+    note = _note("Snow Mountain")
+    assert note.destination == "Snow Mountain"
+    assert "snow" not in note.seasonal_feel.casefold()
+
+
 def test_parser_restores_deterministic_order_when_provider_reorders_notes() -> None:
     narrative = parse_wayfinder_narrative(
         _payload("Vienna", "Budapest", "Prague"),

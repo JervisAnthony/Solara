@@ -1,8 +1,13 @@
 # Commit 51 Phase A implementation and local validation
 
-Validation date: 2026-10-06. **Release candidate only; hosted acceptance PENDING;
-Commit 51 IN PROGRESS; MVP1 NOT YET CLOSED.** This record describes the staged
-Phase A stopping point. No candidate SHA exists until the owner commits.
+Historical Phase A validation date: 2026-10-06. The owner subsequently committed
+`c66e3eba01bbf2f6f35bf780ffadba799184614f` and opened PR #48. That SHA is now the
+**pre-correction candidate**, not the final accepted build. The staged/no-commit
+statements below describe the original Phase A stopping point.
+
+The current [climate correction](commit51-climate-correction.md) has candidate SHA
+**PENDING OWNER COMMIT**. Hosted acceptance remains PENDING, Commit 51 IN PROGRESS
+and MVP1 NOT YET CLOSED.
 
 ## 1. Commit 50 verification
 

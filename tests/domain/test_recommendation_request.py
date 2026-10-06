@@ -311,7 +311,7 @@ def test_recommendation_request_rejects_both_destination_input_forms() -> None:
 
 def test_recommendation_request_accepts_typed_climate_constraint() -> None:
     constraint = ClimateConstraint(
-        ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD
+        ClimateCondition.COLD, ConstraintSeverity.HARD
     )
     request = RecommendationRequest(
         TravelPeriod(date(2026, 11, 10), date(2026, 11, 16)),

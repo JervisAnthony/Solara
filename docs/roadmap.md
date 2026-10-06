@@ -1308,7 +1308,7 @@ stale responses, and preserves the route through empty or unavailable states.
 No live schedule or booking claim is made. The Wayfinder summary remains
 non-authoritative.
 
-Commit 49 also corrects climate eligibility: hard cold-or-snowy requirements use
+Commit 49 also corrects climate eligibility: hard cold requirements use
 absolute historical seasonal evidence for the requested dates before ranking.
 Incompatible candidates are excluded, including tropical Thailand/Philippines
 results without credible cold evidence; a successful zero-match response is
@@ -1424,3 +1424,13 @@ sophistication, not because sophisticated technology is available.
 Every new framework, provider, model, service, database, workflow, or
 abstraction should solve a concrete problem and fit within the architecture
 already established.
+
+### Commit 51 / PR #48 climate correction
+
+The release candidate replaces the combined cold/snow concept with **Cold — required**.
+Historical temperature thresholds remain mean ≤12°C AND minimum ≤5°C. Snowfall
+is unsupported and never inferred; a future hard requirement must fail closed
+without trustworthy evidence. Soft preferences and ranking authority are preserved.
+Pre-correction SHA `c66e3eba01bbf2f6f35bf780ffadba799184614f` cannot establish final
+acceptance. Corrected SHA: PENDING OWNER COMMIT. [Acceptance](hosted-acceptance.md)
+remains PENDING, Commit 51 IN PROGRESS and MVP1 NOT YET CLOSED.

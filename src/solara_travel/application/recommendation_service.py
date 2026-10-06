@@ -299,12 +299,12 @@ class RecommendationService:
     ) -> bool:
         """Apply an absolute, date-sensitive eligibility threshold before ranking."""
 
-        if condition is not ClimateCondition.COLD_OR_SNOWY:
+        if condition is not ClimateCondition.COLD:
             raise ValueError("unsupported climate condition")
         weather = recommendation.evidence.seasonal_weather
         # Historical temperature evidence can establish genuinely cold conditions.
-        # Solara has no snowfall provider, so it never claims snow from temperature
-        # alone. A candidate passes this combined choice only on the cold branch.
+        # Temperature evidence never establishes snowfall or snow cover.
+        # MVP1 supports cold eligibility only, with no snowfall provider.
         return (
             weather.mean_temperature_celsius <= 12.0
             and weather.minimum_temperature_celsius <= 5.0

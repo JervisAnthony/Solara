@@ -81,10 +81,14 @@ def test_guided_interests_pace_climate_and_trip_context_are_explicit() -> None:
         "warm_dry",
         "mild",
         "cool",
-        "cold_snowy",
+        "cold",
     ):
         assert f'data-value="{value}"' in html
     assert "Describe where you're looking to vacation" in html
+    assert "Cold &mdash; required" in html
+    assert "cold historical temperature evidence" in html
+    assert "Solara does not currently verify snowfall" in html
+    assert "Cold or snowy" not in html and 'data-value="cold_snowy"' not in html
     assert 'id="trip-description"' in html
     assert 'maxlength="1000"' in html
     assert 'id="trip-description-count"' in html

@@ -87,11 +87,11 @@ def test_request_schema_accepts_explicit_null_destination_queries() -> None:
 
 def test_request_mapping_preserves_explicit_hard_climate_constraint() -> None:
     body = _request_body(
-        climate_constraint={"condition": "cold_or_snowy", "severity": "hard"}
+        climate_constraint={"condition": "cold", "severity": "hard"}
     )
     mapped = to_domain_recommendation_request(body)
     assert mapped.climate_constraint == ClimateConstraint(
-        ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD
+        ClimateCondition.COLD, ConstraintSeverity.HARD
     )
 
 
@@ -122,7 +122,7 @@ def test_response_mapping_preserves_authoritative_order_values_and_selected_evid
         TravelPeriod(date(2026, 4, 10), date(2026, 4, 12)),
         TravellerPreferences(TravellerInterests(("nature",)), "relaxed", "warm"),
         climate_constraint=ClimateConstraint(
-            ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.SOFT
+            ClimateCondition.COLD, ConstraintSeverity.SOFT
         ),
     )
     result = build_offline_recommendation_service(
@@ -140,6 +140,7 @@ def test_response_mapping_preserves_authoritative_order_values_and_selected_evid
     assert response.request.destination_queries == []
     assert response.request.destination_mode == "discovery"
     assert response.request.climate_constraint is not None
+    assert response.request.climate_constraint.condition == "cold"
     assert response.request.climate_constraint.severity == "soft"
     assert response.recommendation_count == 3
     assert response.has_recommendations

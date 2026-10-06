@@ -59,6 +59,38 @@ def _valid_payload() -> dict[str, object]:
     }
 
 
+def test_http_hard_cold_response_echoes_temperature_only_authority():
+    payload = _valid_payload()
+    payload["climate_constraint"] = {"condition": "cold", "severity": "hard"}
+    payload["preferences"]["preferred_climate"] = "cold"
+    payload["preferences"]["trip_description"] = "Warm islands, beaches and diving."
+    response = _configured_client().post("/api/v1/recommendations", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["request"]["climate_constraint"] == {"condition": "cold", "severity": "hard"}
+    assert body["recommendation_count"] == 1
+    for item in body["recommendations"]:
+        weather = item["evidence"]["seasonal_weather"]
+        assert weather["mean_temperature_celsius"] <= 12.0
+        assert weather["minimum_temperature_celsius"] <= 5.0
+    assert "snow" not in json.dumps(body["request"]["climate_constraint"])
+
+
+@pytest.mark.parametrize(
+    "constraint",
+    [
+        {"condition": "cold_or_snowy", "severity": "hard"},
+        {"condition": "snow", "severity": "hard"},
+        {"condition": "unknown", "severity": "hard"},
+        {"condition": "cold", "severity": "hard", "snowfall": True},
+    ],
+)
+def test_http_rejects_unsupported_climate_conditions_and_unknown_fields(constraint):
+    payload = _valid_payload()
+    payload["climate_constraint"] = constraint
+    assert _configured_client().post("/api/v1/recommendations", json=payload).status_code == 422
+
+
 def _offline_service(*, empty: bool = False) -> RecommendationService:
     kwargs = {"dataset": OfflineTravelDataset(())} if empty else {}
     return build_offline_recommendation_service(

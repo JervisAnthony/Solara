@@ -12,8 +12,11 @@ remains the authority.
    them blank for worldwide discovery. Confirm suggested places after typing.
    You can select up to 15 scopes. Try interests, pace and climate preferences.
 2. Review Seasonal Fit, Places to See, Seasonal Feel and any Good to Know context.
-   For a required cold/snowy trip in Thailand or the Philippines, expect truthful
-   zero matches and recovery choices rather than tropical substitutions.
+   For a required cold trip in Thailand or the Philippines, expect truthful
+   zero matches when the temperature evidence does not qualify, with recovery
+   choices rather than tropical substitutions. Try Singapore too. In a mixed
+   Portugal/tropical search, only individually qualifying cold places should
+   remain. Warm-island descriptions cannot override a required cold choice.
 3. Select **Build this trip**, or shortlist destinations and choose **Build a
    multi-stop trip**. Set traveller composition, pace and practical needs. Edit
    destination order and day allocations; dates follow those allocations.
@@ -42,3 +45,10 @@ If a provider is unavailable or a cooldown appears, follow the visible guidance.
 Do not expect booking, hotel/activity/transport inventory, live prices, payments,
 accounts, saved trips, a routing provider, visa/legal advice or a RAG knowledge
 base. Confirm travel, entry and safety information with authoritative sources.
+
+**Cold — required** checks historical temperatures only. Solara does not currently
+verify snowfall; cold weather does not establish snow, snow cover or ski conditions.
+Warm, mild and cool guide discovery without becoming mandatory filters. If no
+places meet the required cold conditions, change the climate or destinations, or
+broaden the search yourself. A mixed search may still return genuinely cold places.
+The corrected build is pending owner commit and exact-build hosted testing.

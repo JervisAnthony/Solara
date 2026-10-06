@@ -19,7 +19,7 @@ all equal that SHA; there are no later main commits to reconcile.
 Merged code/history and the baseline suite confirm the Itinerary Studio,
 climate hard-constraint correction, itinerary activity API, evidence-gated legs,
 unresolved arrival-day feasibility, browser activity integration and Commit 49
-documentation are present. Thailand/Philippines cold-or-snowy regression tests
+documentation are present. Historical Thailand/Philippines combined-climate regression tests
 remain in the full passing suite.
 
 ## 2. Branch cleanup

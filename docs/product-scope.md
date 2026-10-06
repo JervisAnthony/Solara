@@ -202,7 +202,7 @@ their conservative upper bound plus a separate supported planning buffer. Solara
 makes no live schedule, availability, fare, inventory, or booking claim.
 
 Hard eligibility constraints are separate from soft style preferences. The
-mandatory cold-or-snowy choice uses trusted historical evidence for the requested
+mandatory cold choice uses trusted historical evidence for the requested
 dates before ranking. If the evidence cannot establish cold conditions, the
 candidate is excluded; a successful zero-match result offers climate,
 destination, and search recovery actions. Seasonal Fit remains deterministic and
@@ -304,3 +304,12 @@ The first meaningful Solara milestone should demonstrate that:
 5. the core workflow can be tested without network access;
 6. optional AI narration can be added without owning the recommendation logic;
 7. the system can be extended without rewriting the domain layer.
+
+### Cold-only MVP1 capability
+
+MVP1 supports **Cold — required**, not a hard snow requirement. Historical mean
+≤12°C AND minimum ≤5°C determines eligibility per candidate, without country
+blacklists. Soft preferences stay soft; contradictory narrative cannot override
+a hard requirement. Solara does not verify snowfall, snow cover or ski conditions
+from temperatures. A successful zero-match result is preferred to false suitability.
+See [the correction record](commit51-climate-correction.md); hosted acceptance is PENDING.
