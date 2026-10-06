@@ -5,7 +5,7 @@ import re
 from fastapi.testclient import TestClient
 
 from solara_travel.presentation.api import ApiSettings, create_app
-from solara_travel.presentation.web.assets import INDEX_DOCUMENT, STATIC_DIRECTORY
+from solara_travel.presentation.web.assets import INDEX_DOCUMENT, STATIC_DIRECTORY, asset_url
 
 BRANDING_FILENAMES = (
     "solara-logo-horizontal.png",
@@ -41,7 +41,7 @@ def test_root_returns_semantic_solara_html_shell() -> None:
     assert '<html lang="en">' in html
     assert '<meta name="viewport"' in html
     assert re.search(r"<title>[^<]*Solara[^<]*</title>", html)
-    assert 'href="/static/styles.css"' in html
+    assert f'href="{asset_url("styles.css")}"' in html
     assert 'href="#main-content"' in html
     assert '<main id="main-content"' in html
     assert 'id="recommendation-workspace"' in html

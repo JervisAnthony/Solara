@@ -24,7 +24,9 @@ def test_root_contains_initially_hidden_semantic_results_region() -> None:
     assert 'id="recommendation-results-summary"' in region
     assert region.count("Seasonal guidance is based on historical patterns") == 1
     assert '<ol id="recommendation-list"' in region
-    assert '<script src="/static/results.js" defer></script>' in html
+    from solara_travel.presentation.web.assets import asset_url
+
+    assert f'<script src="{asset_url("results.js")}" defer></script>' in html
     assert "AI-assisted explanation" not in region
     assert "Optional context" not in region
 

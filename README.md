@@ -12,8 +12,15 @@ traveller at a particular time.
 
 ## Project status
 
-Solara is currently in **pre-alpha development** and is undergoing a clean,
-test-first architectural rebuild.
+Solara is a **public-alpha MVP1 release candidate**, package version **0.1.0**.
+Commits 47–50 are complete; Commit 50 merged through PR #47 at
+`9ea9fda8536a69f158bdb3d9b391c700889a4eb7`. Commit 51 is **IN PROGRESS — Phase A**.
+Hosted acceptance and launch are **PENDING**; MVP1 is **NOT YET CLOSED**.
+
+The current product includes validated destination discovery and comparisons,
+historical Seasonal Fit, optional Postcards/Wayfinder, Itinerary Studio, dated
+multi-country journeys and private local text/JSON exports. Routing, booking,
+inventory, payments, accounts, persistence and RAG are not enabled.
 
 The original prototype explored:
 
@@ -28,8 +35,8 @@ through Git history. Useful ideas from it will be reintroduced only after their
 responsibilities, boundaries, and expected behaviour are clearly defined and
 tested.
 
-The current implementation provides the Python package and engineering
-foundation. Travel recommendation functionality has not yet been reintroduced.
+The rebuilt implementation now provides the recommendation and itinerary workflows
+described below, while retaining the tested provider-independent foundation.
 
 ## Product vision
 
@@ -241,6 +248,10 @@ The architecture will grow incrementally through small, reviewed commits.
 - [Development guide](docs/development.md)
 - [Deployment configuration](docs/deployment.md)
 - [Roadmap](docs/roadmap.md)
+- [MVP1 release candidate and launch checklist](docs/mvp1-release.md)
+- [Hosted acceptance — pending](docs/hosted-acceptance.md)
+- [Tester guide](docs/tester-guide.md)
+- [Phase A local validation](docs/commit51-phase-a-validation.md)
 
 ## Package names
 

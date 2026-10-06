@@ -91,7 +91,9 @@ def test_guided_interests_pace_climate_and_trip_context_are_explicit() -> None:
     assert 'rows="5"' in html
     assert 'role="combobox"' in html
     assert 'role="option"' in html
-    assert '<script src="/static/selects.js" defer></script>' in html
+    from solara_travel.presentation.web.assets import asset_url
+
+    assert f'<script src="{asset_url("selects.js")}" defer></script>' in html
 
 
 def test_how_solara_works_is_a_dedicated_four_step_traveller_section() -> None:

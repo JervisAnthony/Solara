@@ -252,8 +252,10 @@ excluded from portable trip truth.
 Future route evidence, partner/agency capabilities, commercial offer lookup,
 snapshot repositories and presentation branding have clean contracts. Runtime
 providers, commerce, persistence and embedding are not enabled. Default branding
-remains Solara. Commit 51 release/launch readiness remains pending; Destination
-Knowledge + RAG remains MVP2.
+remains Solara. Commit 51 is IN PROGRESS as a 0.1.0 public-alpha release
+candidate; hosted acceptance and launch are PENDING and MVP1 is NOT YET CLOSED.
+See [release scope and launch gates](mvp1-release.md) and
+[the tester guide](tester-guide.md). Destination Knowledge + RAG remains MVP2.
 
 ## Out of scope for the current public alpha
 

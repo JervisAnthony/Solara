@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from solara_travel.presentation.api import create_app
+from solara_travel.presentation.web.assets import asset_url
 
 
 def _asset(path: str) -> str:
@@ -14,7 +15,7 @@ def _asset(path: str) -> str:
 def test_itinerary_studio_markup_exposes_guided_semantic_controls() -> None:
     html = _asset("/")
     for marker in (
-        '<script src="/static/itinerary.js" defer></script>',
+        f'<script src="{asset_url("itinerary.js")}" defer></script>',
         'id="itinerary-studio"',
         'id="party-presets"',
         'data-pace="relaxed"',

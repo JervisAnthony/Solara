@@ -1083,7 +1083,7 @@ neither Render access nor live provider credentials. Hosted composition tests
 use explicit fake configuration and make no provider requests. Live-network and
 provider-backed browser checks remain manual and are never part of CI.
 
-Commit 47 hosted acceptance deployed exact feature SHA
+Historically, Commit 47 hosted acceptance deployed exact feature SHA
 `10e3808622834f7f9a3b9fb64ba7b75dff0881b1` to the existing manually
 provisioned `solara-travel-mvp1` service. Single-city and three-city explicit
 destination flows, invalid-destination handling, provider-backed evidence,
@@ -1094,8 +1094,9 @@ than a separate hosted tablet session.
 
 The tested real blank-discovery request completed without a provider/error-state
 failure but returned no recommendations, and the browser correctly rendered the
-empty state. Correcting real hosted blank/open discovery is a documented Commit
-48 follow-up. Automated tests must continue to avoid live provider calls.
+empty state. Commit 48 subsequently implemented blank/open discovery improvements.
+These historical results do not establish Commit 51 acceptance, which remains
+PENDING for the exact candidate SHA. Automated tests must avoid live provider calls.
 
 ### Deterministic browser smoke
 
@@ -1601,3 +1602,30 @@ sophistication.
 
 Every new abstraction, dependency, framework, service, and layer should make a
 real problem easier to solve, easier to test, or easier to maintain.
+
+## Commit 51 release boundary
+
+Version 0.1.0 is a public-alpha candidate, not production certification.
+The hidden operational `GET /release` lives in API presentation only. It reports
+installed metadata and validates optional Render revision text as 40 hexadecimal
+characters; missing/invalid text returns null without blocking startup. It makes
+no provider calls, is excluded from OpenAPI and bypasses client event logging.
+`/health` retains its original response and all traveller logging policies remain.
+
+The web renderer computes SHA-256 prefixes from installed JS/CSS bytes and inserts
+versioned URLs into served HTML. The document requires revalidation; static imagery
+and JavaScript semantics are unchanged. There is no Node build pipeline, timestamp,
+random identifier or package-version-only cache key.
+
+The operator-only `scripts/verify_hosted_release.py` uses bounded GETs, rejects
+redirects and compares all eight functional assets with the local checkout. Run it
+with the expected pushed SHA only after deploying that exact revision. Offline
+tests in `tests/tools/test_hosted_release.py` cover mismatches without live quota.
+Endpoint and content-change regressions are in `tests/presentation/api/test_release.py`
+and `tests/presentation/web/test_release_assets.py`. Fresh installed-package checks
+must also verify metadata, root fingerprints and delivered bytes, not just source.
+
+Full pytest/browser, 100% statement/branch coverage, Ruff, dependency, JS syntax,
+wheel/sdist and clean-install checks remain required. See [local validation](commit51-phase-a-validation.md),
+[release gates](mvp1-release.md) and [hosted acceptance](hosted-acceptance.md).
+Hosted acceptance remains PENDING and MVP1 remains NOT YET CLOSED in Phase A.
