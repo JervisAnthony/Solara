@@ -16,6 +16,7 @@ from solara_travel.domain.constraints import (
 )
 from solara_travel.domain.destination import Destination, DestinationQuery
 from solara_travel.domain.geography import GeoCoordinates
+from solara_travel.domain.preferences import TravellerPreferences
 from solara_travel.domain.recommendation import RecommendationRequest
 from solara_travel.domain.travel import TravelPeriod
 from solara_travel.domain.weather import WeatherObservation
@@ -160,15 +161,22 @@ def test_service_discovers_candidates_and_builds_ranked_results() -> None:
 def test_hard_cold_constraint_excludes_tropical_candidates_before_ranking() -> None:
     thailand = _destination("Bangkok", 13.75, 100.5, "Thailand")
     philippines = _destination("Manila", 14.6, 121.0, "Philippines")
-    places = FakePlacesProvider((thailand, philippines))
+    singapore = _destination("Singapore", 1.3, 103.8, "Singapore")
+    places = FakePlacesProvider((thailand, philippines, singapore))
     weather = FakeWeatherProvider(
-        {thailand: _weather(28.0, 31.0), philippines: _weather(27.0, 30.0)}
+        {
+            thailand: _weather(28.0, 31.0),
+            philippines: _weather(27.0, 30.0),
+            singapore: _weather(28.0, 30.0),
+        }
     )
     hard_request = RecommendationRequest(
         TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
-        climate_constraint=ClimateConstraint(
-            ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD
+        preferences=TravellerPreferences(
+            preferred_climate="cold",
+            trip_description="Warm islands, beaches and diving. Less city, more outdoors.",
         ),
+        climate_constraint=ClimateConstraint(ClimateCondition.COLD, ConstraintSeverity.HARD),
     )
 
     result = _service(places, weather).recommend(hard_request)
@@ -178,6 +186,32 @@ def test_hard_cold_constraint_excludes_tropical_candidates_before_ranking() -> N
     assert result.recommendation_count == 0
 
 
+@pytest.mark.parametrize(
+    "temperatures,eligible",
+    [
+        ((5.0, 19.0), True),  # Exact mean 12 and minimum 5 boundaries.
+        ((5.0, 19.2), False),  # Minimum qualifies, mean fails.
+        ((5.1, 18.9), False),  # Mean qualifies, minimum fails.
+        ((-8.0, -2.0), True),  # Freezing temperatures establish cold, never snow.
+        ((6.0, 10.0), False),
+        ((28.0, 31.0), False),
+    ],
+)
+def test_hard_cold_uses_both_existing_temperature_thresholds(temperatures, eligible):
+    destination = _destination("Evidence fixture", 1.3, 103.8, "Singapore")
+    service = _service(
+        FakePlacesProvider((destination,)),
+        FakeWeatherProvider({destination: _weather(*temperatures)}),
+    )
+    request = replace(
+        _request(),
+        climate_constraint=ClimateConstraint(ClimateCondition.COLD, ConstraintSeverity.HARD),
+    )
+    result = service.recommend(request)
+    assert bool(result.recommendations) is eligible
+    assert result.request.climate_constraint.condition.value == "cold"
+
+
 def test_soft_or_relaxed_climate_constraint_keeps_candidates_and_cold_evidence_passes() -> None:
     warm = _destination("Warm", 13.0, 100.0)
     cold = _destination("Cold", 43.0, 142.0)
@@ -185,15 +219,11 @@ def test_soft_or_relaxed_climate_constraint_keeps_candidates_and_cold_evidence_p
     weather = FakeWeatherProvider({warm: _weather(25.0), cold: _weather(2.0, 8.0)})
     soft = RecommendationRequest(
         TravelPeriod(date(2027, 4, 10), date(2027, 4, 12)),
-        climate_constraint=ClimateConstraint(
-            ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.SOFT
-        ),
+        climate_constraint=ClimateConstraint(ClimateCondition.COLD, ConstraintSeverity.SOFT),
     )
     hard = replace(
         soft,
-        climate_constraint=ClimateConstraint(
-            ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD
-        ),
+        climate_constraint=ClimateConstraint(ClimateCondition.COLD, ConstraintSeverity.HARD),
     )
 
     assert len(_service(places, weather).recommend(soft).recommendations) == 2

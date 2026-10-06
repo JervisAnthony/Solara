@@ -14,7 +14,7 @@ class ConstraintSeverity(StrEnum):
 class ClimateCondition(StrEnum):
     """Climate conditions Solara can evaluate from seasonal temperature evidence."""
 
-    COLD_OR_SNOWY = "cold_or_snowy"
+    COLD = "cold"
 
 
 @dataclass(frozen=True, slots=True)

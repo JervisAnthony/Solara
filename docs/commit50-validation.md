@@ -1,7 +1,11 @@
 # Commit 50 implementation and validation record
 
-Local validation completed on 2026-10-05. The required stopping point is staged
-implementation on `feature/partner-journey-capabilities`, without a Git commit.
+Historical local-validation record, completed on 2026-10-05. That pass stopped
+at staged implementation on `feature/partner-journey-capabilities` without a commit.
+The owner subsequently committed `0130732`; PR #47 merged the work at
+`9ea9fda8536a69f158bdb3d9b391c700889a4eb7`. Statements below about staged state
+and pending Commit 51 describe that historical stopping point, not current Git
+state. Current release readiness is recorded in [Phase A](commit51-phase-a-validation.md).
 
 ## 1. Commit 49 verification
 
@@ -15,7 +19,7 @@ all equal that SHA; there are no later main commits to reconcile.
 Merged code/history and the baseline suite confirm the Itinerary Studio,
 climate hard-constraint correction, itinerary activity API, evidence-gated legs,
 unresolved arrival-day feasibility, browser activity integration and Commit 49
-documentation are present. Thailand/Philippines cold-or-snowy regression tests
+documentation are present. Historical Thailand/Philippines combined-climate regression tests
 remain in the full passing suite.
 
 ## 2. Branch cleanup

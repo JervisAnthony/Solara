@@ -2,11 +2,12 @@
 
 ## Scope and architecture
 
-Commit 45 prepares Solara for a portable hosted MVP1 deployment. Commit 46
-establishes the first live public-alpha service on Render and adds the
-repository-side definition of its intended configuration. Provider-backed
-recommendation, narration, feedback, and broader browser validation remain
-Commit 47.
+Commits 45–46 established the portable deployment and first Render service.
+Commits 47–50 completed repository integration, visual experience, Itinerary Studio
+and journey/handoff boundaries. Commit 51 is an in-progress 0.1.0 public-alpha
+release candidate. Its hosted acceptance is PENDING; MVP1 is not yet closed.
+The owner observed `/release` at `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`
+with the corrected cold UI. Full hosted integrity and acceptance remain PENDING.
 
 The hosted entrypoint follows one explicit composition path:
 
@@ -33,7 +34,8 @@ remains credential-free for development, tests, and library use.
 
 ## Render MVP1 Blueprint
 
-The live deployment is:
+The intended current MVP1 configuration is shown below. Runtime/dashboard
+confirmation for the Commit 51 candidate remains PENDING:
 
 | Setting | Value |
 | --- | --- |
@@ -44,7 +46,8 @@ The live deployment is:
 | Runtime | Docker |
 | Plan | Free |
 | Source | GitHub `main` |
-| Deployed baseline | `f325e419af1e7a88963c581c5d81ac9473de44fe` |
+| Owner-observed live SHA | `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`; full integrity/acceptance PENDING |
+| Candidate package version | `0.1.0` public alpha |
 | Topology | One service, one instance, one Uvicorn worker |
 | Health endpoint | `/health` |
 | Hosted API docs | Disabled |
@@ -52,14 +55,15 @@ The live deployment is:
 | Render hostname | Enabled |
 | Narration model | `gpt-5.6-luna` |
 
-The existing service was manually provisioned from the already-merged `main`
-baseline because [`render.yaml`](../render.yaml) existed only on the local
-Commit 46 branch at the time. The live service is therefore **not yet managed by
-a Render Blueprint**. The file captures the canonical desired MVP1 Render
-configuration. After Commit 46 reaches a remote branch or `main`, the operator
-can match the existing `solara-travel-mvp1` service and synchronize it with a
-Blueprint. Do not create a second service, and keep existing secret values in
-Render rather than moving them into source control.
+Historically, the existing service was manually provisioned from the merged
+baseline `f325e419af1e7a88963c581c5d81ac9473de44fe` while
+[`render.yaml`](../render.yaml) existed only on the local Commit 46 branch.
+That SHA is a historical first-deployment record, not the current release SHA.
+The Blueprint file is now in the repository and captures the canonical intended
+configuration. Actual adoption of the existing service remains **PENDING
+verification**: no current Render dashboard evidence establishes completion.
+The operator should inspect/match the existing service before synchronization.
+Do not create a second service; keep existing secrets in Render.
 
 The Blueprint declares one `solara-travel-mvp1` Docker web service on Render
 Free in Singapore, with exactly one instance. It builds the root `Dockerfile`,
@@ -124,7 +128,10 @@ disabled. The project uses conservative prepaid billing with auto-reload off,
 but neither provider controls nor Solara's safeguards constitute a guaranteed
 hard cost ceiling.
 
-### First deployment checklist
+### Historical first-deployment checklist
+
+These observations belong to the first deployment at `f325e419af1e7a88963c581c5d81ac9473de44fe`.
+They do not establish current live identity or Commit 51 acceptance.
 
 - [x] Render account and `solara-travel-mvp1` service created
 - [x] GitHub repository connected with `main` selected
@@ -139,16 +146,14 @@ hard cost ceiling.
 - [x] `GET /` verified as `200`
 - [x] `GET /docs` and `GET /redoc` verified as `404`
 - [x] Premium Solara shell and approved branding rendered
-- [ ] Existing service adopted by a Render Blueprint after Commit 46 is remote
+- [ ] Existing service Blueprint adoption — current confirmation still pending
 
-Commit 47 remains responsible for:
-
-- real Google Places, Open-Meteo evidence, and OpenAI narration flows;
-- complete recommendation and error-state browser interaction;
-- tester feedback submission and repeated-click behavior;
-- responsive/mobile checks and cold-start user experience;
-- public-alpha copy cleanup, including review of `DEVELOPMENT PREVIEW`;
-- the broader public-alpha browser smoke suite.
+Commit 47 subsequently implemented provider integration, recommendation/error
+interaction, feedback/repeated-click behavior, responsive and cold-start UX,
+public-alpha copy and the browser smoke suite. These repository milestones are
+complete. All Commit 51 real hosted revalidation remains PENDING in the
+[acceptance matrix](hosted-acceptance.md); historical results are not reused as
+candidate acceptance.
 
 ## Required variables
 
@@ -288,3 +293,42 @@ branding remains Solara; embedding is not enabled. Frame policy, same-origin
 requests, CORS and provider-secret boundaries are unchanged. Deploying a future
 embed mode requires a separately reviewed origin policy and validated configuration.
 No hosted acceptance claim is added by local Commit 50 validation.
+
+## Commit 51 release identity and deployment verification
+
+Render supplies `RENDER_GIT_COMMIT` at runtime. It is optional, untrusted metadata,
+not a required startup variable or a domain/application concept. `/release`
+returns only product, installed package version and a normalized 40-hex SHA;
+missing/invalid revision becomes null. It makes no provider calls and adds no
+client/request tracking or request event logging. Health and OpenAPI are unchanged.
+
+The root has `Cache-Control: no-cache` for document revalidation. All eight
+functional JS/CSS URLs carry a deterministic 16-hex SHA-256 content prefix;
+asset-byte changes alter URLs even when package version stays fixed. StaticFiles
+handles the query strings normally; imagery caching remains unchanged.
+
+After owner commit/push, deploy the exact pushed candidate SHA to this existing
+service. Candidate feature-branch testing does not change the final main-source
+launch requirement. Compare Render's deployment SHA with `/release`, then run:
+
+```powershell
+python scripts/verify_hosted_release.py https://solara-travel-mvp1.onrender.com --expected-sha <40-character-pushed-SHA>
+```
+
+Use the corrected verifier in a local repository containing that commit object;
+fetch the revision if needed. HEAD need not equal the deployed SHA. Git must be
+installed. The bounded read-only verifier refuses
+redirects and checks only health/release/root/docs/redoc and functional assets,
+including live hashes and byte-for-byte comparison with canonical Git blobs from
+the validated `/release` revision (also required to match `--expected-sha`).
+Windows checkout newline conversion cannot affect this comparison. Missing Git
+or commit objects fail safely; no text normalization substitutes for exact bytes.
+With no revision and no expected SHA, only a labeled local-worktree fallback is
+available, which cannot establish exact release integrity. It makes no provider
+requests or feedback submissions. Follow with the separate manual hosted matrix.
+No candidate deployment or hosted acceptance was performed in Phase A.
+
+For rollback and the definitive launch gates, follow [the release document](mvp1-release.md).
+Record actual current/known-good SHAs; neither is inferred from historical notes.
+See [the verifier correction record](commit51-verifier-correction.md). The new
+correction SHA is PENDING OWNER COMMIT; hosted acceptance remains PENDING.

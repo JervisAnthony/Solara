@@ -6,12 +6,14 @@ from solara_travel.domain import ClimateCondition, ClimateConstraint, Constraint
 
 
 def test_climate_constraint_accepts_typed_hard_and_soft_values() -> None:
+    assert tuple(ClimateCondition) == (ClimateCondition.COLD,)
+    assert ClimateCondition.COLD.value == "cold"
     assert (
-        ClimateConstraint(ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.HARD).severity
+        ClimateConstraint(ClimateCondition.COLD, ConstraintSeverity.HARD).severity
         is ConstraintSeverity.HARD
     )
     assert (
-        ClimateConstraint(ClimateCondition.COLD_OR_SNOWY, ConstraintSeverity.SOFT).severity
+        ClimateConstraint(ClimateCondition.COLD, ConstraintSeverity.SOFT).severity
         is ConstraintSeverity.SOFT
     )
 
@@ -19,8 +21,8 @@ def test_climate_constraint_accepts_typed_hard_and_soft_values() -> None:
 @pytest.mark.parametrize(
     ("condition", "severity", "message"),
     [
-        ("cold_or_snowy", ConstraintSeverity.HARD, "condition must be ClimateCondition"),
-        (ClimateCondition.COLD_OR_SNOWY, "hard", "severity must be ConstraintSeverity"),
+        ("cold", ConstraintSeverity.HARD, "condition must be ClimateCondition"),
+        (ClimateCondition.COLD, "hard", "severity must be ConstraintSeverity"),
     ],
 )
 def test_climate_constraint_rejects_untyped_values(
@@ -28,3 +30,9 @@ def test_climate_constraint_rejects_untyped_values(
 ) -> None:
     with pytest.raises(TypeError, match=message):
         ClimateConstraint(condition, severity)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("unsupported", ["cold_or_snowy", "snow", "snowy"])
+def test_temperature_only_contract_rejects_legacy_and_snow_conditions(unsupported):
+    with pytest.raises(ValueError):
+        ClimateCondition(unsupported)

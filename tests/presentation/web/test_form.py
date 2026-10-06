@@ -70,7 +70,9 @@ def test_form_has_accessible_optional_destination_chip_controls_above_dates() ->
 def test_form_loads_local_script_and_exposes_polite_status() -> None:
     html = _root_html()
 
-    assert '<script src="/static/app.js" defer></script>' in html
+    from solara_travel.presentation.web.assets import asset_url
+
+    assert f'<script src="{asset_url("app.js")}" defer></script>' in html
     assert 'id="recommendation-form-status"' in html
     assert 'role="status"' in html
     assert 'aria-live="polite"' in html

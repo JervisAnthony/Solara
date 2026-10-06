@@ -81,17 +81,23 @@ def test_guided_interests_pace_climate_and_trip_context_are_explicit() -> None:
         "warm_dry",
         "mild",
         "cool",
-        "cold_snowy",
+        "cold",
     ):
         assert f'data-value="{value}"' in html
     assert "Describe where you're looking to vacation" in html
+    assert "Cold &mdash; required" in html
+    assert "cold historical temperature evidence" in html
+    assert "Solara does not currently verify snowfall" in html
+    assert "Cold or snowy" not in html and 'data-value="cold_snowy"' not in html
     assert 'id="trip-description"' in html
     assert 'maxlength="1000"' in html
     assert 'id="trip-description-count"' in html
     assert 'rows="5"' in html
     assert 'role="combobox"' in html
     assert 'role="option"' in html
-    assert '<script src="/static/selects.js" defer></script>' in html
+    from solara_travel.presentation.web.assets import asset_url
+
+    assert f'<script src="{asset_url("selects.js")}" defer></script>' in html
 
 
 def test_how_solara_works_is_a_dedicated_four_step_traveller_section() -> None:

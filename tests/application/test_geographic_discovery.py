@@ -1,6 +1,7 @@
 """Tests for broad/open geographic discovery orchestration."""
 
 from collections import Counter
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -14,6 +15,9 @@ from solara_travel.application import (
 )
 from solara_travel.domain import (
     Attraction,
+    ClimateCondition,
+    ClimateConstraint,
+    ConstraintSeverity,
     Destination,
     DestinationCandidateProposal,
     DestinationQuery,
@@ -21,6 +25,7 @@ from solara_travel.domain import (
     GeoViewport,
     RecommendationRequest,
     TemperatureComfortRange,
+    TravellerPreferences,
     TravelPeriod,
     TravelScope,
     TravelScopeKind,
@@ -118,6 +123,53 @@ def _service(
         maximum_candidates=maximum,
         maximum_scoreable_destinations=scoreable_maximum,
     )
+
+
+@pytest.mark.parametrize("portugal_is_cold", [True, False])
+def test_mixed_country_hard_cold_eligibility_uses_evidence_despite_warm_narrative(portugal_is_cold):
+    countries = {"Portugal": "PT", "Thailand": "TH", "Philippines": "PH", "Singapore": "SG"}
+    places = {
+        "Porto": "Portugal",
+        "Bangkok": "Thailand",
+        "Manila": "Philippines",
+        "Singapore": "Singapore",
+    }
+    resolved = {
+        country: TravelScope(country, TravelScopeKind.COUNTRY, country, code)
+        for country, code in countries.items()
+    }
+    for name, country in places.items():
+        resolved[f"{name}, {country}"] = _locality(name, country, countries[country])
+
+    class EvidenceWeather:
+        def get_historical_weather(self, destination, period):
+            temperatures = (
+                (0.0, 8.0) if destination.name == "Porto" and portugal_is_cold else (28.0, 31.0)
+            )
+            return tuple(
+                WeatherObservation(date(2023, 5, 2 + index), temperature, 60, 0)
+                for index, temperature in enumerate(temperatures)
+            )
+
+    request = replace(
+        _request(*countries),
+        preferences=TravellerPreferences(
+            preferred_climate="cold",
+            trip_description="Warm islands, beaches and diving. Less city, more outdoors.",
+        ),
+        climate_constraint=ClimateConstraint(ClimateCondition.COLD, ConstraintSeverity.HARD),
+    )
+    proposal = FakeProposalProvider(_proposal(*places))
+    service = replace(
+        _service(FakeResolver(resolved), proposal), weather_provider=EvidenceWeather()
+    )
+    result = service.recommend(request)
+    assert [item.destination.name for item in result.recommendations] == (
+        ["Porto"] if portugal_is_cold else []
+    )
+    assert result.destination_mode == "mixed_scopes"
+    assert len(proposal.calls) == 4
+    assert all(call[0] is request for call in proposal.calls)
 
 
 def test_open_discovery_proposes_then_google_validates_and_deduplicates() -> None:

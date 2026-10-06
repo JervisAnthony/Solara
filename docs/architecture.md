@@ -825,7 +825,7 @@ proposals, and raw model output are excluded from operational logs.
 Current deterministic scoring is season-led. Interests, preferred pace, and
 soft preferred climate travel through the request but are not separate score
 components. An explicit `ClimateConstraint` has independent hard/soft severity.
-The mandatory cold-or-snowy UI choice creates a hard constraint: trusted
+The mandatory cold UI choice creates a hard constraint: trusted
 historical seasonal evidence is gathered for the requested date window, an
 absolute cold threshold is applied, and incompatible candidates are removed
 before deterministic sorting. Temperature evidence can establish cold; Solara
@@ -966,7 +966,7 @@ Solara's privacy-conscious structured request events authoritative. MVP1 uses
 one container/instance; additional processes or replicas would multiply the
 effective limits until a distributed safeguard design exists.
 
-The deployed MVP1 topology is operationally narrow:
+The intended MVP1 deployment topology is operationally narrow:
 
 ```text
 GitHub main -> CI checks -> Render Docker web service
@@ -978,23 +978,25 @@ GitHub main -> CI checks -> Render Docker web service
         -> optional OpenAI narration
 ```
 
-The live service uses Render's Singapore region and Free plan. It keeps the
+The documented service configuration uses Render's Singapore region and Free plan. It keeps the
 browser and API same-origin in one service and adds no database, cache, worker,
 custom domain, or trusted proxy-header boundary. Root, health, and disabled-docs
-behavior are verified; provider-backed recommendation, feedback, and live
+behavior were historically verified; provider-backed recommendation, feedback, and live
 responsive-browser validation completed for Commit 47's explicit-destination
 public-alpha flow. Commit 48 added candidate proposal and validation for blank and
 broad discovery, mixed-scope planning, Postcards, Wayfinder, and the final visual
 travel experience. The exact hosted build at
 `c9d698ad5e926beb4e6cad1c291f6d4a786c479c` was manually reviewed and accepted
-after deployment. That acceptance does not change deterministic scoring and
+after deployment. This is historical acceptance, not Commit 51 candidate evidence;
+the owner later observed Commit 51 identity `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`,
+but its full integrity/acceptance remains pending. That acceptance does not change deterministic scoring and
 ranking authority. Automated Chromium and adapter coverage continues to use only
 fake providers.
 
 The service was manually configured before `render.yaml` existed remotely. The
-repository Blueprint now represents the desired topology but does not yet manage
-the live service; adoption must match the existing service rather than create a
-second one.
+repository Blueprint now represents the desired topology. Adoption by the live
+service remains pending dashboard verification; no completion is claimed.
+Adoption must match the existing service rather than create a second one.
 
 ## Dependency direction
 
@@ -1388,3 +1390,46 @@ tight coupling.
 
 Significant deviations from this architecture should be deliberate, reviewed,
 and documented before they become permanent design constraints.
+
+## Commit 51 release boundary
+
+Version 0.1.0 is a public-alpha candidate, not production certification.
+The hidden operational `GET /release` lives in API presentation only. It reports
+installed metadata and validates optional Render revision text as 40 hexadecimal
+characters; missing/invalid text returns null without blocking startup. It makes
+no provider calls, is excluded from OpenAPI and bypasses client event logging.
+`/health` retains its original response and all traveller logging policies remain.
+
+The web renderer computes SHA-256 prefixes from installed JS/CSS bytes and inserts
+versioned URLs into served HTML. The document requires revalidation; static imagery
+and JavaScript semantics are unchanged. There is no Node build pipeline, timestamp,
+random identifier or package-version-only cache key.
+
+The operator-only `scripts/verify_hosted_release.py` uses bounded GETs, rejects
+redirects, validates live fingerprints and compares all eight functional assets
+with canonical Git blobs from the validated deployed revision. Git is required;
+the requested object must exist locally, but HEAD may differ. Checkout line-ending
+conversion is irrelevant; only null revisions permit a labeled worktree fallback.
+See [the verifier correction](commit51-verifier-correction.md). Run it
+with the expected pushed SHA only after deploying that exact revision. Offline
+tests in `tests/tools/test_hosted_release.py` cover mismatches without live quota.
+Endpoint and content-change regressions are in `tests/presentation/api/test_release.py`
+and `tests/presentation/web/test_release_assets.py`. Fresh installed-package checks
+must also verify metadata, root fingerprints and delivered bytes, not just source.
+
+Full pytest/browser, 100% statement/branch coverage, Ruff, dependency, JS syntax,
+wheel/sdist and clean-install checks remain required. See [local validation](commit51-phase-a-validation.md),
+[release gates](mvp1-release.md) and [hosted acceptance](hosted-acceptance.md).
+Hosted acceptance remains PENDING and MVP1 remains NOT YET CLOSED in Phase A.
+
+### PR #48 climate authority correction
+
+The only authoritative climate condition is `ClimateCondition.COLD` / `cold`.
+Hard eligibility requires historical seasonal mean ≤12°C AND minimum ≤5°C per
+candidate, before ranking. Geography names and narrative context cannot override
+it. Soft preferences remain context. Eligibility and comfort score are separate.
+There is no snowfall source: temperature never establishes snowfall, snow cover,
+ski conditions or snow availability. Wayfinder's existing text-validation boundary
+rejects unsupported snow language and preserves deterministic results on fallback.
+See [the correction record](commit51-climate-correction.md). Hosted acceptance
+remains PENDING; Commit 51 and MVP1 remain open.

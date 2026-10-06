@@ -69,7 +69,9 @@ def test_feedback_script_is_packaged_and_loaded_after_recommendation_scripts() -
 
     assert response.status_code == 200
     assert response.text.strip()
-    assert '<script src="/static/feedback.js" defer></script>' in html
+    from solara_travel.presentation.web.assets import asset_url
+
+    assert f'<script src="{asset_url("feedback.js")}" defer></script>' in html
     assert html.index("/static/app.js") < html.index("/static/results.js")
     assert html.index("/static/results.js") < html.index("/static/feedback.js")
     assert _client().get("/static/not-real.js").status_code == 404

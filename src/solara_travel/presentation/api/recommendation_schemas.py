@@ -57,7 +57,7 @@ class TravellerPreferencesRequest(StrictRequestModel):
 class ClimateConstraintRequest(StrictRequestModel):
     """Explicit climate eligibility requested by the traveller."""
 
-    condition: Literal["cold_or_snowy"]
+    condition: Literal["cold"]
     severity: Literal["hard", "soft"]
 
 
@@ -128,7 +128,7 @@ class TravellerPreferencesResponse(BaseModel):
 class ClimateConstraintResponse(BaseModel):
     """Authoritative climate constraint applied to recommendation eligibility."""
 
-    condition: Literal["cold_or_snowy"]
+    condition: Literal["cold"]
     severity: Literal["hard", "soft"]
 
 

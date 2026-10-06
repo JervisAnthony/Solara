@@ -894,10 +894,11 @@ Commit 47 - public-alpha integration, smoke, and browser testing (complete)
 Commit 48 - visual travel experience (complete)
 Commit 49 - itinerary studio / Build This Trip (complete)
 Commit 50 - partner + journey capabilities (complete)
-Commit 51 - MVP1 release documentation + launch readiness (pending)
+Commit 51 - MVP1 release documentation + launch readiness (IN PROGRESS — Phase A; hosted acceptance PENDING)
 ```
 
-Completing Commit 51 closes MVP1.
+Completing Commit 51 Phase B after exact-SHA hosted acceptance closes MVP1.
+Phase A does not close MVP1.
 
 Destination Knowledge + RAG Grounding begins only as a future MVP2 capability.
 
@@ -1207,7 +1208,7 @@ Implemented scope includes:
 
 ## Commit 46 - Hosted MVP1 deployment
 
-Implemented scope includes:
+Historical first-deployment scope included:
 
 - a live single-service, single-instance Docker deployment on Render Free in
   Singapore;
@@ -1221,8 +1222,9 @@ Implemented scope includes:
   or broad public-alpha interaction validation yet.
 
 The service was manually configured before the Blueprint existed remotely, so
-Blueprint adoption remains an operational follow-up and must reuse the existing
-service rather than create another one.
+Blueprint adoption remains pending current dashboard verification and must reuse
+the existing service rather than create another one. These historical observations
+do not establish the current live SHA or Commit 51 hosted acceptance.
 
 ## Commits 47-51 - MVP1 integration, experience, and release
 
@@ -1232,9 +1234,10 @@ The active MVP1 sequence is:
 - Commit 48 - visual travel experience (complete);
 - Commit 49 - Itinerary Studio / Build This Trip (complete);
 - Commit 50 - Partner + Journey Capabilities (complete);
-- Commit 51 - MVP1 Release Documentation + Launch Readiness (pending).
+- Commit 51 - MVP1 Release Documentation + Launch Readiness (IN PROGRESS — Phase A; hosted acceptance PENDING).
 
-Completing Commit 51 closes MVP1.
+Completing Commit 51 Phase B after exact-SHA hosted acceptance closes MVP1.
+Phase A does not close MVP1.
 
 MVP2 then reserves Destination Knowledge + RAG Grounding as future work.
 
@@ -1305,7 +1308,7 @@ stale responses, and preserves the route through empty or unavailable states.
 No live schedule or booking claim is made. The Wayfinder summary remains
 non-authoritative.
 
-Commit 49 also corrects climate eligibility: hard cold-or-snowy requirements use
+Commit 49 also corrects climate eligibility: hard cold requirements use
 absolute historical seasonal evidence for the requested dates before ranking.
 Incompatible candidates are excluded, including tropical Thailand/Philippines
 results without credible cold evidence; a successful zero-match response is
@@ -1327,13 +1330,16 @@ Final local validation: 1,815 tests, 44 Chromium tests, 4,221/4,221 statements,
 1,570/1,570 branches, 100% statement/branch coverage, Ruff and pip checks,
 wheel/sdist builds, fresh core/web installs, packaged export assets and existing
 security/privacy/static contracts passed. Docker's engine was unavailable; no
-container or hosted acceptance is claimed. Implementation is staged for owner
-review; no Commit 50 Git commit, push, PR or merge was created by Codex.
+container or hosted acceptance was claimed by that local validation pass.
+The owner subsequently committed the implementation and PR #47 merged Commit 50
+at `9ea9fda8536a69f158bdb3d9b391c700889a4eb7`.
 
-Commit 51 remains pending and plans MVP1 release documentation and launch readiness,
-including the final production-readiness checklist, hosted acceptance record,
-operational limitations, deployment and tester guidance, known limitations,
-security/privacy summary, and launch checklist.
+Commit 51 is IN PROGRESS — Phase A release candidate: package 0.1.0, functional
+asset fingerprints, safe release identity, read-only hosted verification tooling,
+release/tester/deployment documentation and a pending hosted acceptance matrix.
+The [release checklist](mvp1-release.md) retains pending source, deployment,
+operations and hosted gates. Phase B must record actual acceptance of the exact
+pushed/deployed SHA before closing Commit 51 or MVP1.
 
 ## Release milestones
 
@@ -1418,3 +1424,13 @@ sophistication, not because sophisticated technology is available.
 Every new framework, provider, model, service, database, workflow, or
 abstraction should solve a concrete problem and fit within the architecture
 already established.
+
+### Commit 51 / PR #48 climate correction
+
+The release candidate replaces the combined cold/snow concept with **Cold — required**.
+Historical temperature thresholds remain mean ≤12°C AND minimum ≤5°C. Snowfall
+is unsupported and never inferred; a future hard requirement must fail closed
+without trustworthy evidence. Soft preferences and ranking authority are preserved.
+Pre-correction SHA `c66e3eba01bbf2f6f35bf780ffadba799184614f` cannot establish final
+acceptance. Corrected SHA: PENDING OWNER COMMIT. [Acceptance](hosted-acceptance.md)
+remains PENDING, Commit 51 IN PROGRESS and MVP1 NOT YET CLOSED.

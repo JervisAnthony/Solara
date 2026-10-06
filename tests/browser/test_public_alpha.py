@@ -479,8 +479,9 @@ def test_premium_selects_support_full_keyboard_contract_without_submitting(
     assert requests == []
 
 
+@pytest.mark.parametrize("width", [1280, 390])
 def test_mandatory_cold_choice_sends_hard_constraint_and_has_zero_match_recovery(
-    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider]
+    page: object, local_public_alpha: tuple[str, BrowserPlacesProvider], width
 ) -> None:
     base_url, _ = local_public_alpha
     payloads: list[dict[str, object]] = []
@@ -489,22 +490,107 @@ def test_mandatory_cold_choice_sends_hard_constraint_and_has_zero_match_recovery
         payloads.append(route.request.post_data_json)
         response = _synthetic_response([])
         response["has_recommendations"] = False
+        response["request"]["climate_constraint"] = route.request.post_data_json[
+            "climate_constraint"
+        ]
         route.fulfill(status=200, content_type="application/json", body=json.dumps(response))
 
     page.route("**/api/v1/recommendations", zero_match)
+    page.set_viewport_size({"width": width, "height": 900})
     _open(page, base_url)
     _fill_dates(page)
-    _select(page, "#preferred-climate", "cold_snowy")
+    assert "Cold — required" in page.locator("#preferred-climate-listbox").text_content()
+    assert "Cold or snowy" not in page.locator("#preferred-climate-listbox").text_content()
+    assert (
+        "does not currently verify snowfall" in page.locator("#preferred-climate-help").inner_text()
+    )
+    climate = page.locator("#preferred-climate")
+    climate.focus()
+    climate.press("Enter")
+    climate.press("End")
+    climate.press("Enter")
+    assert climate.get_attribute("aria-expanded") == "false"
+    assert page.locator("#preferred-climate-option-cold").get_attribute("aria-selected") == "true"
+    page.locator("#trip-description").fill("Warm islands, beaches and diving.")
     page.locator("#recommendation-submit").click()
     page.locator("#recommendation-empty").wait_for()
 
     assert payloads[-1]["climate_constraint"] == {
-        "condition": "cold_or_snowy",
+        "condition": "cold",
         "severity": "hard",
     }
-    assert "will not substitute" in page.locator("#recommendation-empty-message").inner_text()
+    assert (
+        page.locator("#recommendation-empty-title").inner_text()
+        == "No places match your required climate"
+    )
+    assert (
+        "required cold conditions for these dates"
+        in page.locator("#recommendation-empty-message").inner_text()
+    )
+    assert page.evaluate("document.activeElement.id") == "recommendation-empty-title"
+    assert page.locator('input[name="preferred-climate"]').input_value() == "cold"
+    assert page.locator("#trip-description").input_value() == "Warm islands, beaches and diving."
     page.get_by_role("button", name="Change climate").click()
     assert page.evaluate("document.activeElement.id") == "preferred-climate"
+    for name in ("Change destinations", "Broaden my search"):
+        control = page.get_by_role("button", name=name)
+        control.focus()
+        control.press("Enter")
+        assert page.evaluate("document.activeElement.id") == "destination-input"
+    assert page.locator('input[name="preferred-climate"]').input_value() == "cold"
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+
+
+@pytest.mark.parametrize("value", ["warm_sunny", "mild", "cool"])
+def test_ordinary_climate_choices_remain_soft_browser_context(page, local_public_alpha, value):
+    payloads = []
+
+    def empty_result(route):
+        payloads.append(route.request.post_data_json)
+        response = _synthetic_response([])
+        response["has_recommendations"] = False
+        route.fulfill(status=200, content_type="application/json", body=json.dumps(response))
+
+    page.route("**/api/v1/recommendations", empty_result)
+    _open(page, local_public_alpha[0])
+    _fill_dates(page)
+    _select(page, "#preferred-climate", value)
+    page.locator("#recommendation-submit").click()
+    page.locator("#recommendation-empty").wait_for()
+    assert payloads[-1]["preferences"]["preferred_climate"] == value
+    assert "climate_constraint" not in payloads[-1]
+    assert (
+        page.locator("#recommendation-empty-title").inner_text()
+        == "No destinations returned this time"
+    )
+
+
+@pytest.mark.parametrize("constraint", [None, {"condition": "cold", "severity": "soft"}])
+def test_empty_copy_uses_response_authority_and_resets_after_required_cold(
+    page, local_public_alpha, constraint
+):
+    _open(page, local_public_alpha[0])
+    _select(page, "#preferred-climate", "cold")
+    response = _synthetic_response([])
+    response["has_recommendations"] = False
+    response["request"]["climate_constraint"] = {"condition": "cold", "severity": "hard"}
+    dispatch = """response => document.querySelector('#recommendation-form').dispatchEvent(
+        new CustomEvent('solara:recommendation-ready', {detail: response}))"""
+    page.evaluate(dispatch, response)
+    assert (
+        page.locator("#recommendation-empty-title").inner_text()
+        == "No places match your required climate"
+    )
+    response["request"]["climate_constraint"] = constraint
+    page.evaluate(dispatch, response)
+    assert (
+        page.locator("#recommendation-empty-title").inner_text()
+        == "No destinations returned this time"
+    )
+    assert (
+        "Try different destinations" in page.locator("#recommendation-empty-message").inner_text()
+    )
+    assert "required cold" not in page.locator("#recommendation-empty-message").inner_text()
 
 
 def _open_handoff(page: object, base_url: str, locations=None) -> dict:

@@ -17,6 +17,7 @@ from solara_travel.presentation.api.routes.postcards import router as postcards_
 from solara_travel.presentation.api.routes.recommendations import (
     router as recommendations_router,
 )
+from solara_travel.presentation.api.routes.release import router as release_router
 from solara_travel.presentation.api.routes.travel_scopes import router as travel_scopes_router
 from solara_travel.presentation.api.safeguards import ApiSafeguards
 from solara_travel.presentation.api.settings import ApiSettings
@@ -57,6 +58,7 @@ def create_app(
     application.include_router(web_router)
     application.mount("/static", StaticFiles(directory=STATIC_DIRECTORY), name="static")
     application.include_router(health_router)
+    application.include_router(release_router)
     application.include_router(recommendations_router)
     application.include_router(itineraries_router)
     application.include_router(postcards_router)

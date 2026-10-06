@@ -89,6 +89,33 @@ def test_recommendation_narration_preserves_text() -> None:
     assert narration.text == "Evidence-backed prose."
 
 
+@pytest.mark.parametrize(
+    "field,claim",
+    [
+        ("opening", "Snow is expected around your dates."),
+        ("why_it_fits", "Cold temperatures make this a snowy destination."),
+        ("seasonal_feel", "Reliable snowfall makes for ski conditions."),
+        ("good_to_know", "Snow cover is assured."),
+        ("signature_highlights", ["Winter snow"]),
+        ("comparison_note", "Choose this option for snow availability."),
+    ],
+)
+def test_wayfinder_rejects_snow_claims_and_preserves_temperature_recommendations(field, claim):
+    result = _recommendation_result()
+    payload = json.loads(_wayfinder_json())
+    if field in ("opening", "comparison_note"):
+        payload[field] = claim
+    else:
+        payload["destination_notes"][0][field] = claim
+    provider = FakeNarrationProvider(json.dumps(payload))
+    narrated = RecommendationNarrationService(provider).narrate(result)
+    assert narrated.recommendation_result is result
+    assert narrated.wayfinder is None and narrated.narration is None
+    assert "Never infer or claim snow" in provider.prompts[0].instructions
+    grounding = json.loads(provider.prompts[0].input_text)
+    assert all("snowfall" not in item["seasonal_weather"] for item in grounding["recommendations"])
+
+
 def test_recommendation_narration_requires_string() -> None:
     with pytest.raises(TypeError, match="text must be a string"):
         RecommendationNarration(None)  # type: ignore[arg-type]
