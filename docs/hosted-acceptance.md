@@ -6,13 +6,14 @@
 | --- | --- |
 | Public service | https://solara-travel-mvp1.onrender.com |
 | Expected corrected candidate SHA | PENDING OWNER COMMIT |
-| Render deployed SHA | PENDING verification |
-| `/release` SHA and version | PENDING verification; expected version 0.1.0 |
+| Previous owner-observed deployment | `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`; corrected cold UI visible |
+| New `/release` SHA and version | PENDING owner commit/deployment; expected version 0.1.0 |
 | Acceptance date/operator/evidence | PENDING |
 | Launch decision | PENDING |
 
 After owner review/commit/push, deploy the exact candidate SHA to the existing
-service. Check out that SHA locally before running the read-only integrity smoke:
+service. Use the corrected verifier with that commit object available locally
+(fetch if necessary; HEAD may differ) before running the read-only integrity smoke:
 
 ```powershell
 python scripts/verify_hosted_release.py https://solara-travel-mvp1.onrender.com --expected-sha <40-character-pushed-SHA>
@@ -20,7 +21,11 @@ python scripts/verify_hosted_release.py https://solara-travel-mvp1.onrender.com 
 
 This performs only GETs for health, release, root, docs/redoc and eight functional
 assets. It makes no recommendation/provider requests and submits no feedback.
-It fails nonzero for identity, entrypoint, asset hash or checkout-byte mismatch.
+It fails nonzero for identity, entrypoint, asset hash or canonical Git-blob mismatch,
+and safely fails if Git or the requested revision is unavailable. Each live hash
+must match its URL fingerprint and each live asset must match the exact validated
+release commit, independent of Windows checkout newline conversion. Null-revision
+worktree fallback cannot satisfy this acceptance procedure.
 The optional SHA argument is required by this acceptance procedure. A successful
 integrity smoke alone does not establish traveller acceptance.
 
@@ -34,7 +39,7 @@ where possible; do not manufacture passes or exhaust provider quotas to test lim
 | --- | --- | --- |
 | Deployment | Render expected SHA equals `/release`; package 0.1.0 | PENDING |
 | Operational surfaces | Health/root 200; docs/redoc 404 | PENDING |
-| Asset integrity | All eight hashes and bytes match checkout; no mixed old/new frontend | PENDING |
+| Asset integrity | All eight live hashes match URLs and bytes match the exact release Git blobs; no mixed old/new frontend | PENDING |
 | Discovery: city | Explicit canonical city evaluation | PENDING |
 | Discovery: country | Country expands to validated localities | PENDING |
 | Discovery: region | Region containment and locality identity | PENDING |
@@ -83,6 +88,12 @@ its intended SHA and assets before launch.
 The old Phase A SHA `c66e3eba01bbf2f6f35bf780ffadba799184614f` is pre-correction
 history and cannot establish final acceptance. After owner commit/push, rerun CI,
 CodeQL and Dependency Review, deploy the new exact head and verify `/release` plus
-all asset bytes from that checkout before the corrected manual climate cases.
+all asset bytes against that exact Git revision before the corrected manual climate cases.
 Cold eligibility uses historical mean ≤12°C AND minimum ≤5°C; it never verifies
 snowfall. All results above remain PENDING. Commit 51 and MVP1 remain open.
+
+The owner confirmed the prior deployment identity and corrected cold label, then
+encountered the Windows worktree comparison defect. These observations do not
+complete the matrix. [The platform-independent verifier correction](commit51-verifier-correction.md)
+requires owner commit/push, exact-SHA deployment and fresh integrity/acceptance
+evidence; the new candidate SHA remains PENDING OWNER COMMIT.

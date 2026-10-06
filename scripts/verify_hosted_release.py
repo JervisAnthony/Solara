@@ -3,6 +3,7 @@
 import argparse
 import json
 import re
+import subprocess
 import sys
 from hashlib import sha256
 from html.parser import HTMLParser
@@ -21,12 +22,34 @@ ASSETS = (
     "feedback.js",
     "styles.css",
 )
-LOCAL_ASSETS = Path(__file__).resolve().parents[1] / "src/solara_travel/presentation/web/static"
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+ASSET_PREFIX = "src/solara_travel/presentation/web/static"
+LOCAL_ASSETS = REPOSITORY_ROOT / ASSET_PREFIX
 MAX_RESPONSE_BYTES = 2_000_000
 
 
 class VerificationError(Exception):
     """A safe operator-facing mismatch, without response bodies or credentials."""
+
+
+def read_git_asset(revision: str, name: str) -> bytes:
+    """Read canonical blob bytes, independent of HEAD and checkout conversions."""
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", revision) or name not in ASSETS:
+        raise VerificationError("invalid release asset object request")
+    try:
+        return subprocess.run(
+            ["git", "cat-file", "blob", f"{revision.lower()}:{ASSET_PREFIX}/{name}"],
+            cwd=REPOSITORY_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            shell=False,
+            check=True,
+            timeout=10,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        raise VerificationError(
+            "release Git asset unavailable; ensure the revision exists locally"
+        ) from None
 
 
 class NoRedirects(HTTPRedirectHandler):
@@ -95,7 +118,7 @@ def _json(body: bytes) -> dict:
 
 
 def verify(base_url, expected_sha=None, *, get=fetch, assets_directory=LOCAL_ASSETS):
-    """Verify eight exact assets against both live hashes and this local checkout."""
+    """Verify live hashes and release blobs; use worktree bytes only without a revision."""
     base = _base_url(base_url)
     if expected_sha is not None and not re.fullmatch(r"[0-9a-fA-F]{40}", expected_sha):
         raise VerificationError("expected SHA must be 40 hexadecimal characters")
@@ -118,6 +141,7 @@ def verify(base_url, expected_sha=None, *, get=fetch, assets_directory=LOCAL_ASS
         raise VerificationError("invalid release revision")
     if expected_sha is not None and (revision is None or revision.lower() != expected_sha.lower()):
         raise VerificationError("deployed SHA mismatch")
+    authority = (expected_sha or revision).lower() if revision is not None else None
     for path in ("/docs", "/redoc"):
         if get(base + path)[0] != 404:
             raise VerificationError("hosted API documentation must be disabled")
@@ -153,12 +177,17 @@ def verify(base_url, expected_sha=None, *, get=fetch, assets_directory=LOCAL_ASS
             raise VerificationError("functional asset unavailable")
         if sha256(content).hexdigest()[:16] != fingerprint:
             raise VerificationError("live asset fingerprint mismatch")
-        try:
-            local_content = (assets_directory / name).read_bytes()
-        except OSError as error:
-            raise VerificationError("local release asset unavailable") from error
-        if content != local_content:
-            raise VerificationError("live asset differs from checked-out release candidate")
+        if authority is not None:
+            reference_content = read_git_asset(authority, name)
+            mismatch = "live asset differs from deployed Git revision"
+        else:
+            try:
+                reference_content = (assets_directory / name).read_bytes()
+            except OSError:
+                raise VerificationError("local worktree asset unavailable") from None
+            mismatch = "live asset differs from local worktree fallback"
+        if content != reference_content:
+            raise VerificationError(mismatch)
     return release
 
 
@@ -172,9 +201,14 @@ def main(argv=None) -> int:
     except (VerificationError, ValueError) as error:
         print(f"Release verification failed: {error}", file=sys.stderr)
         return 1
+    comparison = (
+        "8 assets match release commit"
+        if release["source_revision"] is not None
+        else "8 assets match local worktree fallback; no authoritative Git revision"
+    )
     print(
         f"Release integrity verified: Solara {release['version']} · "
-        f"revision {release['source_revision'] or 'unknown'} · 8 assets match checkout"
+        f"revision {release['source_revision'] or 'unknown'} · {comparison}"
     )
     print("Provider acceptance remains a separate manual check.")
     return 0

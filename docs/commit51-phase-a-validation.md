@@ -5,8 +5,11 @@ Historical Phase A validation date: 2026-10-06. The owner subsequently committed
 **pre-correction candidate**, not the final accepted build. The staged/no-commit
 statements below describe the original Phase A stopping point.
 
-The current [climate correction](commit51-climate-correction.md) has candidate SHA
-**PENDING OWNER COMMIT**. Hosted acceptance remains PENDING, Commit 51 IN PROGRESS
+The [climate correction](commit51-climate-correction.md) was owner-committed as
+`61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`. The subsequent
+[verifier correction](commit51-verifier-correction.md) replaces the historical
+worktree-byte authority described below with canonical release Git blobs; its SHA
+is **PENDING OWNER COMMIT**. Hosted acceptance remains PENDING, Commit 51 IN PROGRESS
 and MVP1 NOT YET CLOSED.
 
 ## 1. Commit 50 verification

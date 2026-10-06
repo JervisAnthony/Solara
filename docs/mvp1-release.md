@@ -95,8 +95,8 @@ the last actually accepted known-good SHA from deployment/acceptance records.
 That SHA is **PENDING identification** here; the historical first deployment is
 not automatically the rollback target. Use Render's specific-commit deployment
 facility on the existing service with its existing secrets and topology. Check
-`/health`, `/release`, the root and functional assets; from a checkout of that
-same known-good SHA run the verifier with `--expected-sha`, then repeat critical
+`/health`, `/release`, the root and functional assets; with that known-good commit
+object present locally, run the corrected verifier with `--expected-sha`, then repeat critical
 traveller flows. The verifier targets this 0.1.0 candidate; an older revision
 without `/release` or fingerprints needs its own documented verification and
 must not be called verified by this tool. Do not create a second service, copy
@@ -108,7 +108,10 @@ checklist items, and justifies a GO decision before closing Commit 51 and MVP1.
 ### Corrected candidate identity and climate boundary
 
 `c66e3eba01bbf2f6f35bf780ffadba799184614f` is the pre-correction Phase A candidate
-and must not be used for final acceptance. Corrected SHA: **PENDING OWNER COMMIT**.
+and must not be used for final acceptance. The owner committed the climate fix as
+`61391e7cc0229acdbcc4da28b1ab3bc950b79bb6` and observed that live identity and cold UI.
+The subsequent [Git-object verifier correction](commit51-verifier-correction.md)
+has new candidate SHA **PENDING OWNER COMMIT**; full hosted acceptance remains pending.
 After owner push, repeat CI/CodeQL/Dependency Review, exact-head deployment,
 integrity smoke and the corrected pending climate cases. **Cold — required** uses
 historical mean ≤12°C AND minimum ≤5°C; temperature never establishes snowfall,

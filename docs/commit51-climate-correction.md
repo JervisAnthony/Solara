@@ -1,7 +1,12 @@
 # PR #48 climate correction and validation record
 
 Local validation completed on 2026-10-07 (Asia/Calcutta).
-**Corrected candidate SHA: PENDING OWNER COMMIT. Hosted acceptance PENDING.
+This is the historical local climate-validation record. The owner subsequently
+committed it as `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6` and observed that live
+identity plus the corrected cold UI. Staged/no-commit statements below describe
+that earlier stopping point. The later [verifier correction](commit51-verifier-correction.md)
+uses canonical Git blobs instead of the unchanged worktree verifier described here.
+**New verifier-correction SHA: PENDING OWNER COMMIT. Hosted acceptance PENDING.
 Commit 51 IN PROGRESS. MVP1 NOT YET CLOSED.**
 
 ## 1. PR and baseline verification

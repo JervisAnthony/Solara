@@ -1618,7 +1618,11 @@ and JavaScript semantics are unchanged. There is no Node build pipeline, timesta
 random identifier or package-version-only cache key.
 
 The operator-only `scripts/verify_hosted_release.py` uses bounded GETs, rejects
-redirects and compares all eight functional assets with the local checkout. Run it
+redirects, validates live fingerprints and compares all eight functional assets
+with canonical Git blobs from the validated deployed revision. Git is required;
+the requested object must exist locally, but HEAD may differ. Checkout line-ending
+conversion is irrelevant; only null revisions permit a labeled worktree fallback.
+See [the verifier correction](commit51-verifier-correction.md). Run it
 with the expected pushed SHA only after deploying that exact revision. Offline
 tests in `tests/tools/test_hosted_release.py` cover mismatches without live quota.
 Endpoint and content-change regressions are in `tests/presentation/api/test_release.py`
@@ -1638,4 +1642,5 @@ historical-temperature threshold. Never infer snowfall from temperature.
 Warm/mild/cool preferences remain soft; free text cannot override hard eligibility.
 Browser zero-match wording uses the authoritative response constraint, with generic
 copy for non-hard-cold empties. See [regressions and validation](commit51-climate-correction.md).
-Corrected candidate SHA is PENDING OWNER COMMIT; hosted acceptance remains PENDING.
+The climate correction was owner-committed as `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`.
+The verifier correction SHA is PENDING OWNER COMMIT; hosted acceptance remains PENDING.

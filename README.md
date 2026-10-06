@@ -276,5 +276,7 @@ Jervis Anthony Saldanha
 currently verify snowfall or infer snow from cold temperatures. Warm/mild/cool
 remain soft preferences; contradictory trip text cannot override hard eligibility.
 The old candidate `c66e3eba01bbf2f6f35bf780ffadba799184614f` is pre-correction
-history. Corrected SHA: **PENDING OWNER COMMIT**; [hosted acceptance](docs/hosted-acceptance.md)
+history. Climate correction: `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`.
+The [platform-independent verifier correction](docs/commit51-verifier-correction.md)
+uses exact release Git blobs; its SHA is **PENDING OWNER COMMIT**. [Hosted acceptance](docs/hosted-acceptance.md)
 remains PENDING, Commit 51 IN PROGRESS and MVP1 NOT YET CLOSED.

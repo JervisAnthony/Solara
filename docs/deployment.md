@@ -6,7 +6,8 @@ Commits 45–46 established the portable deployment and first Render service.
 Commits 47–50 completed repository integration, visual experience, Itinerary Studio
 and journey/handoff boundaries. Commit 51 is an in-progress 0.1.0 public-alpha
 release candidate. Its hosted acceptance is PENDING; MVP1 is not yet closed.
-The current live SHA has not been verified in Phase A.
+The owner observed `/release` at `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`
+with the corrected cold UI. Full hosted integrity and acceptance remain PENDING.
 
 The hosted entrypoint follows one explicit composition path:
 
@@ -45,7 +46,7 @@ confirmation for the Commit 51 candidate remains PENDING:
 | Runtime | Docker |
 | Plan | Free |
 | Source | GitHub `main` |
-| Current live SHA | UNKNOWN — pending exact candidate verification |
+| Owner-observed live SHA | `61391e7cc0229acdbcc4da28b1ab3bc950b79bb6`; full integrity/acceptance PENDING |
 | Candidate package version | `0.1.0` public alpha |
 | Topology | One service, one instance, one Uvicorn worker |
 | Health endpoint | `/health` |
@@ -314,11 +315,20 @@ launch requirement. Compare Render's deployment SHA with `/release`, then run:
 python scripts/verify_hosted_release.py https://solara-travel-mvp1.onrender.com --expected-sha <40-character-pushed-SHA>
 ```
 
-Run from a checkout of that exact SHA. The bounded read-only verifier refuses
+Use the corrected verifier in a local repository containing that commit object;
+fetch the revision if needed. HEAD need not equal the deployed SHA. Git must be
+installed. The bounded read-only verifier refuses
 redirects and checks only health/release/root/docs/redoc and functional assets,
-including live hashes and byte-for-byte checkout comparison. It makes no provider
+including live hashes and byte-for-byte comparison with canonical Git blobs from
+the validated `/release` revision (also required to match `--expected-sha`).
+Windows checkout newline conversion cannot affect this comparison. Missing Git
+or commit objects fail safely; no text normalization substitutes for exact bytes.
+With no revision and no expected SHA, only a labeled local-worktree fallback is
+available, which cannot establish exact release integrity. It makes no provider
 requests or feedback submissions. Follow with the separate manual hosted matrix.
 No candidate deployment or hosted acceptance was performed in Phase A.
 
 For rollback and the definitive launch gates, follow [the release document](mvp1-release.md).
 Record actual current/known-good SHAs; neither is inferred from historical notes.
+See [the verifier correction record](commit51-verifier-correction.md). The new
+correction SHA is PENDING OWNER COMMIT; hosted acceptance remains PENDING.
